@@ -32,6 +32,61 @@ func setBasicCommonReviewerConfig(th *TestHelper) *model.AppError {
 	return th.App.SaveContentFlaggingConfig(config)
 }
 
+func TestRequireContentFlaggingEnabled(t *testing.T) {
+	th := Setup(t).InitBasic(t)
+
+	t.Run("Should set error when license is not valid", func(t *testing.T) {
+		th.RemoveLicense(t)
+		c := &Context{
+			App:    th.App,
+			Logger: th.App.Log(),
+		}
+
+		requireContentFlaggingEnabled(c)
+		require.NotNil(t, c.Err)
+		require.Equal(t, "api.content_flagging.error.license", c.Err.Id)
+		require.Equal(t, http.StatusNotImplemented, c.Err.StatusCode)
+	})
+
+	t.Run("Should set error when feature is disabled in config", func(t *testing.T) {
+		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
+		defer th.RemoveLicense(t)
+
+		th.App.UpdateConfig(func(config *model.Config) {
+			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(false)
+			config.ContentFlaggingSettings.SetDefaults()
+		})
+
+		c := &Context{
+			App:    th.App,
+			Logger: th.App.Log(),
+		}
+
+		requireContentFlaggingEnabled(c)
+		require.NotNil(t, c.Err)
+		require.Equal(t, "api.content_flagging.error.disabled", c.Err.Id)
+		require.Equal(t, http.StatusNotImplemented, c.Err.StatusCode)
+	})
+
+	t.Run("Should not set error when license is valid and feature is enabled", func(t *testing.T) {
+		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
+		defer th.RemoveLicense(t)
+
+		th.App.UpdateConfig(func(config *model.Config) {
+			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
+			config.ContentFlaggingSettings.SetDefaults()
+		})
+
+		c := &Context{
+			App:    th.App,
+			Logger: th.App.Log(),
+		}
+
+		requireContentFlaggingEnabled(c)
+		require.Nil(t, c.Err)
+	})
+}
+
 func TestGetFlaggingConfiguration(t *testing.T) {
 	th := Setup(t).InitBasic(t)
 
