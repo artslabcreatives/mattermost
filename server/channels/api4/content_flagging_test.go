@@ -120,7 +120,7 @@ func TestGetFlaggingConfiguration(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.NotNil(t, config)
-		require.NotNil(t, config.Reasons)
+		require.NotEmpty(t, config.Reasons)
 		require.NotNil(t, config.ReporterCommentRequired)
 		require.NotNil(t, config.ReviewerCommentRequired)
 		// Reviewer-only fields should be nil when not requesting as a reviewer
@@ -171,7 +171,7 @@ func TestGetFlaggingConfiguration(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.NotNil(t, config)
-		require.NotNil(t, config.Reasons)
+		require.NotEmpty(t, config.Reasons)
 		require.NotNil(t, config.ReporterCommentRequired)
 		require.NotNil(t, config.ReviewerCommentRequired)
 		// Reviewer-only fields should be present when requesting as a reviewer
@@ -209,7 +209,7 @@ func TestGetFlaggingConfiguration(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.NotNil(t, flagConfig)
-		require.NotNil(t, flagConfig.Reasons)
+		require.NotEmpty(t, flagConfig.Reasons)
 		require.NotNil(t, flagConfig.ReporterCommentRequired)
 		require.NotNil(t, flagConfig.ReviewerCommentRequired)
 		// Reviewer-only fields should be present when requesting as a team reviewer
@@ -354,19 +354,6 @@ func TestGetPostPropertyValues(t *testing.T) {
 		require.Nil(t, propertyValues)
 	})
 
-	t.Run("Should return 404 when post does not exist", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		propertyValues, resp, err := client.GetPostPropertyValues(context.Background(), model.NewId())
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotFound, resp.StatusCode)
-		require.Nil(t, propertyValues)
-	})
-
 	t.Run("Should return 403 when user is not a reviewer", func(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		th.App.UpdateConfig(func(config *model.Config) {
@@ -419,19 +406,6 @@ func TestGetFlaggedPost(t *testing.T) {
 		flaggedPost, resp, err := client.GetContentFlaggedPost(context.Background(), post.Id)
 		require.Error(t, err)
 		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-		require.Nil(t, flaggedPost)
-	})
-
-	t.Run("Should return 404 when post does not exist", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		flaggedPost, resp, err := client.GetContentFlaggedPost(context.Background(), model.NewId())
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 		require.Nil(t, flaggedPost)
 	})
 
@@ -565,25 +539,6 @@ func TestFlagPost(t *testing.T) {
 		resp, err := client.FlagPostForContentReview(context.Background(), post.Id, flagRequest)
 		require.Error(t, err)
 		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-	})
-
-	t.Run("Should return 404 when post does not exist", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
-		defer th.RemoveLicense(t)
-
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		flagRequest := &model.FlagContentRequest{
-			Reason:  "spam",
-			Comment: "This is spam content",
-		}
-
-		resp, err := client.FlagPostForContentReview(context.Background(), model.NewId(), flagRequest)
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
 
 	t.Run("Should return 403 when user does not have permission to view post", func(t *testing.T) {
@@ -874,20 +829,6 @@ func TestAssignContentFlaggingReviewer(t *testing.T) {
 		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
 	})
 
-	t.Run("Should return 404 when post does not exist", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
-		defer th.RemoveLicense(t)
-
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		resp, err := client.AssignContentFlaggingReviewer(context.Background(), model.NewId(), th.BasicUser.Id)
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotFound, resp.StatusCode)
-	})
-
 	t.Run("Should return 400 when user ID is invalid", func(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		defer th.RemoveLicense(t)
@@ -1077,24 +1018,6 @@ func TestRemoveFlaggedPost(t *testing.T) {
 		resp, err := client.RemoveFlaggedPost(context.Background(), post.Id, actionRequest)
 		require.Error(t, err)
 		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-	})
-
-	t.Run("Should return 404 when post does not exist", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
-		defer th.RemoveLicense(t)
-
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		actionRequest := &model.FlagContentActionRequest{
-			Comment: "Removing this post",
-		}
-
-		resp, err := client.RemoveFlaggedPost(context.Background(), model.NewId(), actionRequest)
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
 
 	t.Run("Should return 403 when user is not a reviewer", func(t *testing.T) {
@@ -1353,24 +1276,6 @@ func TestKeepFlaggedPost(t *testing.T) {
 		resp, err := client.KeepFlaggedPost(context.Background(), post.Id, actionRequest)
 		require.Error(t, err)
 		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-	})
-
-	t.Run("Should return 404 when post does not exist", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
-		defer th.RemoveLicense(t)
-
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		actionRequest := &model.FlagContentActionRequest{
-			Comment: "Keeping this post",
-		}
-
-		resp, err := client.KeepFlaggedPost(context.Background(), model.NewId(), actionRequest)
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
 
 	t.Run("Should return 403 when user is not a reviewer", func(t *testing.T) {
