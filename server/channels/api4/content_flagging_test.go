@@ -37,21 +37,6 @@ func TestGetFlaggingConfiguration(t *testing.T) {
 
 	client := th.Client
 
-	t.Run("Should return 501 when Enterprise Advanced license is not present even if feature is enabled", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-		defer th.RemoveLicense(t)
-
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		status, resp, err := client.GetFlaggingConfiguration(context.Background())
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-		require.Nil(t, status)
-	})
-
 	t.Run("Should return 501 when feature is disabled", func(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		defer th.RemoveLicense(t)
@@ -300,20 +285,6 @@ func TestGetPostPropertyValues(t *testing.T) {
 
 	client := th.Client
 
-	t.Run("Should return 501 when Enterprise Advanced license is not present even if feature is enabled", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		post := th.CreatePost(t)
-		propertyValues, resp, err := client.GetPostPropertyValues(context.Background(), post.Id)
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-		require.Nil(t, propertyValues)
-	})
-
 	t.Run("Should return 501 when feature is disabled", func(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		th.App.UpdateConfig(func(config *model.Config) {
@@ -381,20 +352,6 @@ func TestGetFlaggedPost(t *testing.T) {
 	th := Setup(t).InitBasic(t)
 
 	client := th.Client
-
-	t.Run("Should return 501 when Enterprise Advanced license is not present even if feature is enabled", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		post := th.CreatePost(t)
-		flaggedPost, resp, err := client.GetContentFlaggedPost(context.Background(), post.Id)
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-		require.Nil(t, flaggedPost)
-	})
 
 	t.Run("Should return 501 when feature is disabled", func(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
@@ -534,26 +491,6 @@ func TestFlagPost(t *testing.T) {
 	th := Setup(t).InitBasic(t)
 
 	client := th.Client
-
-	t.Run("Should return 501 when Enterprise Advanced license is not present even if feature is enabled", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-		defer th.RemoveLicense(t)
-
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		post := th.CreatePost(t)
-		flagRequest := &model.FlagContentRequest{
-			Reason:  "spam",
-			Comment: "This is spam content",
-		}
-
-		resp, err := client.FlagPostForContentReview(context.Background(), post.Id, flagRequest)
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-	})
 
 	t.Run("Should return 501 when feature is disabled", func(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
@@ -706,21 +643,6 @@ func TestGetTeamPostReportingFeatureStatus(t *testing.T) {
 
 	client := th.Client
 
-	t.Run("Should return 501 when Enterprise Advanced license is not present even if feature is enabled", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-		defer th.RemoveLicense(t)
-
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		status, resp, err := client.GetTeamPostFlaggingFeatureStatus(context.Background(), model.NewId())
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-		require.Nil(t, status)
-	})
-
 	t.Run("Should return 501 when feature is disabled", func(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		defer th.RemoveLicense(t)
@@ -783,21 +705,6 @@ func TestSearchReviewers(t *testing.T) {
 	th := Setup(t).InitBasic(t)
 
 	client := th.Client
-
-	t.Run("Should return 501 when Enterprise Advanced license is not present even if feature is enabled", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-		defer th.RemoveLicense(t)
-
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		reviewers, resp, err := client.SearchContentFlaggingReviewers(context.Background(), th.BasicTeam.Id, "test")
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-		require.Nil(t, reviewers)
-	})
 
 	t.Run("Should return 501 when feature is disabled", func(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
@@ -896,21 +803,6 @@ func TestAssignContentFlaggingReviewer(t *testing.T) {
 	th := Setup(t).InitBasic(t)
 
 	client := th.Client
-
-	t.Run("Should return 501 when Enterprise Advanced license is not present even if feature is enabled", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-		defer th.RemoveLicense(t)
-
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		post := th.CreatePost(t)
-		resp, err := client.AssignContentFlaggingReviewer(context.Background(), post.Id, th.BasicUser.Id)
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-	})
 
 	t.Run("Should return 501 when feature is disabled", func(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
@@ -1112,25 +1004,6 @@ func TestRemoveFlaggedPost(t *testing.T) {
 	th := Setup(t).InitBasic(t)
 
 	client := th.Client
-
-	t.Run("Should return 501 when Enterprise Advanced license is not present even if feature is enabled", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-		defer th.RemoveLicense(t)
-
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		post := th.CreatePost(t)
-		actionRequest := &model.FlagContentActionRequest{
-			Comment: "Removing this post",
-		}
-
-		resp, err := client.RemoveFlaggedPost(context.Background(), post.Id, actionRequest)
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-	})
 
 	t.Run("Should return 501 when feature is disabled", func(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
@@ -1407,25 +1280,6 @@ func TestKeepFlaggedPost(t *testing.T) {
 	th := Setup(t).InitBasic(t)
 
 	client := th.Client
-
-	t.Run("Should return 501 when Enterprise Advanced license is not present even if feature is enabled", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-		defer th.RemoveLicense(t)
-
-		th.App.UpdateConfig(func(config *model.Config) {
-			config.ContentFlaggingSettings.EnableContentFlagging = model.NewPointer(true)
-			config.ContentFlaggingSettings.SetDefaults()
-		})
-
-		post := th.CreatePost(t)
-		actionRequest := &model.FlagContentActionRequest{
-			Comment: "Keeping this post",
-		}
-
-		resp, err := client.KeepFlaggedPost(context.Background(), post.Id, actionRequest)
-		require.Error(t, err)
-		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-	})
 
 	t.Run("Should return 501 when feature is disabled", func(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
