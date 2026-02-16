@@ -687,16 +687,12 @@ export function escapeHtml(text: string): string {
 }
 
 export function convertEntityToCharacter(text: string): string {
-    const entities: Record<string, string> = {
-        '&lt;': '<',
-        '&gt;': '>',
-        '&quot;': '"',
-        '&#39;': "'",
-        '&amp;': '&',
-    };
-
-    // The regex matches any of the keys in the map globally
-    return text.replace(/&lt;|&gt;|&quot;|&#39;|&amp;/g, (match) => entities[match]);
+    return text.
+        replace(/&lt;/g, '<').
+        replace(/&gt;/g, '>').
+        replace(/&#39;/g, "'").
+        replace(/&quot;/g, '"').
+        replace(/&amp;/g, '&');
 }
 
 export function highlightCurrentMentions(
