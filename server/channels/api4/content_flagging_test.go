@@ -32,6 +32,100 @@ func setBasicCommonReviewerConfig(th *TestHelper) *model.AppError {
 	return th.App.SaveContentFlaggingConfig(config)
 }
 
+func setNonReviewerConfig(th *TestHelper) *model.AppError {
+	config := model.ContentFlaggingSettingsRequest{
+		ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
+			EnableContentFlagging: model.NewPointer(true),
+		},
+		ReviewerSettings: &model.ReviewSettingsRequest{
+			ReviewerSettings: model.ReviewerSettings{
+				CommonReviewers: model.NewPointer(false),
+			},
+			ReviewerIDsSettings: model.ReviewerIDsSettings{
+				TeamReviewersSetting: map[string]*model.TeamReviewerSetting{
+					th.BasicTeam.Id: {
+						Enabled:     model.NewPointer(true),
+						ReviewerIds: []string{},
+					},
+				},
+			},
+		},
+	}
+	config.SetDefaults()
+	return th.App.SaveContentFlaggingConfig(config)
+}
+
+func setBasicTeamReviewerConfig(th *TestHelper, extraReviewerIds ...string) *model.AppError {
+	ids := []string{th.BasicUser.Id}
+	ids = append(ids, extraReviewerIds...)
+	config := model.ContentFlaggingSettingsRequest{
+		ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
+			EnableContentFlagging: model.NewPointer(true),
+		},
+		ReviewerSettings: &model.ReviewSettingsRequest{
+			ReviewerSettings: model.ReviewerSettings{
+				CommonReviewers: model.NewPointer(false),
+			},
+			ReviewerIDsSettings: model.ReviewerIDsSettings{
+				TeamReviewersSetting: map[string]*model.TeamReviewerSetting{
+					th.BasicTeam.Id: {
+						Enabled:     model.NewPointer(true),
+						ReviewerIds: ids,
+					},
+				},
+			},
+		},
+	}
+	config.SetDefaults()
+	return th.App.SaveContentFlaggingConfig(config)
+}
+
+func setCommonReviewerWithRequiredCommentConfig(th *TestHelper) *model.AppError {
+	config := model.ContentFlaggingSettingsRequest{
+		ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
+			EnableContentFlagging: model.NewPointer(true),
+			AdditionalSettings: &model.AdditionalContentFlaggingSettings{
+				ReviewerCommentRequired: model.NewPointer(true),
+			},
+		},
+		ReviewerSettings: &model.ReviewSettingsRequest{
+			ReviewerSettings: model.ReviewerSettings{
+				CommonReviewers: model.NewPointer(true),
+			},
+			ReviewerIDsSettings: model.ReviewerIDsSettings{
+				CommonReviewerIds: []string{th.BasicUser.Id},
+			},
+		},
+	}
+	config.SetDefaults()
+	return th.App.SaveContentFlaggingConfig(config)
+}
+
+func flagPostViaAPI(t *testing.T, client *model.Client4, postId string) {
+	t.Helper()
+	flagRequest := &model.FlagContentRequest{
+		Reason:  "Sensitive data",
+		Comment: "This is sensitive content",
+	}
+	resp, err := client.FlagPostForContentReview(context.Background(), postId, flagRequest)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func uploadFileAndCreatePost(t *testing.T, th *TestHelper, client *model.Client4) (*model.Post, *model.FileInfo) {
+	t.Helper()
+	data, err := testutils.ReadTestFile("test.png")
+	require.NoError(t, err)
+
+	fileResponse, _, err := client.UploadFile(context.Background(), data, th.BasicChannel.Id, "test.png")
+	require.NoError(t, err)
+	require.Equal(t, 1, len(fileResponse.FileInfos))
+	fileInfo := fileResponse.FileInfos[0]
+
+	post := th.CreatePostInChannelWithFiles(t, th.BasicChannel, fileInfo)
+	return post, fileInfo
+}
+
 func TestRequireContentFlaggingEnabled(t *testing.T) {
 	th := Setup(t).InitBasic(t)
 
@@ -132,26 +226,7 @@ func TestGetFlaggingConfiguration(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		defer th.RemoveLicense(t)
 
-		config := model.ContentFlaggingSettingsRequest{
-			ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
-				EnableContentFlagging: model.NewPointer(true),
-			},
-			ReviewerSettings: &model.ReviewSettingsRequest{
-				ReviewerSettings: model.ReviewerSettings{
-					CommonReviewers: model.NewPointer(false),
-				},
-				ReviewerIDsSettings: model.ReviewerIDsSettings{
-					TeamReviewersSetting: map[string]*model.TeamReviewerSetting{
-						th.BasicTeam.Id: {
-							Enabled:     model.NewPointer(true),
-							ReviewerIds: []string{},
-						},
-					},
-				},
-			},
-		}
-		config.SetDefaults()
-		appErr := th.App.SaveContentFlaggingConfig(config)
+		appErr := setNonReviewerConfig(th)
 		require.Nil(t, appErr)
 
 		flagConfig, resp, err := client.GetFlaggingConfigurationForTeam(context.Background(), th.BasicTeam.Id)
@@ -183,26 +258,7 @@ func TestGetFlaggingConfiguration(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		defer th.RemoveLicense(t)
 
-		config := model.ContentFlaggingSettingsRequest{
-			ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
-				EnableContentFlagging: model.NewPointer(true),
-			},
-			ReviewerSettings: &model.ReviewSettingsRequest{
-				ReviewerSettings: model.ReviewerSettings{
-					CommonReviewers: model.NewPointer(false),
-				},
-				ReviewerIDsSettings: model.ReviewerIDsSettings{
-					TeamReviewersSetting: map[string]*model.TeamReviewerSetting{
-						th.BasicTeam.Id: {
-							Enabled:     model.NewPointer(true),
-							ReviewerIds: []string{th.BasicUser.Id},
-						},
-					},
-				},
-			},
-		}
-		config.SetDefaults()
-		appErr := th.App.SaveContentFlaggingConfig(config)
+		appErr := setBasicTeamReviewerConfig(th)
 		require.Nil(t, appErr)
 
 		flagConfig, resp, err := client.GetFlaggingConfigurationForTeam(context.Background(), th.BasicTeam.Id)
@@ -374,12 +430,7 @@ func TestGetPostPropertyValues(t *testing.T) {
 		require.Nil(t, appErr)
 
 		post := th.CreatePost(t)
-		response, err := client.FlagPostForContentReview(context.Background(), post.Id, &model.FlagContentRequest{
-			Reason:  "Sensitive data",
-			Comment: "This is sensitive content",
-		})
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, response.StatusCode)
+		flagPostViaAPI(t, client, post.Id)
 
 		// Now get the property values
 		propertyValues, resp, err := client.GetPostPropertyValues(context.Background(), post.Id)
@@ -412,26 +463,7 @@ func TestGetFlaggedPost(t *testing.T) {
 	t.Run("Should return 403 when user is not a reviewer", func(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 
-		config := model.ContentFlaggingSettingsRequest{
-			ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
-				EnableContentFlagging: model.NewPointer(true),
-			},
-			ReviewerSettings: &model.ReviewSettingsRequest{
-				ReviewerSettings: model.ReviewerSettings{
-					CommonReviewers: model.NewPointer(false),
-				},
-				ReviewerIDsSettings: model.ReviewerIDsSettings{
-					TeamReviewersSetting: map[string]*model.TeamReviewerSetting{
-						th.BasicTeam.Id: {
-							Enabled:     model.NewPointer(true),
-							ReviewerIds: []string{}, // Empty list - user is not a reviewer
-						},
-					},
-				},
-			},
-		}
-		config.SetDefaults()
-		appErr := th.App.SaveContentFlaggingConfig(config)
+		appErr := setNonReviewerConfig(th)
 		require.Nil(t, appErr)
 
 		post := th.CreatePost(t)
@@ -461,15 +493,7 @@ func TestGetFlaggedPost(t *testing.T) {
 		require.Nil(t, appErr)
 
 		post := th.CreatePost(t)
-
-		// First flag the post
-		flagRequest := &model.FlagContentRequest{
-			Reason:  "Sensitive data",
-			Comment: "This is sensitive content",
-		}
-		resp, err := client.FlagPostForContentReview(context.Background(), post.Id, flagRequest)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
+		flagPostViaAPI(t, client, post.Id)
 
 		// Now get the flagged post
 		flaggedPost, resp, err := client.GetContentFlaggedPost(context.Background(), post.Id)
@@ -485,24 +509,8 @@ func TestGetFlaggedPost(t *testing.T) {
 		appErr := setBasicCommonReviewerConfig(th)
 		require.Nil(t, appErr)
 
-		data, err2 := testutils.ReadTestFile("test.png")
-		require.NoError(t, err2)
-
-		fileResponse, _, err := client.UploadFile(context.Background(), data, th.BasicChannel.Id, "test.png")
-		require.NoError(t, err)
-		require.Equal(t, 1, len(fileResponse.FileInfos))
-		fileInfo := fileResponse.FileInfos[0]
-
-		post := th.CreatePostInChannelWithFiles(t, th.BasicChannel, fileInfo)
-
-		// First flag the post
-		flagRequest := &model.FlagContentRequest{
-			Reason:  "Sensitive data",
-			Comment: "This is sensitive content",
-		}
-		resp, err := client.FlagPostForContentReview(context.Background(), post.Id, flagRequest)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
+		post, fileInfo := uploadFileAndCreatePost(t, th, client)
+		flagPostViaAPI(t, client, post.Id)
 
 		flaggedPost, resp, err := client.GetContentFlaggedPost(context.Background(), post.Id)
 		require.NoError(t, err)
@@ -735,26 +743,7 @@ func TestSearchReviewers(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		defer th.RemoveLicense(t)
 
-		config := model.ContentFlaggingSettingsRequest{
-			ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
-				EnableContentFlagging: model.NewPointer(true),
-			},
-			ReviewerSettings: &model.ReviewSettingsRequest{
-				ReviewerSettings: model.ReviewerSettings{
-					CommonReviewers: model.NewPointer(false),
-				},
-				ReviewerIDsSettings: model.ReviewerIDsSettings{
-					TeamReviewersSetting: map[string]*model.TeamReviewerSetting{
-						th.BasicTeam.Id: {
-							Enabled:     model.NewPointer(true),
-							ReviewerIds: []string{}, // Empty list - user is not a reviewer
-						},
-					},
-				},
-			},
-		}
-		config.SetDefaults()
-		appErr := th.App.SaveContentFlaggingConfig(config)
+		appErr := setNonReviewerConfig(th)
 		require.Nil(t, appErr)
 
 		reviewers, resp, err := client.SearchContentFlaggingReviewers(context.Background(), th.BasicTeam.Id, "test")
@@ -780,26 +769,7 @@ func TestSearchReviewers(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		defer th.RemoveLicense(t)
 
-		config := model.ContentFlaggingSettingsRequest{
-			ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
-				EnableContentFlagging: model.NewPointer(true),
-			},
-			ReviewerSettings: &model.ReviewSettingsRequest{
-				ReviewerSettings: model.ReviewerSettings{
-					CommonReviewers: model.NewPointer(false),
-				},
-				ReviewerIDsSettings: model.ReviewerIDsSettings{
-					TeamReviewersSetting: map[string]*model.TeamReviewerSetting{
-						th.BasicTeam.Id: {
-							Enabled:     model.NewPointer(true),
-							ReviewerIds: []string{th.BasicUser.Id},
-						},
-					},
-				},
-			},
-		}
-		config.SetDefaults()
-		appErr := th.App.SaveContentFlaggingConfig(config)
+		appErr := setBasicTeamReviewerConfig(th)
 		require.Nil(t, appErr)
 
 		reviewers, resp, err := client.SearchContentFlaggingReviewers(context.Background(), th.BasicTeam.Id, "basic")
@@ -846,26 +816,7 @@ func TestAssignContentFlaggingReviewer(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		defer th.RemoveLicense(t)
 
-		config := model.ContentFlaggingSettingsRequest{
-			ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
-				EnableContentFlagging: model.NewPointer(true),
-			},
-			ReviewerSettings: &model.ReviewSettingsRequest{
-				ReviewerSettings: model.ReviewerSettings{
-					CommonReviewers: model.NewPointer(false),
-				},
-				ReviewerIDsSettings: model.ReviewerIDsSettings{
-					TeamReviewersSetting: map[string]*model.TeamReviewerSetting{
-						th.BasicTeam.Id: {
-							Enabled:     model.NewPointer(true),
-							ReviewerIds: []string{}, // Empty list - user is not a reviewer
-						},
-					},
-				},
-			},
-		}
-		config.SetDefaults()
-		appErr := th.App.SaveContentFlaggingConfig(config)
+		appErr := setNonReviewerConfig(th)
 		require.Nil(t, appErr)
 
 		post := th.CreatePost(t)
@@ -914,6 +865,10 @@ func TestAssignContentFlaggingReviewer(t *testing.T) {
 		reviewerUser := th.CreateUser(t)
 		th.LinkUserToTeam(t, reviewerUser, th.BasicTeam)
 
+		appErr := setBasicCommonReviewerConfig(th)
+		require.Nil(t, appErr)
+
+		// Also add reviewerUser as a common reviewer
 		config := model.ContentFlaggingSettingsRequest{
 			ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
 				EnableContentFlagging: model.NewPointer(true),
@@ -928,19 +883,11 @@ func TestAssignContentFlaggingReviewer(t *testing.T) {
 			},
 		}
 		config.SetDefaults()
-		appErr := th.App.SaveContentFlaggingConfig(config)
+		appErr = th.App.SaveContentFlaggingConfig(config)
 		require.Nil(t, appErr)
 
 		post := th.CreatePost(t)
-
-		// First flag the post so it can be assigned
-		flagRequest := &model.FlagContentRequest{
-			Reason:  "Sensitive data",
-			Comment: "This is sensitive content",
-		}
-		flagResp, err := client.FlagPostForContentReview(context.Background(), post.Id, flagRequest)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, flagResp.StatusCode)
+		flagPostViaAPI(t, client, post.Id)
 
 		// Now assign the reviewer
 		resp, err := client.AssignContentFlaggingReviewer(context.Background(), post.Id, reviewerUser.Id)
@@ -956,38 +903,11 @@ func TestAssignContentFlaggingReviewer(t *testing.T) {
 		reviewerUser := th.CreateUser(t)
 		th.LinkUserToTeam(t, reviewerUser, th.BasicTeam)
 
-		config := model.ContentFlaggingSettingsRequest{
-			ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
-				EnableContentFlagging: model.NewPointer(true),
-			},
-			ReviewerSettings: &model.ReviewSettingsRequest{
-				ReviewerSettings: model.ReviewerSettings{
-					CommonReviewers: model.NewPointer(false),
-				},
-				ReviewerIDsSettings: model.ReviewerIDsSettings{
-					TeamReviewersSetting: map[string]*model.TeamReviewerSetting{
-						th.BasicTeam.Id: {
-							Enabled:     model.NewPointer(true),
-							ReviewerIds: []string{th.BasicUser.Id, reviewerUser.Id},
-						},
-					},
-				},
-			},
-		}
-		config.SetDefaults()
-		appErr := th.App.SaveContentFlaggingConfig(config)
+		appErr := setBasicTeamReviewerConfig(th, reviewerUser.Id)
 		require.Nil(t, appErr)
 
 		post := th.CreatePost(t)
-
-		// First flag the post so it can be assigned
-		flagRequest := &model.FlagContentRequest{
-			Reason:  "Sensitive data",
-			Comment: "This is sensitive content",
-		}
-		flagResp, err := client.FlagPostForContentReview(context.Background(), post.Id, flagRequest)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, flagResp.StatusCode)
+		flagPostViaAPI(t, client, post.Id)
 
 		// Now assign the reviewer
 		resp, err := client.AssignContentFlaggingReviewer(context.Background(), post.Id, reviewerUser.Id)
@@ -1024,26 +944,7 @@ func TestRemoveFlaggedPost(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		defer th.RemoveLicense(t)
 
-		config := model.ContentFlaggingSettingsRequest{
-			ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
-				EnableContentFlagging: model.NewPointer(true),
-			},
-			ReviewerSettings: &model.ReviewSettingsRequest{
-				ReviewerSettings: model.ReviewerSettings{
-					CommonReviewers: model.NewPointer(false),
-				},
-				ReviewerIDsSettings: model.ReviewerIDsSettings{
-					TeamReviewersSetting: map[string]*model.TeamReviewerSetting{
-						th.BasicTeam.Id: {
-							Enabled:     model.NewPointer(true),
-							ReviewerIds: []string{}, // Empty list - user is not a reviewer
-						},
-					},
-				},
-			},
-		}
-		config.SetDefaults()
-		appErr := th.App.SaveContentFlaggingConfig(config)
+		appErr := setNonReviewerConfig(th)
 		require.Nil(t, appErr)
 
 		post := th.CreatePost(t)
@@ -1060,36 +961,11 @@ func TestRemoveFlaggedPost(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		defer th.RemoveLicense(t)
 
-		config := model.ContentFlaggingSettingsRequest{
-			ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
-				EnableContentFlagging: model.NewPointer(true),
-				AdditionalSettings: &model.AdditionalContentFlaggingSettings{
-					ReviewerCommentRequired: model.NewPointer(true),
-				},
-			},
-			ReviewerSettings: &model.ReviewSettingsRequest{
-				ReviewerSettings: model.ReviewerSettings{
-					CommonReviewers: model.NewPointer(true),
-				},
-				ReviewerIDsSettings: model.ReviewerIDsSettings{
-					CommonReviewerIds: []string{th.BasicUser.Id},
-				},
-			},
-		}
-		config.SetDefaults()
-		appErr := th.App.SaveContentFlaggingConfig(config)
+		appErr := setCommonReviewerWithRequiredCommentConfig(th)
 		require.Nil(t, appErr)
 
 		post := th.CreatePost(t)
-
-		// First flag the post
-		flagRequest := &model.FlagContentRequest{
-			Reason:  "Sensitive data",
-			Comment: "This is sensitive content",
-		}
-		flagResp, err := client.FlagPostForContentReview(context.Background(), post.Id, flagRequest)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, flagResp.StatusCode)
+		flagPostViaAPI(t, client, post.Id)
 
 		// Try to remove without comment
 		actionRequest := &model.FlagContentActionRequest{
@@ -1109,15 +985,7 @@ func TestRemoveFlaggedPost(t *testing.T) {
 		require.Nil(t, appErr)
 
 		post := th.CreatePost(t)
-
-		// First flag the post
-		flagRequest := &model.FlagContentRequest{
-			Reason:  "Sensitive data",
-			Comment: "This is sensitive content",
-		}
-		flagResp, err := client.FlagPostForContentReview(context.Background(), post.Id, flagRequest)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, flagResp.StatusCode)
+		flagPostViaAPI(t, client, post.Id)
 
 		// Now remove the flagged post
 		actionRequest := &model.FlagContentActionRequest{
@@ -1138,38 +1006,11 @@ func TestRemoveFlaggedPost(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		defer th.RemoveLicense(t)
 
-		config := model.ContentFlaggingSettingsRequest{
-			ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
-				EnableContentFlagging: model.NewPointer(true),
-			},
-			ReviewerSettings: &model.ReviewSettingsRequest{
-				ReviewerSettings: model.ReviewerSettings{
-					CommonReviewers: model.NewPointer(false),
-				},
-				ReviewerIDsSettings: model.ReviewerIDsSettings{
-					TeamReviewersSetting: map[string]*model.TeamReviewerSetting{
-						th.BasicTeam.Id: {
-							Enabled:     model.NewPointer(true),
-							ReviewerIds: []string{th.BasicUser.Id},
-						},
-					},
-				},
-			},
-		}
-		config.SetDefaults()
-		appErr := th.App.SaveContentFlaggingConfig(config)
+		appErr := setBasicTeamReviewerConfig(th)
 		require.Nil(t, appErr)
 
 		post := th.CreatePost(t)
-
-		// First flag the post
-		flagRequest := &model.FlagContentRequest{
-			Reason:  "Sensitive data",
-			Comment: "This is sensitive content",
-		}
-		flagResp, err := client.FlagPostForContentReview(context.Background(), post.Id, flagRequest)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, flagResp.StatusCode)
+		flagPostViaAPI(t, client, post.Id)
 
 		// Now remove the flagged post
 		actionRequest := &model.FlagContentActionRequest{
@@ -1188,17 +1029,7 @@ func TestRemoveFlaggedPost(t *testing.T) {
 		appErr := setBasicCommonReviewerConfig(th)
 		require.Nil(t, appErr)
 
-		// Upload a file to attach to the post
-		data, err2 := testutils.ReadTestFile("test.png")
-		require.NoError(t, err2)
-
-		fileResponse, _, err := client.UploadFile(context.Background(), data, th.BasicChannel.Id, "test.png")
-		require.NoError(t, err)
-		require.Equal(t, 1, len(fileResponse.FileInfos))
-		fileInfo := fileResponse.FileInfos[0]
-
-		// Create a post with file attachment
-		post := th.CreatePostInChannelWithFiles(t, th.BasicChannel, fileInfo)
+		post, fileInfo := uploadFileAndCreatePost(t, th, client)
 
 		// Verify file info exists for the post
 		fileInfos, err2 := th.App.Srv().Store().FileInfo().GetForPost(post.Id, true, false, false)
@@ -1219,14 +1050,7 @@ func TestRemoveFlaggedPost(t *testing.T) {
 		require.NotEmpty(t, editHistory)
 		editHistoryPostId := editHistory[0].Id
 
-		// Flag the post
-		flagRequest := &model.FlagContentRequest{
-			Reason:  "Sensitive data",
-			Comment: "This is sensitive content with file attachment",
-		}
-		flagResp, err := client.FlagPostForContentReview(context.Background(), post.Id, flagRequest)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, flagResp.StatusCode)
+		flagPostViaAPI(t, client, post.Id)
 
 		// Remove the flagged post
 		actionRequest := &model.FlagContentActionRequest{
@@ -1282,26 +1106,7 @@ func TestKeepFlaggedPost(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		defer th.RemoveLicense(t)
 
-		config := model.ContentFlaggingSettingsRequest{
-			ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
-				EnableContentFlagging: model.NewPointer(true),
-			},
-			ReviewerSettings: &model.ReviewSettingsRequest{
-				ReviewerSettings: model.ReviewerSettings{
-					CommonReviewers: model.NewPointer(false),
-				},
-				ReviewerIDsSettings: model.ReviewerIDsSettings{
-					TeamReviewersSetting: map[string]*model.TeamReviewerSetting{
-						th.BasicTeam.Id: {
-							Enabled:     model.NewPointer(true),
-							ReviewerIds: []string{}, // Empty list - user is not a reviewer
-						},
-					},
-				},
-			},
-		}
-		config.SetDefaults()
-		appErr := th.App.SaveContentFlaggingConfig(config)
+		appErr := setNonReviewerConfig(th)
 		require.Nil(t, appErr)
 
 		post := th.CreatePost(t)
@@ -1318,36 +1123,11 @@ func TestKeepFlaggedPost(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		defer th.RemoveLicense(t)
 
-		config := model.ContentFlaggingSettingsRequest{
-			ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
-				EnableContentFlagging: model.NewPointer(true),
-				AdditionalSettings: &model.AdditionalContentFlaggingSettings{
-					ReviewerCommentRequired: model.NewPointer(true),
-				},
-			},
-			ReviewerSettings: &model.ReviewSettingsRequest{
-				ReviewerSettings: model.ReviewerSettings{
-					CommonReviewers: model.NewPointer(true),
-				},
-				ReviewerIDsSettings: model.ReviewerIDsSettings{
-					CommonReviewerIds: []string{th.BasicUser.Id},
-				},
-			},
-		}
-		config.SetDefaults()
-		appErr := th.App.SaveContentFlaggingConfig(config)
+		appErr := setCommonReviewerWithRequiredCommentConfig(th)
 		require.Nil(t, appErr)
 
 		post := th.CreatePost(t)
-
-		// First flag the post
-		flagRequest := &model.FlagContentRequest{
-			Reason:  "Sensitive data",
-			Comment: "This is sensitive content",
-		}
-		flagResp, err := client.FlagPostForContentReview(context.Background(), post.Id, flagRequest)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, flagResp.StatusCode)
+		flagPostViaAPI(t, client, post.Id)
 
 		// Try to keep without comment
 		actionRequest := &model.FlagContentActionRequest{
@@ -1367,15 +1147,7 @@ func TestKeepFlaggedPost(t *testing.T) {
 		require.Nil(t, appErr)
 
 		post := th.CreatePost(t)
-
-		// First flag the post
-		flagRequest := &model.FlagContentRequest{
-			Reason:  "Sensitive data",
-			Comment: "This is sensitive content",
-		}
-		flagResp, err := client.FlagPostForContentReview(context.Background(), post.Id, flagRequest)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, flagResp.StatusCode)
+		flagPostViaAPI(t, client, post.Id)
 
 		// Now keep the flagged post
 		actionRequest := &model.FlagContentActionRequest{
@@ -1398,38 +1170,11 @@ func TestKeepFlaggedPost(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
 		defer th.RemoveLicense(t)
 
-		config := model.ContentFlaggingSettingsRequest{
-			ContentFlaggingSettingsBase: model.ContentFlaggingSettingsBase{
-				EnableContentFlagging: model.NewPointer(true),
-			},
-			ReviewerSettings: &model.ReviewSettingsRequest{
-				ReviewerSettings: model.ReviewerSettings{
-					CommonReviewers: model.NewPointer(false),
-				},
-				ReviewerIDsSettings: model.ReviewerIDsSettings{
-					TeamReviewersSetting: map[string]*model.TeamReviewerSetting{
-						th.BasicTeam.Id: {
-							Enabled:     model.NewPointer(true),
-							ReviewerIds: []string{th.BasicUser.Id},
-						},
-					},
-				},
-			},
-		}
-		config.SetDefaults()
-		appErr := th.App.SaveContentFlaggingConfig(config)
+		appErr := setBasicTeamReviewerConfig(th)
 		require.Nil(t, appErr)
 
 		post := th.CreatePost(t)
-
-		// First flag the post
-		flagRequest := &model.FlagContentRequest{
-			Reason:  "Sensitive data",
-			Comment: "This is sensitive content",
-		}
-		flagResp, err := client.FlagPostForContentReview(context.Background(), post.Id, flagRequest)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, flagResp.StatusCode)
+		flagPostViaAPI(t, client, post.Id)
 
 		// Now keep the flagged post
 		actionRequest := &model.FlagContentActionRequest{
@@ -1448,17 +1193,7 @@ func TestKeepFlaggedPost(t *testing.T) {
 		appErr := setBasicCommonReviewerConfig(th)
 		require.Nil(t, appErr)
 
-		// Upload a file to attach to the post
-		data, err2 := testutils.ReadTestFile("test.png")
-		require.NoError(t, err2)
-
-		fileResponse, _, err := client.UploadFile(context.Background(), data, th.BasicChannel.Id, "test.png")
-		require.NoError(t, err)
-		require.Equal(t, 1, len(fileResponse.FileInfos))
-		fileInfo := fileResponse.FileInfos[0]
-
-		// Create a post with file attachment
-		post := th.CreatePostInChannelWithFiles(t, th.BasicChannel, fileInfo)
+		post, fileInfo := uploadFileAndCreatePost(t, th, client)
 
 		// Verify file info exists for the post
 		fileInfos, err2 := th.App.Srv().Store().FileInfo().GetForPost(post.Id, true, false, false)
@@ -1479,14 +1214,7 @@ func TestKeepFlaggedPost(t *testing.T) {
 		require.NotEmpty(t, editHistory)
 		editHistoryPostId := editHistory[0].Id
 
-		// Flag the post
-		flagRequest := &model.FlagContentRequest{
-			Reason:  "Sensitive data",
-			Comment: "This is sensitive content with file attachment",
-		}
-		flagResp, err := client.FlagPostForContentReview(context.Background(), post.Id, flagRequest)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, flagResp.StatusCode)
+		flagPostViaAPI(t, client, post.Id)
 
 		// Keep the flagged post
 		actionRequest := &model.FlagContentActionRequest{

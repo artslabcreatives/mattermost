@@ -36,6 +36,23 @@ func setBaseConfig(th *TestHelper) *model.AppError {
 	return nil
 }
 
+func searchPropertyValue(t *testing.T, th *TestHelper, postId, fieldName string) []*model.PropertyValue {
+	t.Helper()
+	groupId, appErr := th.App.ContentFlaggingGroupId()
+	require.Nil(t, appErr)
+
+	mappedFields, appErr := th.App.GetContentFlaggingMappedFields(groupId)
+	require.Nil(t, appErr)
+
+	values, err := th.Server.propertyAccessService.SearchPropertyValues("", groupId, model.PropertyValueSearchOpts{
+		TargetIDs: []string{postId},
+		PerPage:   CONTENT_FLAGGING_MAX_PROPERTY_VALUES,
+		FieldID:   mappedFields[fieldName].ID,
+	})
+	require.NoError(t, err)
+	return values
+}
+
 func setupFlaggedPost(t *testing.T, th *TestHelper) *model.Post {
 	post := th.CreatePost(t, th.BasicChannel)
 
@@ -2596,43 +2613,22 @@ func TestKeepFlaggedPost(t *testing.T) {
 		require.Equal(t, `"`+model.ContentFlaggingStatusRetained+`"`, string(statusValue.Value))
 
 		// Verify actor properties were created
-		groupId, appErr := th.App.ContentFlaggingGroupId()
-		require.Nil(t, appErr)
-
-		mappedFields, appErr := th.App.GetContentFlaggingMappedFields(groupId)
-		require.Nil(t, appErr)
-
 		// Check actor user property
-		actorValues, err := th.Server.propertyService.SearchPropertyValues(groupId, model.PropertyValueSearchOpts{
-			TargetIDs: []string{post.Id},
-			PerPage:   CONTENT_FLAGGING_MAX_PROPERTY_VALUES,
-			FieldID:   mappedFields[contentFlaggingPropertyNameActorUserID].ID,
-		})
-		require.NoError(t, err)
+		actorValues := searchPropertyValue(t, th, post.Id, contentFlaggingPropertyNameActorUserID)
 		require.Len(t, actorValues, 1)
 		require.Equal(t, `"`+th.SystemAdminUser.Id+`"`, string(actorValues[0].Value))
 
 		// Check actor comment property
-		commentValues, err := th.Server.propertyService.SearchPropertyValues(groupId, model.PropertyValueSearchOpts{
-			TargetIDs: []string{post.Id},
-			PerPage:   CONTENT_FLAGGING_MAX_PROPERTY_VALUES,
-			FieldID:   mappedFields[contentFlaggingPropertyNameActorComment].ID,
-		})
-		require.NoError(t, err)
+		commentValues := searchPropertyValue(t, th, post.Id, contentFlaggingPropertyNameActorComment)
 		require.Len(t, commentValues, 1)
 		require.Equal(t, `"This post is acceptable after review"`, string(commentValues[0].Value))
 
 		// Check action time property
-		timeValues, err := th.Server.propertyService.SearchPropertyValues(groupId, model.PropertyValueSearchOpts{
-			TargetIDs: []string{post.Id},
-			PerPage:   CONTENT_FLAGGING_MAX_PROPERTY_VALUES,
-			FieldID:   mappedFields[contentFlaggingPropertyNameActionTime].ID,
-		})
-		require.NoError(t, err)
+		timeValues := searchPropertyValue(t, th, post.Id, contentFlaggingPropertyNameActionTime)
 		require.Len(t, timeValues, 1)
 
 		var actionTime int64
-		err = json.Unmarshal(timeValues[0].Value, &actionTime)
+		err := json.Unmarshal(timeValues[0].Value, &actionTime)
 		require.NoError(t, err)
 		require.True(t, actionTime > 0)
 	})
@@ -2715,7 +2711,7 @@ func TestKeepFlaggedPost(t *testing.T) {
 		require.Nil(t, appErr)
 
 		statusValue.Value = json.RawMessage(fmt.Sprintf(`"%s"`, model.ContentFlaggingStatusRemoved))
-		_, err := th.App.Srv().propertyService.UpdatePropertyValue(groupId, statusValue)
+		_, err := th.App.Srv().propertyAccessService.UpdatePropertyValue("", groupId, statusValue)
 		require.NoError(t, err)
 
 		actionRequest := &model.FlagContentActionRequest{
@@ -2739,7 +2735,7 @@ func TestKeepFlaggedPost(t *testing.T) {
 		require.Nil(t, appErr)
 
 		statusValue.Value = json.RawMessage(fmt.Sprintf(`"%s"`, model.ContentFlaggingStatusRetained))
-		_, err := th.App.Srv().propertyService.UpdatePropertyValue(groupId, statusValue)
+		_, err := th.App.Srv().propertyAccessService.UpdatePropertyValue("", groupId, statusValue)
 		require.NoError(t, err)
 
 		actionRequest := &model.FlagContentActionRequest{
@@ -2775,18 +2771,7 @@ func TestKeepFlaggedPost(t *testing.T) {
 		require.Nil(t, appErr)
 
 		// Verify empty comment was stored
-		groupId, appErr := th.App.ContentFlaggingGroupId()
-		require.Nil(t, appErr)
-
-		mappedFields, appErr := th.App.GetContentFlaggingMappedFields(groupId)
-		require.Nil(t, appErr)
-
-		commentValues, err := th.Server.propertyService.SearchPropertyValues(groupId, model.PropertyValueSearchOpts{
-			TargetIDs: []string{post.Id},
-			PerPage:   CONTENT_FLAGGING_MAX_PROPERTY_VALUES,
-			FieldID:   mappedFields[contentFlaggingPropertyNameActorComment].ID,
-		})
-		require.NoError(t, err)
+		commentValues := searchPropertyValue(t, th, post.Id, contentFlaggingPropertyNameActorComment)
 		require.Len(t, commentValues, 1)
 		require.Equal(t, `""`, string(commentValues[0].Value))
 	})
@@ -2803,22 +2788,11 @@ func TestKeepFlaggedPost(t *testing.T) {
 		require.Nil(t, appErr)
 
 		// Verify special characters were properly escaped and stored
-		groupId, appErr := th.App.ContentFlaggingGroupId()
-		require.Nil(t, appErr)
-
-		mappedFields, appErr := th.App.GetContentFlaggingMappedFields(groupId)
-		require.Nil(t, appErr)
-
-		commentValues, err := th.Server.propertyService.SearchPropertyValues(groupId, model.PropertyValueSearchOpts{
-			TargetIDs: []string{post.Id},
-			PerPage:   CONTENT_FLAGGING_MAX_PROPERTY_VALUES,
-			FieldID:   mappedFields[contentFlaggingPropertyNameActorComment].ID,
-		})
-		require.NoError(t, err)
+		commentValues := searchPropertyValue(t, th, post.Id, contentFlaggingPropertyNameActorComment)
 		require.Len(t, commentValues, 1)
 
 		var storedComment string
-		err = json.Unmarshal(commentValues[0].Value, &storedComment)
+		err := json.Unmarshal(commentValues[0].Value, &storedComment)
 		require.NoError(t, err)
 		require.Equal(t, specialComment, storedComment)
 	})
