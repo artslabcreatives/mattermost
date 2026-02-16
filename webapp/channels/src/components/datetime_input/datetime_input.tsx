@@ -3,7 +3,7 @@
 
 import type {Moment} from 'moment-timezone';
 import moment from 'moment-timezone';
-import React, {useEffect, useState, useCallback, useRef} from 'react';
+import React, {useEffect, useState, useCallback, useRef, useMemo} from 'react';
 import type {DayModifiers, DayPickerProps} from 'react-day-picker';
 import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
@@ -214,6 +214,11 @@ type Props = {
     relativeDate?: boolean;
     timePickerInterval?: number;
     allowPastDates?: boolean;
+    rangeMode?: boolean;
+    rangeValue?: {from?: Moment | null; to?: Moment | null};
+    isStartField?: boolean;
+    onRangeChange?: (start: Date, end: Date | null) => void;
+    allowSingleDayRange?: boolean;
     allowManualTimeEntry?: boolean;
 }
 
@@ -225,6 +230,11 @@ const DateTimeInputContainer: React.FC<Props> = ({
     relativeDate,
     timePickerInterval,
     allowPastDates = false,
+    rangeMode = false,
+    rangeValue,
+    isStartField = false,
+    onRangeChange,
+    allowSingleDayRange = false,
     allowManualTimeEntry = false,
 }: Props) => {
     const currentTime = getCurrentMomentForTimezone(timezone);
@@ -358,6 +368,88 @@ const DateTimeInputContainer: React.FC<Props> = ({
         handlePopperOpenState(false);
     };
 
+    // Handle range selection
+    const handleRangeSelect = useCallback((range: any) => {
+        if (!range || !range.from) {
+            return;
+        }
+
+        const existingFrom = rangeValue?.from?.toDate();
+        const existingTo = rangeValue?.to?.toDate();
+
+        // Only use handleRangeSelect when we DON'T have a complete range
+        if (existingFrom && existingTo) {
+            return;
+        }
+
+        // Validate range.to based on allowSingleDayRange
+        let validTo = range.to;
+        if (range.to && !allowSingleDayRange) {
+            // Check if from and to are the same day
+            const fromYear = range.from.getFullYear();
+            const fromMonth = range.from.getMonth();
+            const fromDay = range.from.getDate();
+
+            const toYear = range.to.getFullYear();
+            const toMonth = range.to.getMonth();
+            const toDay = range.to.getDate();
+
+            if (fromYear === toYear && fromMonth === toMonth && fromDay === toDay) {
+                validTo = null;
+            }
+        }
+
+        if (onRangeChange) {
+            onRangeChange(range.from, validTo || null);
+        }
+
+        if (validTo) {
+            handlePopperOpenState(false);
+        }
+    }, [onRangeChange, handlePopperOpenState, rangeValue, allowSingleDayRange]);
+
+    // Handle individual day clicks in range mode (for resetting range)
+    const handleRangeDayClick = useCallback((day: Date) => {
+        if (!onRangeChange) {
+            return;
+        }
+
+        const existingFrom = rangeValue?.from?.toDate();
+        const existingTo = rangeValue?.to?.toDate();
+
+        // If we have a complete range, clicking any day resets to that day as new start
+        if (existingFrom && existingTo) {
+            onRangeChange(day, null);
+        }
+    }, [rangeValue, onRangeChange]);
+
+    // Compute disabled days for range mode
+    const disabledDays = useMemo(() => {
+        const disabled = [];
+
+        if (rangeMode && !isStartField && rangeValue?.from) {
+            // End field: disable dates before start
+            const startDate = rangeValue.from.toDate();
+            const startYear = startDate.getFullYear();
+            const startMonth = startDate.getMonth();
+            const startDay = startDate.getDate();
+            const startOfDay = new Date(startYear, startMonth, startDay);
+
+            if (allowSingleDayRange) {
+                disabled.push({before: startOfDay});
+            } else {
+                const dayAfterStart = new Date(startYear, startMonth, startDay + 1);
+                disabled.push({before: dayAfterStart});
+            }
+        }
+
+        if (!allowPastDates) {
+            disabled.push({before: currentTime.toDate()});
+        }
+
+        return disabled.length > 0 ? disabled : undefined;
+    }, [rangeMode, isStartField, rangeValue, allowPastDates, currentTime, allowSingleDayRange]);
+
     const formatDate = (date: Moment): string => {
         if (relativeDate) {
             return relativeFormatDate(date, formatMessage);
@@ -377,13 +469,36 @@ const DateTimeInputContainer: React.FC<Props> = ({
         <i className='icon-clock-outline'/>
     );
 
-    const datePickerProps: DayPickerProps = {
+    // Helper to convert moment to Date for react-day-picker
+    const momentToLocalDate = (m: Moment | null | undefined): Date | undefined => {
+        if (!m) {
+            return undefined;
+        }
+        const year = m.year();
+        const month = m.month();
+        const date = m.date();
+        return new Date(year, month, date);
+    };
+
+    const datePickerProps: DayPickerProps = rangeMode ? {
+        initialFocus: isPopperOpen,
+        mode: 'range',
+        selected: rangeValue ? {
+            from: momentToLocalDate(rangeValue.from),
+            to: momentToLocalDate(rangeValue.to),
+        } : undefined,
+        defaultMonth: momentToLocalDate(displayTime) || new Date(),
+        onSelect: handleRangeSelect,
+        onDayClick: handleRangeDayClick,
+        disabled: disabledDays,
+        showOutsideDays: true,
+    } : {
         initialFocus: isPopperOpen,
         mode: 'single',
-        selected: displayTime?.toDate(),
-        defaultMonth: displayTime?.toDate() || new Date(),
+        selected: momentToLocalDate(displayTime),
+        defaultMonth: momentToLocalDate(displayTime) || new Date(),
         onDayClick: handleDayChange,
-        disabled: allowPastDates ? undefined : {before: currentTime.toDate()},
+        disabled: disabledDays,
         showOutsideDays: true,
     };
 

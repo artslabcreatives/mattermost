@@ -200,6 +200,9 @@ export type DialogElement = {
     // Date/datetime configuration
     datetime_config?: {
         time_interval?: number;
+        is_range?: boolean;
+        allow_single_day_range?: boolean;
+        range_layout?: 'horizontal' | 'vertical';
         location_timezone?: string;
         allow_manual_time_entry?: boolean;
     };
