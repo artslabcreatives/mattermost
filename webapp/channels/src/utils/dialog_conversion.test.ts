@@ -478,7 +478,7 @@ describe('dialog_conversion', () => {
             expect(form.fields?.[0].is_required).toBe(true);
         });
 
-        it('should sanitize introduction text', () => {
+        it('should pass introduction text without escaping (Markdown.format handles sanitization)', () => {
             const {form} = convertDialogToAppForm(
                 [],
                 'Test Dialog',
@@ -490,7 +490,29 @@ describe('dialog_conversion', () => {
                 legacyOptions,
             );
 
-            expect(form.header).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;Description');
+            // Introduction text should be passed through as-is without escaping
+            // Markdown.format() in DialogIntroductionText component handles sanitization
+            // This prevents double-escaping of legitimate markdown (e.g., angle brackets in code blocks)
+            expect(form.header).toBe('<script>alert("xss")</script>Description');
+        });
+
+        it('should preserve angle brackets in markdown code blocks (no double-escaping)', () => {
+            const introText = '* test `< or >`\n* test < or >\n`< or >`\n';
+            const {form} = convertDialogToAppForm(
+                [],
+                'Test Dialog',
+                introText,
+                undefined,
+                undefined,
+                'http://example.com',
+                '',
+                legacyOptions,
+            );
+
+            // Should pass through raw markdown without escaping angle brackets
+            // Markdown.format() will handle this correctly - angle brackets in code blocks
+            // will display as < and >, while angle brackets outside code blocks will be escaped
+            expect(form.header).toBe(introText);
         });
 
         it('should handle empty elements array', () => {

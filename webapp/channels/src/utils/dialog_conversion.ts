@@ -534,7 +534,7 @@ export function convertDialogToAppForm(
     const form: AppForm = {
         title: String(title || ''),
         icon: iconUrl,
-        header: introductionText ? sanitizeString(introductionText) : undefined,
+        header: introductionText ? String(introductionText) : undefined,
         submit_label: submitLabel ? String(submitLabel) : undefined,
         submit: {
             path: '/submit',
