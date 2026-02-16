@@ -2,7 +2,6 @@
 // See LICENSE.txt for license information.
 
 import {shallow} from 'enzyme';
-import React from 'react';
 import type {AnchorHTMLAttributes} from 'react';
 
 import AtMention from 'components/at_mention';
