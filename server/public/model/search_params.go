@@ -35,6 +35,8 @@ type SearchParams struct {
 	// True if this search doesn't originate from a "current user".
 	SearchWithoutUserId bool   `json:"search_without_user_id,omitempty"`
 	Modifier            string `json:"modifier"`
+	// CJKSearchEnabled gates LIKE-based CJK search fallback in PostgreSQL.
+	CJKSearchEnabled bool `json:"cjk_search_enabled,omitempty"`
 }
 
 // Returns the epoch timestamp of the start of the day specified by SearchParams.AfterDate

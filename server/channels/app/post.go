@@ -1912,6 +1912,7 @@ func (a *App) searchPostsInTeam(teamID string, userID string, paramsList []*mode
 		if params.Terms == "*" {
 			continue
 		}
+		params.CJKSearchEnabled = a.Config().FeatureFlags.CJKSearch
 		modifierFun(params)
 		wg.Add(1)
 
@@ -2071,6 +2072,7 @@ func (a *App) SearchPostsForUser(rctx request.CTX, terms string, userID string, 
 	for _, params := range paramsList {
 		params.OrTerms = isOrSearch
 		params.IncludeDeletedChannels = includeDeletedChannels
+		params.CJKSearchEnabled = a.Config().FeatureFlags.CJKSearch
 		// Don't allow users to search for "*"
 		if params.Terms != "*" {
 			// TODO: we have to send channel ids
