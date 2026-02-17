@@ -678,7 +678,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 		defer th.deleteUserPosts(th.User.Id)
 
 		t.Run("Should find single char as substring", func(t *testing.T) {
-			params := &model.SearchParams{Terms: "你", CJKSearchEnabled: true}
+			params := &model.SearchParams{Terms: "你"}
 			results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 			require.NoError(t, err)
 
@@ -687,7 +687,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 			th.checkPostInSearchResults(t, p2.Id, results.Posts)
 		})
 		t.Run("Should find multi-char term", func(t *testing.T) {
-			params := &model.SearchParams{Terms: "你好", CJKSearchEnabled: true}
+			params := &model.SearchParams{Terms: "你好"}
 			results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 			require.NoError(t, err)
 
@@ -695,7 +695,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 			th.checkPostInSearchResults(t, p1.Id, results.Posts)
 		})
 		t.Run("Should find substring in longer message", func(t *testing.T) {
-			params := &model.SearchParams{Terms: "测试", CJKSearchEnabled: true}
+			params := &model.SearchParams{Terms: "测试"}
 			results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 			require.NoError(t, err)
 
@@ -703,7 +703,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 			th.checkPostInSearchResults(t, p3.Id, results.Posts)
 		})
 		t.Run("Should handle wildcard (no-op for LIKE)", func(t *testing.T) {
-			params := &model.SearchParams{Terms: "你*", CJKSearchEnabled: true}
+			params := &model.SearchParams{Terms: "你*"}
 			results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 			require.NoError(t, err)
 
@@ -721,7 +721,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 		defer th.deleteUserPosts(th.User.Id)
 
 		t.Run("Should find hiragana substring", func(t *testing.T) {
-			params := &model.SearchParams{Terms: "にちは", CJKSearchEnabled: true}
+			params := &model.SearchParams{Terms: "にちは"}
 			results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 			require.NoError(t, err)
 
@@ -729,7 +729,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 			th.checkPostInSearchResults(t, p1.Id, results.Posts)
 		})
 		t.Run("Should find katakana", func(t *testing.T) {
-			params := &model.SearchParams{Terms: "カタカナ", CJKSearchEnabled: true}
+			params := &model.SearchParams{Terms: "カタカナ"}
 			results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 			require.NoError(t, err)
 
@@ -744,7 +744,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 		defer th.deleteUserPosts(th.User.Id)
 
 		t.Run("Should find hangul substring", func(t *testing.T) {
-			params := &model.SearchParams{Terms: "안녕", CJKSearchEnabled: true}
+			params := &model.SearchParams{Terms: "안녕"}
 			results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 			require.NoError(t, err)
 
@@ -760,7 +760,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 		require.NoError(t, err)
 		defer th.deleteUserPosts(th.User.Id)
 
-		params := &model.SearchParams{Terms: "测试", ExcludedTerms: "二", CJKSearchEnabled: true}
+		params := &model.SearchParams{Terms: "测试", ExcludedTerms: "二"}
 		results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 		require.NoError(t, err)
 
@@ -777,7 +777,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 		require.NoError(t, err)
 		defer th.deleteUserPosts(th.User.Id)
 
-		params := &model.SearchParams{Terms: "苹果 香蕉", OrTerms: true, CJKSearchEnabled: true}
+		params := &model.SearchParams{Terms: "苹果 香蕉", OrTerms: true}
 		results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 		require.NoError(t, err)
 
@@ -793,7 +793,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 		require.NoError(t, err)
 		defer th.deleteUserPosts(th.User.Id)
 
-		params := &model.SearchParams{Terms: "hello 你好", CJKSearchEnabled: true}
+		params := &model.SearchParams{Terms: "hello 你好"}
 		results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 		require.NoError(t, err)
 
@@ -808,7 +808,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 		require.NoError(t, err)
 		defer th.deleteUserPosts(th.User.Id)
 
-		params := &model.SearchParams{Terms: `"测试消息"`, CJKSearchEnabled: true}
+		params := &model.SearchParams{Terms: `"测试消息"`}
 		results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 		require.NoError(t, err)
 
@@ -825,7 +825,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 		require.NoError(t, err)
 		defer th.deleteUserPosts(th.User.Id)
 
-		params := &model.SearchParams{Terms: "ビジネス", CJKSearchEnabled: true}
+		params := &model.SearchParams{Terms: "ビジネス"}
 		results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 		require.NoError(t, err)
 
@@ -844,7 +844,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 		require.NoError(t, err)
 		defer th.deleteUserPosts(th.User.Id)
 
-		params := &model.SearchParams{Terms: "富士通", CJKSearchEnabled: true}
+		params := &model.SearchParams{Terms: "富士通"}
 		results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 		require.NoError(t, err)
 
@@ -865,7 +865,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 		require.NoError(t, err)
 		defer th.deleteUserPosts(th.User.Id)
 
-		params := &model.SearchParams{Terms: "検索", CJKSearchEnabled: true}
+		params := &model.SearchParams{Terms: "検索"}
 		results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 		require.NoError(t, err)
 
@@ -887,7 +887,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 		require.NoError(t, err)
 		defer th.deleteUserPosts(th.User.Id)
 
-		params := &model.SearchParams{Terms: "けんさく", CJKSearchEnabled: true}
+		params := &model.SearchParams{Terms: "けんさく"}
 		results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 		require.NoError(t, err)
 
@@ -909,7 +909,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 		require.NoError(t, err)
 		defer th.deleteUserPosts(th.User.Id)
 
-		params := &model.SearchParams{Terms: "ケンサク", CJKSearchEnabled: true}
+		params := &model.SearchParams{Terms: "ケンサク"}
 		results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 		require.NoError(t, err)
 
@@ -929,7 +929,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 		require.NoError(t, err)
 		defer th.deleteUserPosts(th.User.Id)
 
-		params := &model.SearchParams{Terms: "ｹﾝｻｸ", CJKSearchEnabled: true}
+		params := &model.SearchParams{Terms: "ｹﾝｻｸ"}
 		results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 		require.NoError(t, err)
 
