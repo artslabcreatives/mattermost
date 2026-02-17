@@ -45,24 +45,12 @@ func TestBackfillPostsChannelType(t *testing.T) {
 		mockStore.On("System").Return(systemMock)
 
 		channelMock := &mocks.ChannelStore{}
-
-		// Public channels: return 2 channels then empty.
-		channelMock.On("GetAllChannels", 0, 10000, mock.MatchedBy(func(opts any) bool {
-			// Can't easily match the struct, so accept any call here.
-			return true
-		})).Return(model.ChannelListWithTeamData{
-			{Channel: model.Channel{Id: "ch1"}},
-			{Channel: model.Channel{Id: "ch2"}},
-		}, nil).Once()
-
-		// Second call for public channels (page 1) — empty means done.
-		// But actually, since len(2) < 10000, the loop breaks after the first page.
-		// So for private channels, return 1 channel.
-		channelMock.On("GetAllChannels", 0, 10000, mock.MatchedBy(func(opts any) bool {
-			return true
-		})).Return(model.ChannelListWithTeamData{
-			{Channel: model.Channel{Id: "ch3"}},
-		}, nil).Once()
+		channelMock.On("GetAllChannels", 0, 10000, mock.Anything).
+			Return(model.ChannelListWithTeamData{
+				{Channel: model.Channel{Id: "ch1", Type: model.ChannelTypeOpen}},
+				{Channel: model.Channel{Id: "ch2", Type: model.ChannelTypeOpen}},
+				{Channel: model.Channel{Id: "ch3", Type: model.ChannelTypePrivate}},
+			}, nil)
 		mockStore.On("Channel").Return(channelMock)
 
 		engineMock := &searchenginemocks.SearchEngineInterface{}
@@ -99,6 +87,41 @@ func TestBackfillPostsChannelType(t *testing.T) {
 		systemMock.AssertNotCalled(t, "SaveOrUpdate", mock.Anything)
 	})
 
+	t.Run("should separate public and private channels from GetAllChannels", func(t *testing.T) {
+		th := SetupWithStoreMock(t)
+		mockStore := th.Service.Store.(*mocks.Store)
+
+		systemMock := &mocks.SystemStore{}
+		systemMock.On("GetByName", model.SystemPostChannelTypeBackfillComplete).
+			Return(nil, model.NewAppError("test", "not_found", nil, "", 404))
+		systemMock.On("SaveOrUpdate", &model.System{
+			Name:  model.SystemPostChannelTypeBackfillComplete,
+			Value: "true",
+		}).Return(nil)
+		mockStore.On("System").Return(systemMock)
+
+		// GetAllChannels returns BOTH public and private channels regardless
+		// of the opts passed — this matches the real store behavior.
+		mixedChannels := model.ChannelListWithTeamData{
+			{Channel: model.Channel{Id: "pub1", Type: model.ChannelTypeOpen}},
+			{Channel: model.Channel{Id: "pub2", Type: model.ChannelTypeOpen}},
+			{Channel: model.Channel{Id: "priv1", Type: model.ChannelTypePrivate}},
+		}
+		channelMock := &mocks.ChannelStore{}
+		channelMock.On("GetAllChannels", 0, 10000, mock.Anything).
+			Return(mixedChannels, nil)
+		mockStore.On("Channel").Return(channelMock)
+
+		engineMock := &searchenginemocks.SearchEngineInterface{}
+		engineMock.On("BackfillPostsChannelType", mock.Anything, []string{"pub1", "pub2"}, "O").Return(nil)
+		engineMock.On("BackfillPostsChannelType", mock.Anything, []string{"priv1"}, "P").Return(nil)
+
+		th.Service.backfillPostsChannelType(engineMock)
+
+		engineMock.AssertExpectations(t)
+		systemMock.AssertExpectations(t)
+	})
+
 	t.Run("BackfillPostsChannelType error stops backfill", func(t *testing.T) {
 		th := SetupWithStoreMock(t)
 		mockStore := th.Service.Store.(*mocks.Store)
@@ -111,7 +134,7 @@ func TestBackfillPostsChannelType(t *testing.T) {
 		channelMock := &mocks.ChannelStore{}
 		channelMock.On("GetAllChannels", 0, 10000, mock.Anything).
 			Return(model.ChannelListWithTeamData{
-				{Channel: model.Channel{Id: "ch1"}},
+				{Channel: model.Channel{Id: "ch1", Type: model.ChannelTypeOpen}},
 			}, nil).Once()
 		mockStore.On("Channel").Return(channelMock)
 
@@ -121,8 +144,6 @@ func TestBackfillPostsChannelType(t *testing.T) {
 
 		th.Service.backfillPostsChannelType(engineMock)
 
-		// Should not continue to private channels after error on public.
-		engineMock.AssertNotCalled(t, "BackfillPostsChannelType", mock.Anything, mock.Anything, "P")
 		// Completion flag should not be written.
 		systemMock.AssertNotCalled(t, "SaveOrUpdate", mock.Anything)
 	})

@@ -13,6 +13,10 @@ func (ps *PlatformService) StartSearchEngine() (string, string) {
 		ps.Go(func() {
 			if err := ps.SearchEngine.ElasticsearchEngine.Start(); err != nil {
 				ps.Log().Error(err.Error())
+				return
+			}
+			if model.SafeDereference(ps.Config().ElasticsearchSettings.EnableSearchPublicChannelsWithoutMembership) {
+				ps.backfillPostsChannelType(ps.SearchEngine.ElasticsearchEngine)
 			}
 		})
 	}
@@ -42,8 +46,7 @@ func (ps *PlatformService) StartSearchEngine() (string, string) {
 					ps.Log().Error(err.Error())
 					return
 				}
-				// If backfill was also enabled in this same config save, run it now that ES is started.
-				if startingBackfill {
+				if model.SafeDereference(newConfig.ElasticsearchSettings.EnableSearchPublicChannelsWithoutMembership) {
 					ps.backfillPostsChannelType(ps.SearchEngine.ElasticsearchEngine)
 				}
 			})

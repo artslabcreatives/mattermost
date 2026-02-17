@@ -22,48 +22,39 @@ func (ps *PlatformService) backfillPostsChannelType(engine searchengine.SearchEn
 
 	rctx.Logger().Info("Starting post channel_type backfill")
 
-	// Backfill public and private channels.
-	channelTypes := []struct {
-		channelType string
-		opts        store.ChannelSearchOpts
-	}{
-		{"O", store.ChannelSearchOpts{Public: true}},
-		{"P", store.ChannelSearchOpts{Private: true}},
-	}
+	// Backfill public and private channels. GetAllChannels does not filter by the Public/Private opts,
+	// so we fetch all channels and group them by type ourselves.
+	page := 0
+	const perPage = 10000
+	for {
+		allChannels, channelErr := ps.Store.Channel().GetAllChannels(page*perPage, perPage, store.ChannelSearchOpts{})
+		if channelErr != nil {
+			rctx.Logger().Error("Failed to get channels for backfill", mlog.Err(channelErr))
+			return
+		}
 
-	for _, ct := range channelTypes {
-		page := 0
-		const perPage = 10000
-		for {
-			channels, channelErr := ps.Store.Channel().GetAllChannels(page*perPage, perPage, ct.opts)
-			if channelErr != nil {
-				rctx.Logger().Error("Failed to get channels for backfill",
-					mlog.String("channel_type", ct.channelType),
-					mlog.Err(channelErr))
-				return
-			}
+		if len(allChannels) == 0 {
+			break
+		}
 
-			if len(channels) == 0 {
-				break
-			}
+		byType := map[string][]string{}
+		for _, ch := range allChannels {
+			byType[string(ch.Type)] = append(byType[string(ch.Type)], ch.Id)
+		}
 
-			channelIDs := make([]string, len(channels))
-			for i, ch := range channels {
-				channelIDs[i] = ch.Id
-			}
-
-			if appErr := engine.BackfillPostsChannelType(rctx, channelIDs, ct.channelType); appErr != nil {
+		for chType, channelIDs := range byType {
+			if appErr := engine.BackfillPostsChannelType(rctx, channelIDs, chType); appErr != nil {
 				rctx.Logger().Error("Failed to backfill channel_type on posts",
-					mlog.String("channel_type", ct.channelType),
+					mlog.String("channel_type", chType),
 					mlog.Err(appErr))
 				return
 			}
-
-			if len(channels) < perPage {
-				break
-			}
-			page++
 		}
+
+		if len(allChannels) < perPage {
+			break
+		}
+		page++
 	}
 
 	// Mark done.
