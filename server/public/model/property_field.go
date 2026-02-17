@@ -147,6 +147,15 @@ func (pf *PropertyField) IsValid() error {
 		return NewAppError("PropertyField.IsValid", "model.property_field.is_valid.app_error", map[string]any{"FieldName": "target_type", "Reason": "value exceeds maximum length"}, "id="+pf.ID, http.StatusBadRequest)
 	}
 
+	// PSAv2 properties (with ObjectType) must have TargetType as system, team, or channel (cannot be empty)
+	// PSAv1 properties (without ObjectType) can have any string as TargetType
+	if !pf.IsPSAv1() &&
+		pf.TargetType != string(PropertyFieldTargetLevelSystem) &&
+		pf.TargetType != string(PropertyFieldTargetLevelTeam) &&
+		pf.TargetType != string(PropertyFieldTargetLevelChannel) {
+		return NewAppError("PropertyField.IsValid", "model.property_field.is_valid.app_error", map[string]any{"FieldName": "target_type", "Reason": "unknown value"}, "id="+pf.ID, http.StatusBadRequest)
+	}
+
 	if utf8.RuneCountInString(pf.TargetID) > PropertyFieldTargetIDMaxRunes {
 		return NewAppError("PropertyField.IsValid", "model.property_field.is_valid.app_error", map[string]any{"FieldName": "target_id", "Reason": "value exceeds maximum length"}, "id="+pf.ID, http.StatusBadRequest)
 	}

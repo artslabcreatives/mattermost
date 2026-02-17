@@ -59,12 +59,13 @@ func TestPropertyField_PreSave(t *testing.T) {
 func TestPropertyField_IsValid(t *testing.T) {
 	t.Run("valid field", func(t *testing.T) {
 		pf := &PropertyField{
-			ID:       NewId(),
-			GroupID:  NewId(),
-			Name:     "test field",
-			Type:     PropertyFieldTypeText,
-			CreateAt: GetMillis(),
-			UpdateAt: GetMillis(),
+			ID:         NewId(),
+			GroupID:    NewId(),
+			Name:       "test field",
+			Type:       PropertyFieldTypeText,
+			TargetType: string(PropertyFieldTargetLevelSystem),
+			CreateAt:   GetMillis(),
+			UpdateAt:   GetMillis(),
 		}
 		require.NoError(t, pf.IsValid())
 	})
@@ -168,6 +169,104 @@ func TestPropertyField_IsValid(t *testing.T) {
 		require.Error(t, pf.IsValid())
 	})
 
+	t.Run("PSAv2 invalid TargetType", func(t *testing.T) {
+		pf := &PropertyField{
+			ID:         NewId(),
+			GroupID:    NewId(),
+			Name:       "test field",
+			Type:       PropertyFieldTypeText,
+			TargetType: "invalid",
+			ObjectType: "post",
+			CreateAt:   GetMillis(),
+			UpdateAt:   GetMillis(),
+		}
+		require.Error(t, pf.IsValid())
+	})
+
+	t.Run("PSAv1 custom TargetType is valid", func(t *testing.T) {
+		pf := &PropertyField{
+			ID:         NewId(),
+			GroupID:    NewId(),
+			Name:       "test field",
+			Type:       PropertyFieldTypeText,
+			TargetType: "custom_target",
+			ObjectType: "",
+			CreateAt:   GetMillis(),
+			UpdateAt:   GetMillis(),
+		}
+		require.NoError(t, pf.IsValid())
+	})
+
+	t.Run("PSAv1 empty TargetType is valid", func(t *testing.T) {
+		pf := &PropertyField{
+			ID:         NewId(),
+			GroupID:    NewId(),
+			Name:       "test field",
+			Type:       PropertyFieldTypeText,
+			TargetType: "",
+			ObjectType: "",
+			CreateAt:   GetMillis(),
+			UpdateAt:   GetMillis(),
+		}
+		require.NoError(t, pf.IsValid())
+	})
+
+	t.Run("PSAv2 empty TargetType is invalid", func(t *testing.T) {
+		pf := &PropertyField{
+			ID:         NewId(),
+			GroupID:    NewId(),
+			Name:       "test field",
+			Type:       PropertyFieldTypeText,
+			TargetType: "",
+			ObjectType: "post",
+			CreateAt:   GetMillis(),
+			UpdateAt:   GetMillis(),
+		}
+		require.Error(t, pf.IsValid())
+	})
+
+	t.Run("PSAv2 valid TargetType system", func(t *testing.T) {
+		pf := &PropertyField{
+			ID:         NewId(),
+			GroupID:    NewId(),
+			Name:       "test field",
+			Type:       PropertyFieldTypeText,
+			TargetType: string(PropertyFieldTargetLevelSystem),
+			ObjectType: "post",
+			CreateAt:   GetMillis(),
+			UpdateAt:   GetMillis(),
+		}
+		require.NoError(t, pf.IsValid())
+	})
+
+	t.Run("PSAv2 valid TargetType team", func(t *testing.T) {
+		pf := &PropertyField{
+			ID:         NewId(),
+			GroupID:    NewId(),
+			Name:       "test field",
+			Type:       PropertyFieldTypeText,
+			TargetType: string(PropertyFieldTargetLevelTeam),
+			ObjectType: "post",
+			CreateAt:   GetMillis(),
+			UpdateAt:   GetMillis(),
+		}
+		require.NoError(t, pf.IsValid())
+	})
+
+	t.Run("PSAv2 valid TargetType channel", func(t *testing.T) {
+		pf := &PropertyField{
+			ID:         NewId(),
+			GroupID:    NewId(),
+			Name:       "test field",
+			Type:       PropertyFieldTypeText,
+			TargetType: string(PropertyFieldTargetLevelChannel),
+			ObjectType: "post",
+			CreateAt:   GetMillis(),
+			UpdateAt:   GetMillis(),
+		}
+		require.NoError(t, pf.IsValid())
+	})
+
 	t.Run("TargetID exceeds maximum length", func(t *testing.T) {
 		longTargetID := strings.Repeat("a", PropertyFieldTargetIDMaxRunes+1)
 		pf := &PropertyField{
@@ -185,24 +284,11 @@ func TestPropertyField_IsValid(t *testing.T) {
 	t.Run("Name at maximum length is valid", func(t *testing.T) {
 		maxLengthName := strings.Repeat("a", PropertyFieldNameMaxRunes)
 		pf := &PropertyField{
-			ID:       NewId(),
-			GroupID:  NewId(),
-			Name:     maxLengthName,
-			Type:     PropertyFieldTypeText,
-			CreateAt: GetMillis(),
-			UpdateAt: GetMillis(),
-		}
-		require.NoError(t, pf.IsValid())
-	})
-
-	t.Run("TargetType at maximum length is valid", func(t *testing.T) {
-		maxLengthTargetType := strings.Repeat("a", PropertyFieldTargetTypeMaxRunes)
-		pf := &PropertyField{
 			ID:         NewId(),
 			GroupID:    NewId(),
-			Name:       "test field",
+			Name:       maxLengthName,
 			Type:       PropertyFieldTypeText,
-			TargetType: maxLengthTargetType,
+			TargetType: string(PropertyFieldTargetLevelSystem),
 			CreateAt:   GetMillis(),
 			UpdateAt:   GetMillis(),
 		}
@@ -212,13 +298,14 @@ func TestPropertyField_IsValid(t *testing.T) {
 	t.Run("TargetID at maximum length is valid", func(t *testing.T) {
 		maxLengthTargetID := strings.Repeat("a", PropertyFieldTargetIDMaxRunes)
 		pf := &PropertyField{
-			ID:       NewId(),
-			GroupID:  NewId(),
-			Name:     "test field",
-			Type:     PropertyFieldTypeText,
-			TargetID: maxLengthTargetID,
-			CreateAt: GetMillis(),
-			UpdateAt: GetMillis(),
+			ID:         NewId(),
+			GroupID:    NewId(),
+			Name:       "test field",
+			Type:       PropertyFieldTypeText,
+			TargetType: string(PropertyFieldTargetLevelSystem),
+			TargetID:   maxLengthTargetID,
+			CreateAt:   GetMillis(),
+			UpdateAt:   GetMillis(),
 		}
 		require.NoError(t, pf.IsValid())
 	})
@@ -229,6 +316,7 @@ func TestPropertyField_IsValid(t *testing.T) {
 			GroupID:    NewId(),
 			Name:       "test field",
 			Type:       PropertyFieldTypeText,
+			TargetType: string(PropertyFieldTargetLevelSystem),
 			ObjectType: "",
 			CreateAt:   GetMillis(),
 			UpdateAt:   GetMillis(),
@@ -242,6 +330,7 @@ func TestPropertyField_IsValid(t *testing.T) {
 			GroupID:    NewId(),
 			Name:       "test field",
 			Type:       PropertyFieldTypeText,
+			TargetType: string(PropertyFieldTargetLevelSystem),
 			ObjectType: "post",
 			CreateAt:   GetMillis(),
 			UpdateAt:   GetMillis(),
@@ -270,6 +359,7 @@ func TestPropertyField_IsValid(t *testing.T) {
 			GroupID:    NewId(),
 			Name:       "test field",
 			Type:       PropertyFieldTypeText,
+			TargetType: string(PropertyFieldTargetLevelSystem),
 			ObjectType: maxLengthObjectType,
 			CreateAt:   GetMillis(),
 			UpdateAt:   GetMillis(),
@@ -344,18 +434,34 @@ func TestPropertyFieldPatch_IsValid(t *testing.T) {
 		require.NoError(t, patch.IsValid())
 	})
 
-	t.Run("TargetType at maximum length is valid", func(t *testing.T) {
-		maxLengthTargetType := strings.Repeat("a", PropertyFieldTargetTypeMaxRunes)
-		patch := &PropertyFieldPatch{
-			TargetType: &maxLengthTargetType,
-		}
-		require.NoError(t, patch.IsValid())
-	})
-
 	t.Run("TargetID at maximum length is valid", func(t *testing.T) {
 		maxLengthTargetID := strings.Repeat("a", PropertyFieldTargetIDMaxRunes)
 		patch := &PropertyFieldPatch{
 			TargetID: &maxLengthTargetID,
+		}
+		require.NoError(t, patch.IsValid())
+	})
+
+	t.Run("empty TargetType is valid", func(t *testing.T) {
+		emptyTargetType := ""
+		patch := &PropertyFieldPatch{
+			TargetType: &emptyTargetType,
+		}
+		require.NoError(t, patch.IsValid())
+	})
+
+	t.Run("custom TargetType is valid", func(t *testing.T) {
+		customTargetType := "custom_value"
+		patch := &PropertyFieldPatch{
+			TargetType: &customTargetType,
+		}
+		require.NoError(t, patch.IsValid())
+	})
+
+	t.Run("enum TargetType is valid", func(t *testing.T) {
+		targetType := string(PropertyFieldTargetLevelSystem)
+		patch := &PropertyFieldPatch{
+			TargetType: &targetType,
 		}
 		require.NoError(t, patch.IsValid())
 	})
