@@ -2196,7 +2196,7 @@ func (s *SqlPostStore) search(teamId string, userId string, params *model.Search
 		//
 		// Why not pg_bigm? pg_bigm provides excellent CJK full-text search,
 		// but it requires installing a third-party C extension.
-		// Some managed PostgreSQL services do not support PGroonga, so we cannot rely on it
+		// Some managed PostgreSQL services do not support pg_bigm, so we cannot rely on it
 		// for all deployments. LIKE-based matching works with vanilla PostgreSQL.
 		// It also adds complexity as we would only need that index for CJK deployments.
 		baseQuery = s.buildCJKSearchClause(baseQuery, searchType, terms, excludedTerms, params.OrTerms)
