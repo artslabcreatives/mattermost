@@ -26,8 +26,7 @@ test.describe('ABAC Basic Operations - Enable/Disable', () => {
         // # Navigate to ABAC page
         await systemConsolePage.goto();
         await systemConsolePage.toBeVisible();
-        await systemConsolePage.sidebar.goToItem('System Attributes');
-        await systemConsolePage.sidebar.goToItem('Attribute-Based Access');
+        await systemConsolePage.sidebar.systemAttributes.attributeBasedAccess.click();
 
         // * Verify we're on the correct page
         const abacSection = systemConsolePage.page.getByTestId('sysconsole_section_AttributeBasedAccessControl');
