@@ -124,7 +124,7 @@ func (c *SearchChannelStore) reindexChannelPosts(rctx request.CTX, channelID str
 			runIndexFn(rctx, engine, func(engineCopy searchengine.SearchEngineInterface) {
 				ch, getErr := c.ChannelStore.Get(channelID, true)
 				if getErr != nil {
-					rctx.Logger().Error("Failed to get channel for reindexChannelPosts",
+					rctx.Logger().Error("Failed to get channel for reindexChannelPosts. Consider reindexing Elasticsearch or Opensearch",
 						mlog.String("channel_id", channelID),
 						mlog.String("search_engine", engineCopy.GetName()),
 						mlog.Err(getErr))
@@ -132,7 +132,7 @@ func (c *SearchChannelStore) reindexChannelPosts(rctx request.CTX, channelID str
 				}
 
 				if err := engineCopy.UpdatePostsChannelTypeByChannelId(rctx, channelID, string(ch.Type)); err != nil {
-					rctx.Logger().Error("Failed to update channel_type on posts in reindexChannelPosts",
+					rctx.Logger().Error("Failed to update channel_type on posts in reindexChannelPosts. Consider reindexing Elasticsearch or Opensearch",
 						mlog.String("channel_id", channelID),
 						mlog.String("channel_type", string(ch.Type)),
 						mlog.String("search_engine", engineCopy.GetName()),
