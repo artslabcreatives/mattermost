@@ -3,7 +3,7 @@
 
 import * as monaco from 'monaco-editor';
 import React, {useCallback, useEffect, useRef, useState, useMemo} from 'react';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage, useIntl} from 'react-intl';
 
 import type {AccessControlTestResult} from '@mattermost/types/access_control';
 
@@ -93,6 +93,7 @@ function CELEditor({
     disabled = false,
     userAttributes,
 }: CELEditorProps): JSX.Element {
+    const intl = useIntl();
     const [editorState, setEditorState] = useState({
         expression: value,
         isValidating: false,
@@ -376,7 +377,10 @@ function CELEditor({
                 <div className='help-text-container'>
                     <div>
                         <HelpText
-                            message={'Write rules like `user.attributes.<attribute> == <value>`. Use `&&` / `||` (and/or) for multiple conditions. Group conditions with `()`.'}
+                            message={intl.formatMessage({
+                                id: 'admin.access_control.cel.help_text',
+                                defaultMessage: 'Write rules like `user.attributes.<attribute> == <value>`. Use `&&` / `||` (and/or) for multiple conditions. Group conditions with `()`.',
+                            })}
                             onLearnMoreClick={() => setShowHelpModal(true)}
                         />
                     </div>
