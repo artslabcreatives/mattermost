@@ -544,13 +544,6 @@ func (c *CommonTestSuite) TestSearchPublicChannelsWithoutMembership() {
 	})
 
 	c.Run("Should not return public channel posts when compliance mode is enabled", func() {
-		// Enable compliance mode — this should override the public channel search setting.
-		originalCompliance := *cfg.ComplianceSettings.Enable
-		*cfg.ComplianceSettings.Enable = true
-		defer func() {
-			*cfg.ComplianceSettings.Enable = originalCompliance
-		}()
-
 		publicChannel := createChannel(c.TH.BasicTeam.Id, "compliance-pub-"+model.NewId(), "Compliance Public", model.ChannelTypeOpen)
 
 		searchTerm := "compliancetest" + model.NewId()
@@ -565,7 +558,20 @@ func (c *CommonTestSuite) TestSearchPublicChannelsWithoutMembership() {
 			OrTerms:   false,
 		}}
 
+		// Positive control: with public channel search enabled (and compliance off),
+		// the post should be found.
 		ids, _, err := c.ESImpl.SearchPosts(channels, searchParams, 0, 20)
+		c.Nil(err)
+		c.Len(ids, 1, "public channel post should be found before compliance mode is enabled")
+
+		// Enable compliance mode — this should override the public channel search setting.
+		originalCompliance := *cfg.ComplianceSettings.Enable
+		*cfg.ComplianceSettings.Enable = true
+		defer func() {
+			*cfg.ComplianceSettings.Enable = originalCompliance
+		}()
+
+		ids, _, err = c.ESImpl.SearchPosts(channels, searchParams, 0, 20)
 		c.Nil(err)
 		c.Len(ids, 0, "public channel post should not be found when compliance mode is enabled")
 	})
