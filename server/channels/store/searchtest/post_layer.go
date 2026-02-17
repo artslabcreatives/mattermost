@@ -666,7 +666,7 @@ func testSearchNonLatinWords(t *testing.T, th *SearchTestHelper) {
 }
 
 func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
-	// ILIKE-based CJK search does substring matching, so searching "你"
+	// LIKE-based CJK search does substring matching, so searching "你"
 	// matches both "你" and "你好" (unlike Elasticsearch's token matching).
 	t.Run("Should be able to search chinese words", func(t *testing.T) {
 		p1, err := th.createPost(th.User.Id, th.ChannelBasic.Id, "你好", "", model.PostTypeDefault, 0, false)
@@ -702,7 +702,7 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 			require.Len(t, results.Posts, 1)
 			th.checkPostInSearchResults(t, p3.Id, results.Posts)
 		})
-		t.Run("Should handle wildcard (no-op for ILIKE)", func(t *testing.T) {
+		t.Run("Should handle wildcard (no-op for LIKE)", func(t *testing.T) {
 			params := &model.SearchParams{Terms: "你*"}
 			results, err := th.Store.Post().SearchPostsForUser(th.Context, []*model.SearchParams{params}, th.User.Id, th.Team.Id, 0, 20)
 			require.NoError(t, err)

@@ -2080,9 +2080,9 @@ func (s *SqlPostStore) Search(teamId string, userId string, params *model.Search
 	return s.search(teamId, userId, params, true, true)
 }
 
-// splitCJKSearchTerms splits search terms for ILIKE usage.
+// splitCJKSearchTerms splits search terms for LIKE usage.
 // It extracts quoted phrases as single terms, splits remaining text by whitespace,
-// and strips trailing wildcards (ILIKE '%term%' is already bidirectional).
+// and strips trailing wildcards (LIKE '%term%' is already bidirectional).
 func splitCJKSearchTerms(input string) []string {
 	var terms []string
 	// Extract quoted phrases first
@@ -2109,7 +2109,7 @@ func splitCJKSearchTerms(input string) []string {
 	return terms
 }
 
-// buildCJKSearchClause builds ILIKE WHERE clauses for CJK search terms.
+// buildCJKSearchClause builds LIKE WHERE clauses for CJK search terms.
 func (s *SqlPostStore) buildCJKSearchClause(baseQuery sq.SelectBuilder, searchType, terms, excludedTerms string, orTerms bool) sq.SelectBuilder {
 	escapeChar := "\\"
 
@@ -2119,7 +2119,7 @@ func (s *SqlPostStore) buildCJKSearchClause(baseQuery sq.SelectBuilder, searchTy
 			ors := sq.Or{}
 			for _, term := range parsedTerms {
 				sanitized := sanitizeSearchTerm(term, escapeChar)
-				ors = append(ors, sq.ILike{searchType: "%" + sanitized + "%"})
+				ors = append(ors, sq.Like{searchType: "%" + sanitized + "%"})
 			}
 			if len(ors) > 0 {
 				baseQuery = baseQuery.Where(ors)
@@ -2127,7 +2127,7 @@ func (s *SqlPostStore) buildCJKSearchClause(baseQuery sq.SelectBuilder, searchTy
 		} else {
 			for _, term := range parsedTerms {
 				sanitized := sanitizeSearchTerm(term, escapeChar)
-				baseQuery = baseQuery.Where(sq.ILike{searchType: "%" + sanitized + "%"})
+				baseQuery = baseQuery.Where(sq.Like{searchType: "%" + sanitized + "%"})
 			}
 		}
 	}
@@ -2136,7 +2136,7 @@ func (s *SqlPostStore) buildCJKSearchClause(baseQuery sq.SelectBuilder, searchTy
 		parsedExcluded := splitCJKSearchTerms(excludedTerms)
 		for _, term := range parsedExcluded {
 			sanitized := sanitizeSearchTerm(term, escapeChar)
-			baseQuery = baseQuery.Where(sq.NotILike{searchType: "%" + sanitized + "%"})
+			baseQuery = baseQuery.Where(sq.NotLike{searchType: "%" + sanitized + "%"})
 		}
 	}
 
@@ -2192,7 +2192,7 @@ func (s *SqlPostStore) search(teamId string, userId string, params *model.Search
 		// we've already confirmed that we have a channel or user to search for
 	} else if containsCJK(terms) || containsCJK(excludedTerms) {
 		// CJK characters are not supported by PostgreSQL's to_tsvector/to_tsquery
-		// with the default English text search config. Fall back to ILIKE matching.
+		// with the default English text search config. Fall back to LIKE matching.
 		baseQuery = s.buildCJKSearchClause(baseQuery, searchType, terms, excludedTerms, params.OrTerms)
 	} else {
 		// Parse text for wildcards

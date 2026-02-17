@@ -13,60 +13,60 @@ SELECT id, message FROM Posts
 WHERE to_tsvector('english', Message) @@ to_tsquery('english', 'testing')
 ORDER BY CreateAt DESC LIMIT 100;
 
--- 2. CJK: ILIKE search for Chinese term
-\echo '--- 2. Chinese ILIKE search ---'
+-- 2. CJK: LIKE search for Chinese term
+\echo '--- 2. Chinese LIKE search ---'
 EXPLAIN ANALYZE
 SELECT id, message FROM Posts
-WHERE Message ILIKE '%测试%'
+WHERE Message LIKE '%测试%'
 ORDER BY CreateAt DESC LIMIT 100;
 
--- 3. CJK: ILIKE search for Japanese term
-\echo '--- 3. Japanese ILIKE search ---'
+-- 3. CJK: LIKE search for Japanese term
+\echo '--- 3. Japanese LIKE search ---'
 EXPLAIN ANALYZE
 SELECT id, message FROM Posts
-WHERE Message ILIKE '%テスト%'
+WHERE Message LIKE '%テスト%'
 ORDER BY CreateAt DESC LIMIT 100;
 
--- 4. CJK: ILIKE search for Korean term
-\echo '--- 4. Korean ILIKE search ---'
+-- 4. CJK: LIKE search for Korean term
+\echo '--- 4. Korean LIKE search ---'
 EXPLAIN ANALYZE
 SELECT id, message FROM Posts
-WHERE Message ILIKE '%테스트%'
+WHERE Message LIKE '%테스트%'
 ORDER BY CreateAt DESC LIMIT 100;
 
--- 5. CJK: ILIKE with AND (two terms)
-\echo '--- 5. Chinese ILIKE with AND (two terms) ---'
+-- 5. CJK: LIKE with AND (two terms)
+\echo '--- 5. Chinese LIKE with AND (two terms) ---'
 EXPLAIN ANALYZE
 SELECT id, message FROM Posts
-WHERE Message ILIKE '%搜索%' AND Message ILIKE '%功能%'
+WHERE Message LIKE '%搜索%' AND Message LIKE '%功能%'
 ORDER BY CreateAt DESC LIMIT 100;
 
--- 6. CJK: ILIKE with OR (two terms)
-\echo '--- 6. Chinese ILIKE with OR (two terms) ---'
+-- 6. CJK: LIKE with OR (two terms)
+\echo '--- 6. Chinese LIKE with OR (two terms) ---'
 EXPLAIN ANALYZE
 SELECT id, message FROM Posts
-WHERE (Message ILIKE '%搜索%' OR Message ILIKE '%测试%')
+WHERE (Message LIKE '%搜索%' OR Message LIKE '%测试%')
 ORDER BY CreateAt DESC LIMIT 100;
 
--- 7. CJK: ILIKE with NOT ILIKE exclusion
-\echo '--- 7. Chinese ILIKE with exclusion ---'
+-- 7. CJK: LIKE with NOT LIKE exclusion
+\echo '--- 7. Chinese LIKE with exclusion ---'
 EXPLAIN ANALYZE
 SELECT id, message FROM Posts
-WHERE Message ILIKE '%测试%' AND Message NOT ILIKE '%错误%'
+WHERE Message LIKE '%测试%' AND Message NOT LIKE '%错误%'
 ORDER BY CreateAt DESC LIMIT 100;
 
--- 8. Mixed: ILIKE for mixed CJK + Latin
-\echo '--- 8. Mixed CJK + Latin ILIKE search ---'
+-- 8. Mixed: LIKE for mixed CJK + Latin
+\echo '--- 8. Mixed CJK + Latin LIKE search ---'
 EXPLAIN ANALYZE
 SELECT id, message FROM Posts
-WHERE Message ILIKE '%Hello%' AND Message ILIKE '%你好%'
+WHERE Message LIKE '%Hello%' AND Message LIKE '%你好%'
 ORDER BY CreateAt DESC LIMIT 100;
 
 -- 9. Worst case: CJK term that matches nothing (full index scan)
-\echo '--- 9. Chinese ILIKE no match (worst case) ---'
+\echo '--- 9. Chinese LIKE no match (worst case) ---'
 EXPLAIN ANALYZE
 SELECT id, message FROM Posts
-WHERE Message ILIKE '%完全不存在的词语%'
+WHERE Message LIKE '%完全不存在的词语%'
 ORDER BY CreateAt DESC LIMIT 100;
 
 -- 10. Worst case: English to_tsvector no match (for comparison)
