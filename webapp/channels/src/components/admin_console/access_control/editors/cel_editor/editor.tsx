@@ -379,7 +379,12 @@ function CELEditor({
                         <HelpText
                             message={intl.formatMessage({
                                 id: 'admin.access_control.cel.help_text',
-                                defaultMessage: 'Write rules like `user.attributes.<attribute> == <value>`. Use `&&` / `||` (and/or) for multiple conditions. Group conditions with `()`.',
+                                defaultMessage: 'Write rules like `user.attributes.{lessThan}attribute{greaterThan} == {lessSign}value{greaterSign}`. Use `&&` / `||` (and/or) for multiple conditions. Group conditions with `()`.',
+                            }, {
+                                lessThan: '<',
+                                greaterThan: '>',
+                                lessSign: '<',
+                                greaterSign: '>',
                             })}
                             onLearnMoreClick={() => setShowHelpModal(true)}
                         />
