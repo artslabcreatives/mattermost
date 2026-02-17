@@ -714,6 +714,13 @@ func (a *App) createCommand(cmd *model.Command) (*model.Command, *model.AppError
 func (a *App) validateCommandTriggerUniqueness(teamID, trigger, excludeCommandID string) *model.AppError {
 	trigger = strings.ToLower(trigger)
 
+	for _, builtInProvider := range commandProviders {
+		builtInCommand := builtInProvider.GetCommand(a, i18n.T)
+		if builtInCommand != nil && trigger == strings.ToLower(builtInCommand.Trigger) {
+			return model.NewAppError("validateCommandTriggerUniqueness", "api.command.duplicate_trigger.app_error", nil, "", http.StatusBadRequest)
+		}
+	}
+
 	teamCmds, err := a.Srv().Store().Command().GetByTeam(teamID)
 	if err != nil {
 		return model.NewAppError("validateCommandTriggerUniqueness", "app.command.validatecommandtriggeruniqueness.internal_error", nil, "", http.StatusInternalServerError).Wrap(err)
@@ -721,13 +728,6 @@ func (a *App) validateCommandTriggerUniqueness(teamID, trigger, excludeCommandID
 
 	for _, existingCommand := range teamCmds {
 		if existingCommand.Id != excludeCommandID && trigger == strings.ToLower(existingCommand.Trigger) {
-			return model.NewAppError("validateCommandTriggerUniqueness", "api.command.duplicate_trigger.app_error", nil, "", http.StatusBadRequest)
-		}
-	}
-
-	for _, builtInProvider := range commandProviders {
-		builtInCommand := builtInProvider.GetCommand(a, i18n.T)
-		if builtInCommand != nil && trigger == strings.ToLower(builtInCommand.Trigger) {
 			return model.NewAppError("validateCommandTriggerUniqueness", "api.command.duplicate_trigger.app_error", nil, "", http.StatusBadRequest)
 		}
 	}
