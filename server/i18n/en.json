@@ -5444,7 +5444,7 @@
   },
   {
     "id": "app.command.validatecommandtriggeruniqueness.internal_error",
-    "translation": ""
+    "translation": "The specified trigger keyword already exists."
   },
   {
     "id": "app.command_webhook.create_command_webhook.existing",
