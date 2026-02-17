@@ -82,13 +82,6 @@ export type ConversionResult = {
 };
 
 /**
- * Sanitize string input to prevent XSS attacks (only for HTML content)
- */
-export function sanitizeString(input: unknown): string {
-    return escapeHtml(String(input));
-}
-
-/**
  * Validate individual dialog element (logs warnings but doesn't block)
  */
 export function validateDialogElement(element: DialogElement, index: number, options: ConversionOptions): ValidationError[] {

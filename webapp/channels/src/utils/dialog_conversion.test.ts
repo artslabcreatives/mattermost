@@ -11,36 +11,12 @@ import {
     getDefaultValue,
     getFieldType,
     getOptions,
-    sanitizeString,
     validateDialogElement,
     ValidationErrorCode,
     type ConversionOptions,
 } from './dialog_conversion';
 
 describe('dialog_conversion', () => {
-    describe('sanitizeString', () => {
-        it('should escape HTML characters', () => {
-            expect(sanitizeString('<script>alert("xss")</script>')).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
-            expect(sanitizeString('<div>content</div>')).toBe('&lt;div&gt;content&lt;/div&gt;');
-            expect(sanitizeString('Text with & symbols')).toBe('Text with &amp; symbols');
-        });
-
-        it('should handle null and undefined values', () => {
-            expect(sanitizeString(null)).toBe('null');
-            expect(sanitizeString(undefined)).toBe('undefined');
-        });
-
-        it('should handle empty strings', () => {
-            expect(sanitizeString('')).toBe('');
-        });
-
-        it('should preserve safe content', () => {
-            expect(sanitizeString('Hello world')).toBe('Hello world');
-            expect(sanitizeString('Hello 世界')).toBe('Hello 世界');
-            expect(sanitizeString('Emoji: 🌟')).toBe('Emoji: 🌟');
-        });
-    });
-
     describe('validateDialogElement', () => {
         it('should validate required fields', () => {
             const element = {
