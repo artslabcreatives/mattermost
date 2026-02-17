@@ -51,9 +51,14 @@ var searchPostStoreTests = []searchTest{
 		Tags: []string{EngineElasticSearch},
 	},
 	{
-		Name: "Should be able to search for non-latin words in Postgres",
-		Fn:   testSearchNonLatinWordsPostgres,
+		Name: "Should be able to search CJK words with substring matching",
+		Fn:   testSearchCJKSubstringMatching,
 		Tags: []string{EnginePostgres},
+	},
+	{
+		Name: "Should be able to search CJK words in realistic sentences",
+		Fn:   testSearchCJKAcceptanceCriteria,
+		Tags: []string{EnginePostgres, EngineElasticSearch},
 	},
 	{
 		Name: "Should be able to search for alternative spellings of words",
@@ -665,9 +670,10 @@ func testSearchNonLatinWords(t *testing.T, th *SearchTestHelper) {
 	})
 }
 
-func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
-	// LIKE-based CJK search does substring matching, so searching "你"
+func testSearchCJKSubstringMatching(t *testing.T, th *SearchTestHelper) {
+	// Postgres LIKE-based CJK search does substring matching, so searching "你"
 	// matches both "你" and "你好" (unlike Elasticsearch's token matching).
+	// These tests verify Postgres-specific substring and operator behavior.
 	t.Run("Should be able to search chinese words", func(t *testing.T) {
 		p1, err := th.createPost(th.User.Id, th.ChannelBasic.Id, "你好", "", model.PostTypeDefault, 0, false)
 		require.NoError(t, err)
@@ -815,8 +821,12 @@ func testSearchNonLatinWordsPostgres(t *testing.T, th *SearchTestHelper) {
 		require.Len(t, results.Posts, 1)
 		th.checkPostInSearchResults(t, p1.Id, results.Posts)
 	})
+}
 
-	t.Run("Should find kanji term in business context sentences", func(t *testing.T) {
+func testSearchCJKAcceptanceCriteria(t *testing.T, th *SearchTestHelper) {
+	// These tests verify CJK search works in realistic scenarios and should
+	// pass on both Postgres (LIKE) and Elasticsearch (with CJK tokenizer).
+	t.Run("Should find katakana term in business context sentences", func(t *testing.T) {
 		p1, err := th.createPost(th.User.Id, th.ChannelBasic.Id, "重要なビジネス環境では、信頼できるコミュニケーションが不可欠です。", "", model.PostTypeDefault, 0, false)
 		require.NoError(t, err)
 		p2, err := th.createPost(th.User.Id, th.ChannelBasic.Id, "効果的なリカバリは、ビジネスを継続する鍵です。セルフホスト、プライベートクラウド、高可用性デプロイメントのサポートにより、機密性の高い環境での制御が可能になります。", "", model.PostTypeDefault, 0, false)
