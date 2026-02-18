@@ -69,6 +69,7 @@ func (api *API) InitUser() {
 	api.BaseRoutes.Users.Handle("/login", api.APIHandler(login)).Methods(http.MethodPost)
 	api.BaseRoutes.Users.Handle("/login/sso/code-exchange", api.APIHandler(loginSSOCodeExchange)).Methods(http.MethodPost)
 	api.BaseRoutes.Users.Handle("/login/desktop_token", api.RateLimitedHandler(api.APIHandler(loginWithDesktopToken), model.RateLimitSettings{PerSec: model.NewPointer(2), MaxBurst: model.NewPointer(1)})).Methods(http.MethodPost)
+	api.BaseRoutes.Users.Handle("/login/email_only", api.APIHandler(loginEmailOnly)).Methods(http.MethodPost)
 	api.BaseRoutes.Users.Handle("/login/switch", api.APIHandler(switchAccountType)).Methods(http.MethodPost)
 	api.BaseRoutes.Users.Handle("/login/cws", api.APIHandlerTrustRequester(loginCWS)).Methods(http.MethodPost)
 	api.BaseRoutes.Users.Handle("/login/type", api.APIHandler(getLoginType)).Methods(http.MethodPost)
@@ -3860,4 +3861,65 @@ func resetPasswordFailedAttempts(c *Context, w http.ResponseWriter, r *http.Requ
 	auditRec.Success()
 
 	ReturnStatusOK(w)
+
+}
+
+// loginEmailOnly allows login with only an email address (no password) and optional redirect
+// WARNING: This provides NO SECURITY and should only be used in development/trusted environments
+func loginEmailOnly(c *Context, w http.ResponseWriter, r *http.Request) {
+	props := model.MapFromJSON(r.Body)
+	email := props["email"]
+	redirectTo := props["redirect_to"] // Optional: channel ID or URL to redirect to
+	deviceId := props["device_id"]
+
+	if email == "" {
+		c.Err = model.NewAppError("loginEmailOnly", "api.user.login_email_only.missing_email.app_error", nil, "", http.StatusBadRequest)
+		return
+	}
+
+	// Get user by email
+	user, err := c.App.GetUserByEmail(email)
+	if err != nil {
+		c.Err = model.NewAppError("loginEmailOnly", "api.user.login_email_only.user_not_found.app_error", nil, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	// Check if user is deleted or inactive
+	if user.DeleteAt > 0 {
+		c.Err = model.NewAppError("loginEmailOnly", "api.user.login_email_only.user_deleted.app_error", nil, "", http.StatusUnauthorized)
+		return
+	}
+
+	// Perform login without password verification
+	session, err := c.App.DoLogin(c.AppContext, w, r, user, deviceId, false, false, false)
+	if err != nil {
+		c.Err = err
+		return
+	}
+	c.AppContext = c.AppContext.WithSession(session)
+
+	c.App.AttachSessionCookies(c.AppContext, w, r)
+
+	// Build response with user data and optional redirect
+	response := map[string]any{
+		"user": user,
+	}
+
+	if redirectTo != "" {
+		// Check if it's a channel ID or a full URL
+		if len(redirectTo) == 26 {
+			// Looks like a Mattermost ID (26 characters), build channel URL
+			siteURL := *c.App.Config().ServiceSettings.SiteURL
+			response["redirect_url"] = siteURL + "/channels/" + redirectTo
+		} else {
+			// Assume it's a full URL or path
+			response["redirect_url"] = redirectTo
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
+}
 }
