@@ -30,6 +30,36 @@ Table of contents
 - [Get the latest news](#get-the-latest-news)
 - [Contributing](#contributing)
 
+## 🚀 Quick Production Deployment (Docker Compose)
+
+Deploy Mattermost from source in minutes using Docker Compose:
+
+```bash
+# 1. One-command deployment
+./deploy.sh
+
+# OR manually:
+# 2. Copy and configure environment
+cp .env.example .env
+nano .env  # Edit MM_SITEURL and other settings
+
+# 3. Build and start
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+**What you get:**
+- ✅ Mattermost Community Edition (built from source)
+- ✅ PostgreSQL 16 database
+- ✅ Persistent data volumes
+- ✅ Production-ready security settings
+- ✅ Email-only login endpoint for development/testing
+
+**Access:** Open `http://your-server:8065` and create your admin account.
+
+**Full Documentation:** See [PRODUCTION_DEPLOY.md](PRODUCTION_DEPLOY.md) for complete setup, HTTPS configuration, backups, and more.
+
+---
+
 ## Install Mattermost
 
 - [Download and Install Mattermost Self-Hosted](https://docs.mattermost.com/guides/deployment.html) - Deploy a Mattermost Self-hosted instance in minutes via Docker, Ubuntu, or tar.
