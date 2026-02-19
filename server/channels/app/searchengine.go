@@ -32,6 +32,27 @@ func (a *App) TestElasticsearch(rctx request.CTX, cfg *model.Config) *model.AppE
 	return nil
 }
 
+func (a *App) TestTypesense(rctx request.CTX, cfg *model.Config) *model.AppError {
+	if *cfg.TypesenseSettings.APIKey == model.FakeSetting {
+		if *cfg.TypesenseSettings.ConnectionURL == *a.Config().TypesenseSettings.ConnectionURL {
+			*cfg.TypesenseSettings.APIKey = *a.Config().TypesenseSettings.APIKey
+		} else {
+			return model.NewAppError("TestTypesense", "ent.typesense.test_config.reenter_apikey", nil, "", http.StatusBadRequest)
+		}
+	}
+
+	seI := a.SearchEngine().TypesenseEngine
+	if seI == nil {
+		err := model.NewAppError("TestTypesense", "ent.typesense.test_config.license.error", nil, "", http.StatusNotImplemented)
+		return err
+	}
+	if err := seI.TestConfig(rctx, cfg); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (a *App) SetSearchEngine(se *searchengine.Broker) {
 	a.ch.srv.platform.SearchEngine = se
 }
@@ -40,6 +61,23 @@ func (a *App) PurgeElasticsearchIndexes(rctx request.CTX, indexes []string) *mod
 	engine := a.SearchEngine().ElasticsearchEngine
 	if engine == nil {
 		err := model.NewAppError("PurgeElasticsearchIndexes", "ent.elasticsearch.test_config.license.error", nil, "", http.StatusNotImplemented)
+		return err
+	}
+
+	var appErr *model.AppError
+	if len(indexes) > 0 {
+		appErr = engine.PurgeIndexList(rctx, indexes)
+	} else {
+		appErr = engine.PurgeIndexes(rctx)
+	}
+
+	return appErr
+}
+
+func (a *App) PurgeTypesenseIndexes(rctx request.CTX, indexes []string) *model.AppError {
+	engine := a.SearchEngine().TypesenseEngine
+	if engine == nil {
+		err := model.NewAppError("PurgeTypesenseIndexes", "ent.typesense.test_config.license.error", nil, "", http.StatusNotImplemented)
 		return err
 	}
 

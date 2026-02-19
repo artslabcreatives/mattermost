@@ -39,6 +39,7 @@ const (
 	DatabaseDriverPostgres = "postgres"
 
 	SearchengineElasticsearch = "elasticsearch"
+	SearchengineTypesense     = "typesense"
 
 	MinioAccessKey = "minioaccesskey"
 	MinioSecretKey = "miniosecretkey"
@@ -223,6 +224,12 @@ const (
 	ElasticsearchSettingsDefaultBatchSize                   = 10000
 	ElasticsearchSettingsESBackend                          = "elasticsearch"
 	ElasticsearchSettingsOSBackend                          = "opensearch"
+
+	TypesenseSettingsDefaultConnectionURL         = "http://localhost:8108"
+	TypesenseSettingsDefaultAPIKey                = "xyz"
+	TypesenseSettingsDefaultLiveIndexingBatchSize = 10
+	TypesenseSettingsDefaultRequestTimeoutSeconds = 30
+	TypesenseSettingsDefaultBatchSize             = 10000
 
 	DataRetentionSettingsDefaultMessageRetentionDays           = 365
 	DataRetentionSettingsDefaultMessageRetentionHours          = 0
@@ -3253,6 +3260,56 @@ func (s *ElasticsearchSettings) SetDefaults() {
 	}
 }
 
+type TypesenseSettings struct {
+	ConnectionURL         *string `access:"environment_typesense,write_restrictable,cloud_restrictable"`
+	APIKey                *string `access:"environment_typesense,write_restrictable,cloud_restrictable"`
+	EnableIndexing        *bool   `access:"environment_typesense,write_restrictable,cloud_restrictable"`
+	EnableSearching       *bool   `access:"environment_typesense,write_restrictable,cloud_restrictable"`
+	EnableAutocomplete    *bool   `access:"environment_typesense,write_restrictable,cloud_restrictable"`
+	LiveIndexingBatchSize *int    `access:"environment_typesense,write_restrictable,cloud_restrictable"`
+	BatchSize             *int    `access:"environment_typesense,write_restrictable,cloud_restrictable"`
+	RequestTimeoutSeconds *int    `access:"environment_typesense,write_restrictable,cloud_restrictable"`
+	SkipTLSVerification   *bool   `access:"environment_typesense,write_restrictable,cloud_restrictable"`
+}
+
+func (s *TypesenseSettings) SetDefaults() {
+	if s.ConnectionURL == nil {
+		s.ConnectionURL = NewPointer(TypesenseSettingsDefaultConnectionURL)
+	}
+
+	if s.APIKey == nil {
+		s.APIKey = NewPointer(TypesenseSettingsDefaultAPIKey)
+	}
+
+	if s.EnableIndexing == nil {
+		s.EnableIndexing = NewPointer(false)
+	}
+
+	if s.EnableSearching == nil {
+		s.EnableSearching = NewPointer(false)
+	}
+
+	if s.EnableAutocomplete == nil {
+		s.EnableAutocomplete = NewPointer(false)
+	}
+
+	if s.LiveIndexingBatchSize == nil {
+		s.LiveIndexingBatchSize = NewPointer(TypesenseSettingsDefaultLiveIndexingBatchSize)
+	}
+
+	if s.BatchSize == nil {
+		s.BatchSize = NewPointer(TypesenseSettingsDefaultBatchSize)
+	}
+
+	if s.RequestTimeoutSeconds == nil {
+		s.RequestTimeoutSeconds = NewPointer(TypesenseSettingsDefaultRequestTimeoutSeconds)
+	}
+
+	if s.SkipTLSVerification == nil {
+		s.SkipTLSVerification = NewPointer(false)
+	}
+}
+
 type DataRetentionSettings struct {
 	EnableMessageDeletion          *bool   `access:"compliance_data_retention_policy"`
 	EnableFileDeletion             *bool   `access:"compliance_data_retention_policy"`
@@ -3978,6 +4035,7 @@ type Config struct {
 	ExperimentalSettings        ExperimentalSettings
 	AnalyticsSettings           AnalyticsSettings
 	ElasticsearchSettings       ElasticsearchSettings
+	TypesenseSettings           TypesenseSettings
 	DataRetentionSettings       DataRetentionSettings
 	MessageExportSettings       MessageExportSettings
 	JobSettings                 JobSettings
@@ -4091,6 +4149,7 @@ func (o *Config) SetDefaults() {
 	o.LocalizationSettings.SetDefaults()
 	o.AutoTranslationSettings.SetDefaults()
 	o.ElasticsearchSettings.SetDefaults()
+	o.TypesenseSettings.SetDefaults()
 	o.NativeAppSettings.SetDefaults()
 	o.IntuneSettings.SetDefaults()
 	o.DataRetentionSettings.SetDefaults()

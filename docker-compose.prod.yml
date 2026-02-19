@@ -1,11 +1,30 @@
 services:
+  typesense:
+    image: typesense/typesense:26.0
+    container_name: mattermost-typesense
+    restart: ${RESTART_POLICY:-unless-stopped}
+    command: '--data-dir /data --api-key=${TYPESENSE_API_KEY:-xyz} --enable-cors'
+    volumes:
+      - ${TYPESENSE_DATA_PATH:-./volumes/typesense/data}:/data:rw
+    ports:
+      - "8108:8108"
+    networks:
+      - mattermost
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8108/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
   mattermost:
     build:
       context: .
       dockerfile: Dockerfile.prebuilt
     container_name: mattermost-server
     restart: ${RESTART_POLICY:-unless-stopped}
-    network_mode: "host"
+    networks:
+      - mattermost
     security_opt:
       - no-new-privileges:true
     pids_limit: 200
@@ -80,10 +99,22 @@ services:
       # Bleve search
       - MM_BLEVESETTINGS_INDEXDIR=${MM_BLEVESETTINGS_INDEXDIR:-/mattermost/bleve-indexes}
       
+      # Typesense search
+      - MM_TYPESENSESETTINGS_CONNECTIONURL=${MM_TYPESENSESETTINGS_CONNECTIONURL:-http://typesense:8108}
+      - MM_TYPESENSESETTINGS_APIKEY=${MM_TYPESENSESETTINGS_APIKEY:-xyz}
+      - MM_TYPESENSESETTINGS_ENABLEINDEXING=${MM_TYPESENSESETTINGS_ENABLEINDEXING:-false}
+      - MM_TYPESENSESETTINGS_ENABLESEARCHING=${MM_TYPESENSESETTINGS_ENABLESEARCHING:-false}
+      - MM_TYPESENSESETTINGS_ENABLEAUTOCOMPLETE=${MM_TYPESENSESETTINGS_ENABLEAUTOCOMPLETE:-false}
+      
       # Logging
       - MM_LOGSETTINGS_CONSOLELEVEL=${MM_LOGSETTINGS_CONSOLELEVEL:-INFO}
       - MM_LOGSETTINGS_ENABLECONSOLE=${MM_LOGSETTINGS_ENABLECONSOLE:-true}
       - MM_LOGSETTINGS_ENABLEFILE=${MM_LOGSETTINGS_ENABLEFILE:-true}
+    ports:
+      - "8065:8065"
+    depends_on:
+      typesense:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8065/api/v4/system/ping"]
       interval: 30s
@@ -103,6 +134,8 @@ volumes:
   mattermost_client_plugins:
     driver: local
   mattermost_bleve_indexes:
+    driver: local
+  typesense_data:
     driver: local
 
 networks:

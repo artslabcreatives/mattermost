@@ -498,6 +498,10 @@ func (ps *PlatformService) initEnterprise() {
 		ps.SearchEngine.RegisterElasticsearchEngine(elasticsearchInterface(ps))
 	}
 
+	if typesenseInterface != nil {
+		ps.SearchEngine.RegisterTypesenseEngine(typesenseInterface(ps))
+	}
+
 	if ldapDiagnosticInterface != nil {
 		ps.ldapDiagnostic = ldapDiagnosticInterface(ps)
 	}
