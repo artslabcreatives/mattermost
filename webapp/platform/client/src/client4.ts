@@ -3707,6 +3707,20 @@ export default class Client4 {
         );
     };
 
+    testTypesense = (config?: AdminConfig) => {
+        return this.doFetch<StatusOK>(
+            `${this.getBaseRoute()}/typesense/test`,
+            {method: 'post', body: JSON.stringify(config)},
+        );
+    };
+
+    purgeTypesenseIndexes = (indexes?: string[]) => {
+        return this.doFetch<StatusOK>(
+            `${this.getBaseRoute()}/typesense/purge_indexes${indexes && indexes.length > 0 ? '?index=' + indexes.join(',') : ''}`,
+            {method: 'post'},
+        );
+    };
+
     purgeBleveIndexes = () => {
         return this.doFetch<StatusOK>(
             `${this.getBaseRoute()}/bleve/purge_indexes`,
