@@ -9,6 +9,12 @@ import (
 	"github.com/mattermost/mattermost/server/v8/platform/services/searchengine"
 )
 
+func init() {
+	platform.RegisterTypesenseInterface(func(s *platform.PlatformService) searchengine.SearchEngineInterface {
+		return &typesense.TypesenseInterfaceImpl{Platform: s}
+	})
+}
+
 func MakeTypesenseInterface(ps *platform.PlatformService) searchengine.SearchEngineInterface {
 	return &typesense.TypesenseInterfaceImpl{
 		Platform: ps,

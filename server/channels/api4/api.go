@@ -92,6 +92,7 @@ type Routes struct {
 	LDAP *mux.Router // 'api/v4/ldap'
 
 	Elasticsearch *mux.Router // 'api/v4/elasticsearch'
+	Typesense     *mux.Router // 'api/v4/typesense'
 
 	DataRetention *mux.Router // 'api/v4/data_retention'
 
@@ -260,6 +261,7 @@ func Init(srv *app.Server) (*API, error) {
 	api.BaseRoutes.Jobs = api.BaseRoutes.APIRoot.PathPrefix("/jobs").Subrouter()
 	api.BaseRoutes.Recaps = api.BaseRoutes.APIRoot.PathPrefix("/recaps").Subrouter()
 	api.BaseRoutes.Elasticsearch = api.BaseRoutes.APIRoot.PathPrefix("/elasticsearch").Subrouter()
+	api.BaseRoutes.Typesense = api.BaseRoutes.APIRoot.PathPrefix("/typesense").Subrouter()
 	api.BaseRoutes.DataRetention = api.BaseRoutes.APIRoot.PathPrefix("/data_retention").Subrouter()
 
 	api.BaseRoutes.Emojis = api.BaseRoutes.APIRoot.PathPrefix("/emoji").Subrouter()
@@ -337,6 +339,7 @@ func Init(srv *app.Server) (*API, error) {
 	api.InitCluster()
 	api.InitLdap()
 	api.InitElasticsearch()
+	api.InitTypesense()
 	api.InitDataRetention()
 	api.InitBrand()
 	api.InitJob()
