@@ -80,6 +80,9 @@ func init() {
 			PermissionReadElasticsearchPostIndexingJob,
 			PermissionReadElasticsearchPostAggregationJob,
 		},
+		PermissionSysconsoleReadEnvironmentTypesense.Id: {
+			PermissionReadTypesensePostIndexingJob,
+		},
 		PermissionSysconsoleWriteEnvironmentWebServer.Id: {
 			PermissionTestSiteURL,
 			PermissionReloadConfig,
@@ -95,6 +98,11 @@ func init() {
 			PermissionCreateElasticsearchPostAggregationJob,
 			PermissionManageElasticsearchPostAggregationJob,
 			PermissionPurgeElasticsearchIndexes,
+		},
+		PermissionSysconsoleWriteEnvironmentTypesense.Id: {
+			PermissionCreateTypesensePostIndexingJob,
+			PermissionManageTypesensePostIndexingJob,
+			PermissionPurgeTypesenseIndexes,
 		},
 		PermissionSysconsoleWriteEnvironmentFileStorage.Id: {
 			PermissionTestS3,

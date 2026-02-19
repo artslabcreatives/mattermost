@@ -154,6 +154,7 @@ var PermissionManagePostBleveIndexesJob *Permission
 var PermissionCreateTypesensePostIndexingJob *Permission
 var PermissionManageTypesensePostIndexingJob *Permission
 var PermissionReadTypesensePostIndexingJob *Permission
+var PermissionPurgeTypesenseIndexes *Permission
 var PermissionCreateLdapSyncJob *Permission
 var PermissionManageLdapSyncJob *Permission
 var PermissionReadLdapSyncJob *Permission
@@ -232,6 +233,9 @@ var PermissionSysconsoleWriteEnvironmentDatabase *Permission
 
 var PermissionSysconsoleReadEnvironmentElasticsearch *Permission
 var PermissionSysconsoleWriteEnvironmentElasticsearch *Permission
+
+var PermissionSysconsoleReadEnvironmentTypesense *Permission
+var PermissionSysconsoleWriteEnvironmentTypesense *Permission
 
 var PermissionSysconsoleReadEnvironmentFileStorage *Permission
 var PermissionSysconsoleWriteEnvironmentFileStorage *Permission
@@ -1153,6 +1157,12 @@ func initializePermissions() {
 		"",
 		PermissionScopeSystem,
 	}
+	PermissionPurgeTypesenseIndexes = &Permission{
+		"purge_typesense_indexes",
+		"",
+		"",
+		PermissionScopeSystem,
+	}
 
 	PermissionRemoveUserFromTeam = &Permission{
 		"remove_user_from_team",
@@ -1582,6 +1592,18 @@ func initializePermissions() {
 	}
 	PermissionSysconsoleWriteEnvironmentElasticsearch = &Permission{
 		"sysconsole_write_environment_elasticsearch",
+		"",
+		"",
+		PermissionScopeSystem,
+	}
+	PermissionSysconsoleReadEnvironmentTypesense = &Permission{
+		"sysconsole_read_environment_typesense",
+		"",
+		"",
+		PermissionScopeSystem,
+	}
+	PermissionSysconsoleWriteEnvironmentTypesense = &Permission{
+		"sysconsole_write_environment_typesense",
 		"",
 		"",
 		PermissionScopeSystem,
@@ -2351,6 +2373,7 @@ func initializePermissions() {
 		PermissionSysconsoleReadEnvironmentWebServer,
 		PermissionSysconsoleReadEnvironmentDatabase,
 		PermissionSysconsoleReadEnvironmentElasticsearch,
+		PermissionSysconsoleReadEnvironmentTypesense,
 		PermissionSysconsoleReadEnvironmentFileStorage,
 		PermissionSysconsoleReadEnvironmentImageProxy,
 		PermissionSysconsoleReadEnvironmentSMTP,
@@ -2410,6 +2433,7 @@ func initializePermissions() {
 		PermissionSysconsoleWriteEnvironmentWebServer,
 		PermissionSysconsoleWriteEnvironmentDatabase,
 		PermissionSysconsoleWriteEnvironmentElasticsearch,
+		PermissionSysconsoleWriteEnvironmentTypesense,
 		PermissionSysconsoleWriteEnvironmentFileStorage,
 		PermissionSysconsoleWriteEnvironmentImageProxy,
 		PermissionSysconsoleWriteEnvironmentSMTP,
@@ -2511,6 +2535,7 @@ func initializePermissions() {
 		PermissionCreateTypesensePostIndexingJob,
 		PermissionManageTypesensePostIndexingJob,
 		PermissionReadTypesensePostIndexingJob,
+		PermissionPurgeTypesenseIndexes,
 		PermissionCreateLdapSyncJob,
 		PermissionManageLdapSyncJob,
 		PermissionReadLdapSyncJob,

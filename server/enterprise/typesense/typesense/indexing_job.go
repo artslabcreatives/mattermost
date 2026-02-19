@@ -164,10 +164,6 @@ func (worker *IndexerWorker) JobChannel() chan<- model.Job {
 }
 
 func (worker *IndexerWorker) IsEnabled(cfg *model.Config) bool {
-	if license := worker.license(); license == nil {
-		return false
-	}
-
 	if *cfg.TypesenseSettings.EnableIndexing {
 		return true
 	}

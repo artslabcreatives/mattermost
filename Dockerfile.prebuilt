@@ -1,20 +1,5 @@
-# ----------- Build backend only -----------
-FROM golang:1.24-bookworm AS builder
-
-WORKDIR /build
-
-# Copy source
-COPY . .
-
-# Build backend only (just the binaries, not the full package)
-WORKDIR /build/server
-RUN make setup-go-work build-linux-amd64 BUILD_NUMBER=custom BUILD_TAGS="sourceavailable" BUILD_ENTERPRISE_DIR=./enterprise
-
-# Build mmctl
-RUN make mmctl-build
-
-
-# ----------- Runtime image -----------
+# ----------- Runtime image (binaries pre-built on host) -----------
+# Run ./deploy.sh (or build-server.sh) on the host before building this image.
 FROM ubuntu:noble-20251013@sha256:c35e29c9450151419d9448b0fd75374fec4fff364a27f176fb458d472dfc9e54
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -40,16 +25,16 @@ RUN mkdir -p /mattermost/data /mattermost/plugins /mattermost/client/plugins /ma
   && groupadd --gid ${PGID} mattermost \
   && useradd --uid ${PUID} --gid ${PGID} --comment "" --home-dir /mattermost mattermost
 
-# Copy backend binary
-COPY --from=builder --chown=2000:2000 /build/server/bin/mattermost /mattermost/bin/mattermost
+# Copy backend binary (built on host via build-server.sh)
+COPY --chown=2000:2000 server/bin/mattermost /mattermost/bin/mattermost
 
 # Copy mmctl
-COPY --from=builder --chown=2000:2000 /build/server/bin/mmctl /mattermost/bin/mmctl
+COPY --chown=2000:2000 server/bin/mmctl /mattermost/bin/mmctl
 
 # Copy server files needed at runtime
-COPY --from=builder --chown=2000:2000 /build/server/i18n /mattermost/i18n
-COPY --from=builder --chown=2000:2000 /build/server/templates /mattermost/templates
-COPY --from=builder --chown=2000:2000 /build/server/fonts /mattermost/fonts
+COPY --chown=2000:2000 server/i18n /mattermost/i18n
+COPY --chown=2000:2000 server/templates /mattermost/templates
+COPY --chown=2000:2000 server/fonts /mattermost/fonts
 
 # 🔥 Copy your locally built frontend
 COPY --chown=2000:2000 webapp/channels/dist /mattermost/client

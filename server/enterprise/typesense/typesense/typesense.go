@@ -6,6 +6,7 @@ package typesense
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -233,7 +234,7 @@ func (ts *TypesenseInterfaceImpl) IndexPost(post *model.Post, teamID string) *mo
 		"channel_id": post.ChannelId,
 		"user_id":    post.UserId,
 		"message":    post.Message,
-		"hashtags":   post.Hashtags,
+		"hashtags":   strings.Fields(post.Hashtags),
 		"create_at":  post.CreateAt,
 		"update_at":  post.UpdateAt,
 		"delete_at":  post.DeleteAt,
@@ -359,7 +360,7 @@ func (ts *TypesenseInterfaceImpl) SyncBulkIndexPosts(posts []*model.PostForIndex
 				"channel_id": post.ChannelId,
 				"user_id":    post.UserId,
 				"message":    post.Message,
-				"hashtags":   post.Hashtags,
+				"hashtags":   strings.Fields(post.Hashtags),
 				"create_at":  post.CreateAt,
 				"update_at":  post.UpdateAt,
 				"delete_at":  post.DeleteAt,

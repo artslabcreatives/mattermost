@@ -44,7 +44,32 @@ fi
 echo "✓ Docker and Docker Compose are available"
 echo ""
 
-# Validate configuration
+# ── Build server on host ────────────────────────────────────────────
+echo "Building Mattermost server on host..."
+echo ""
+
+cd server
+if ! make setup-go-work; then
+    echo "❌ go work setup failed"
+    exit 1
+fi
+
+if ! make build-linux-amd64 BUILD_NUMBER=custom BUILD_TAGS="sourceavailable" BUILD_ENTERPRISE_DIR=./enterprise; then
+    echo "❌ Server build failed — aborting deployment"
+    exit 1
+fi
+
+if ! make mmctl-build; then
+    echo "❌ mmctl build failed — aborting deployment"
+    exit 1
+fi
+
+cd ..
+echo ""
+echo "✓ Server built successfully → server/bin/mattermost"
+echo ""
+
+# ── Validate Docker Compose config ─────────────────────────────────
 echo "Validating Docker Compose configuration..."
 if docker compose -f docker-compose.prod.yml config > /dev/null 2>&1; then
     echo "✓ Configuration is valid"
@@ -57,8 +82,27 @@ echo ""
 echo "Starting deployment..."
 echo ""
 
-# Build and start services
+# Build image (no Go compile inside Docker) and start services
 docker compose -f docker-compose.prod.yml up -d --build
+
+# ── Patch DB roles with any new permissions ─────────────────────────
+echo ""
+echo "Patching role permissions in database..."
+source .env
+PGPASSWORD="${POSTGRES_PASSWORD}" psql -h localhost -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQLEOF'
+UPDATE roles SET permissions = permissions ||
+  ' sysconsole_read_environment_typesense sysconsole_write_environment_typesense'
+  ' create_typesense_post_indexing_job manage_typesense_post_indexing_job'
+  ' read_typesense_post_indexing_job purge_typesense_indexes'
+WHERE name IN ('system_admin','system_manager')
+  AND permissions NOT LIKE '%create_typesense_post_indexing_job%';
+
+UPDATE roles SET permissions = permissions ||
+  ' sysconsole_read_environment_typesense read_typesense_post_indexing_job'
+WHERE name = 'system_read_only_admin'
+  AND permissions NOT LIKE '%read_typesense_post_indexing_job%';
+SQLEOF
+echo "✓ Role permissions up to date"
 
 echo ""
 echo "================================"
