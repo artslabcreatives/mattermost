@@ -141,6 +141,26 @@ const SearchBox = forwardRef(
 			};
 		}, [inputRef.current]);
 
+		// Auto-search with debounce when search terms change
+		useEffect(() => {
+			// Configuration values - TODO: get from config
+			const debounceMs = 300; // Default 300ms
+			const minChars = 3; // Default 3 characters
+
+			// Only trigger auto-search if search terms meet minimum length
+			if (searchTerms.trim().length < minChars) {
+				return;
+			}
+
+			// Debounce the search trigger
+			const timeoutId = setTimeout(() => {
+				onSearch(searchType, searchTeam, searchTerms);
+			}, debounceMs);
+
+			// Cleanup timeout on unmount or when searchTerms/searchType/searchTeam changes
+			return () => clearTimeout(timeoutId);
+		}, [searchTerms, searchType, searchTeam, onSearch]);
+
 		const results = useSearchSuggestions(
 			searchType,
 			searchTerms,
