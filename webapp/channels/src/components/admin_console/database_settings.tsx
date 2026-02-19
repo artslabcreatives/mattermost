@@ -410,17 +410,21 @@ export default class DatabaseSettings extends OLDAdminSettings<Props, State> {
                         />
                     </label>
                     <div className='col-sm-8'>
-                        <input
+                        <select
                             id='activeSearchBackend'
-                            type='text'
                             className='form-control'
                             value={this.state.searchBackend}
                             disabled={true}
-                        />
+                        >
+                            <option value='none'>{'none'}</option>
+                            <option value='database'>{'database'}</option>
+                            <option value='elasticsearch'>{'elasticsearch'}</option>
+                            <option value='typesense'>{'typesense'}</option>
+                        </select>
                         <div className='help-text'>
                             <FormattedMessage
                                 id='admin.database.search_backend.help_text'
-                                defaultMessage='Shows the currently active backend used for search. Values can be none, database, elasticsearch.'
+                                defaultMessage='Shows the currently active backend used for search. Values can be none, database, elasticsearch, or typesense.'
                             />
                         </div>
                     </div>
