@@ -409,6 +409,8 @@ type ServiceSettings struct {
 	EnablePostSearch                                  *bool   `access:"write_restrictable,cloud_restrictable"`
 	EnableFileSearch                                  *bool   `access:"write_restrictable"`
 	MinimumHashtagLength                              *int    `access:"environment_database,write_restrictable,cloud_restrictable"`
+	SearchDebounceMilliseconds                        *int    `access:"experimental_features"`
+	MinimumSearchTermLength                           *int    `access:"experimental_features"`
 	EnableUserTypingMessages                          *bool   `access:"experimental_features,write_restrictable,cloud_restrictable"`
 	EnableChannelViewedMessages                       *bool   `access:"experimental_features,write_restrictable,cloud_restrictable"`
 	EnableUserStatuses                                *bool   `access:"write_restrictable,cloud_restrictable"`
@@ -658,6 +660,14 @@ func (s *ServiceSettings) SetDefaults(isUpdate bool) {
 
 	if s.MinimumHashtagLength == nil {
 		s.MinimumHashtagLength = NewPointer(3)
+	}
+
+	if s.SearchDebounceMilliseconds == nil {
+		s.SearchDebounceMilliseconds = NewPointer(300)
+	}
+
+	if s.MinimumSearchTermLength == nil {
+		s.MinimumSearchTermLength = NewPointer(3)
 	}
 
 	if s.EnableUserTypingMessages == nil {

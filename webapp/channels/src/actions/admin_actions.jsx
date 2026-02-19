@@ -379,6 +379,24 @@ export async function elasticsearchPurgeIndexes(success, error, indexes) {
     }
 }
 
+export async function typesenseTest(config, success, error) {
+    const {data, error: err} = await dispatch(AdminActions.testTypesense(config));
+    if (data && success) {
+        success(data);
+    } else if (err && error) {
+        error({id: err.server_error_id, ...err});
+    }
+}
+
+export async function typesensePurgeIndexes(success, error, indexes) {
+    const {data, error: err} = await dispatch(AdminActions.purgeTypesenseIndexes(indexes));
+    if (data && success) {
+        success(data);
+    } else if (err && error) {
+        error({id: err.server_error_id, ...err});
+    }
+}
+
 export async function jobCreate(success, error, job) {
     const {data, error: err} = await dispatch(createJob(job));
     if (data && success) {

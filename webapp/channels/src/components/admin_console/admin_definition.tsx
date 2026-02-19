@@ -69,6 +69,7 @@ import {searchableStrings as dataRetentionSearchableStrings} from './data_retent
 import GlobalDataRetentionForm from './data_retention_settings/global_policy_form';
 import DatabaseSettings, {searchableStrings as databaseSearchableStrings} from './database_settings';
 import ElasticSearchSettings, {searchableStrings as elasticSearchSearchableStrings} from './elasticsearch_settings';
+import TypesenseSettings, {searchableStrings as typesenseSearchableStrings} from './typesense_settings';
 import {
     AnnouncementBannerFeatureDiscovery,
     ComplianceExportFeatureDiscovery,
@@ -1011,6 +1012,20 @@ const AdminDefinition: AdminDefinitionType = {
                 schema: {
                     id: 'ElasticSearchSettings',
                     component: ElasticSearchSettings,
+                },
+            },
+            typesense: {
+                url: 'environment/typesense',
+                title: defineMessage({id: 'admin.sidebar.typesense', defaultMessage: 'Typesense'}),
+                isHidden: it.any(
+                    it.configIsTrue('ExperimentalSettings', 'RestrictSystemAdmin'),
+                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.ELASTICSEARCH)),
+                ),
+                searchableStrings: typesenseSearchableStrings,
+                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.ELASTICSEARCH)),
+                schema: {
+                    id: 'TypesenseSettings',
+                    component: TypesenseSettings,
                 },
             },
             storage: {

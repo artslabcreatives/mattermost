@@ -418,6 +418,24 @@ export function purgeElasticsearchIndexes(indexes?: string[]) {
     });
 }
 
+export function testTypesense(config?: AdminConfig) {
+    return bindClientFunc({
+        clientFunc: Client4.testTypesense,
+        params: [
+            config,
+        ],
+    });
+}
+
+export function purgeTypesenseIndexes(indexes?: string[]) {
+    return bindClientFunc({
+        clientFunc: Client4.purgeTypesenseIndexes,
+        params: [
+            indexes,
+        ],
+    });
+}
+
 export function uploadLicense(fileData: File) {
     return bindClientFunc({
         clientFunc: Client4.uploadLicense,
