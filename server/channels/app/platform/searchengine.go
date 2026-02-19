@@ -9,9 +9,19 @@ import (
 )
 
 func (ps *PlatformService) StartSearchEngine() (string, string) {
+	// Start Elasticsearch if enabled
 	if ps.SearchEngine.ElasticsearchEngine != nil && ps.SearchEngine.ElasticsearchEngine.IsEnabled() {
 		ps.Go(func() {
 			if err := ps.SearchEngine.ElasticsearchEngine.Start(); err != nil {
+				ps.Log().Error(err.Error())
+			}
+		})
+	}
+
+	// Start Typesense if enabled
+	if ps.SearchEngine.TypesenseEngine != nil && ps.SearchEngine.TypesenseEngine.IsEnabled() {
+		ps.Go(func() {
+			if err := ps.SearchEngine.TypesenseEngine.Start(); err != nil {
 				ps.Log().Error(err.Error())
 			}
 		})
@@ -26,6 +36,7 @@ func (ps *PlatformService) StartSearchEngine() (string, string) {
 			ps.Log().Error("Failed to update search engine config", mlog.Err(err))
 		}
 
+		// Elasticsearch configuration changes
 		if ps.SearchEngine.ElasticsearchEngine != nil && !*oldConfig.ElasticsearchSettings.EnableIndexing && *newConfig.ElasticsearchSettings.EnableIndexing {
 			ps.Go(func() {
 				if err := ps.SearchEngine.ElasticsearchEngine.Start(); err != nil {
@@ -45,6 +56,32 @@ func (ps *PlatformService) StartSearchEngine() (string, string) {
 						ps.Log().Error(err.Error())
 					}
 					if err := ps.SearchEngine.ElasticsearchEngine.Start(); err != nil {
+						ps.Log().Error(err.Error())
+					}
+				}
+			})
+		}
+
+		// Typesense configuration changes
+		if ps.SearchEngine.TypesenseEngine != nil && !*oldConfig.TypesenseSettings.EnableIndexing && *newConfig.TypesenseSettings.EnableIndexing {
+			ps.Go(func() {
+				if err := ps.SearchEngine.TypesenseEngine.Start(); err != nil {
+					ps.Log().Error(err.Error())
+				}
+			})
+		} else if ps.SearchEngine.TypesenseEngine != nil && *oldConfig.TypesenseSettings.EnableIndexing && !*newConfig.TypesenseSettings.EnableIndexing {
+			ps.Go(func() {
+				if err := ps.SearchEngine.TypesenseEngine.Stop(); err != nil {
+					ps.Log().Error(err.Error())
+				}
+			})
+		} else if ps.SearchEngine.TypesenseEngine != nil && (*oldConfig.TypesenseSettings.APIKey != *newConfig.TypesenseSettings.APIKey || *oldConfig.TypesenseSettings.ConnectionURL != *newConfig.TypesenseSettings.ConnectionURL) {
+			ps.Go(func() {
+				if *oldConfig.TypesenseSettings.EnableIndexing {
+					if err := ps.SearchEngine.TypesenseEngine.Stop(); err != nil {
+						ps.Log().Error(err.Error())
+					}
+					if err := ps.SearchEngine.TypesenseEngine.Start(); err != nil {
 						ps.Log().Error(err.Error())
 					}
 				}
