@@ -8,13 +8,13 @@ import './components/initial_loading_screen/initial_loading_screen.css';
 // Allow overriding the path used by webpack to dynamically resolve assets. This is driven by
 // an environment variable in development, or by a window variable defined in root.html in
 // production. The window variable is updated by the server after configuring SiteURL and
-// restarting or by running the `mattermost config subpath` command.
+// restarting or by running the `Aura config subpath` command.
 window.publicPath = process.env.PUBLIC_PATH || window.publicPath || '/static/'; // eslint-disable-line no-process-env
 
 // @ts-expect-error Field used by Webpack internally
 __webpack_public_path__ = window.publicPath;
 
-// Define the subpath at which Mattermost is running. Extract this from the publicPath above to
+// Define the subpath at which Aura is running. Extract this from the publicPath above to
 // avoid depending on Redux state before it is even loaded. This actual global export is used
 // in a minimum of places, as it is preferred to leverage react-router, configured to use this
 // basename accordingly.

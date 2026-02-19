@@ -1,18 +1,18 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
 import type { MessageDescriptor } from 'react-intl';
 import { FormattedMessage, defineMessage, defineMessages } from 'react-intl';
 
-import type { AdminConfig } from '@mattermost/types/config';
+import type { AdminConfig } from '@Aura/types/config';
 
 import { typesensePurgeIndexes, typesenseTest } from 'actions/admin_actions.jsx';
 
 import ExternalLink from 'components/external_link';
 
 import { DocLinks, JobTypes } from 'utils/constants';
-import type { JobType } from '@mattermost/types/jobs';
+import type { JobType } from '@Aura/types/jobs';
 import JobsTable from './jobs';
 
 import BooleanSetting from './boolean_setting';
@@ -54,7 +54,7 @@ export const messages = defineMessages({
 	liveIndexingBatchSizeDescription: { id: 'admin.typesense.liveIndexingBatchSizeDescription', defaultMessage: 'Number of documents to index in a single batch during live indexing.' },
 	batchSizeTitle: { id: 'admin.typesense.batchSizeTitle', defaultMessage: 'Bulk Indexing Batch Size:' },
 	batchSizeDescription: { id: 'admin.typesense.batchSizeDescription', defaultMessage: 'Number of documents to index in a single batch during bulk indexing operations.' },
-	testHelpText: { id: 'admin.typesense.testHelpText', defaultMessage: 'Tests if the Mattermost server can connect to the Typesense server specified. Testing the connection only saves the configuration if the test is successful.' },
+	testHelpText: { id: 'admin.typesense.testHelpText', defaultMessage: 'Tests if the Aura server can connect to the Typesense server specified. Testing the connection only saves the configuration if the test is successful.' },
 	typesense_test_button: { id: 'admin.typesense.typesense_test_button', defaultMessage: 'Test Connection' },
 	purgeIndexesHelpText: { id: 'admin.typesense.purgeIndexesHelpText', defaultMessage: 'Purging will entirely remove the indexes on the Typesense server. Search results may be incomplete until a bulk index of the existing database is rebuilt.' },
 	purgeIndexesButton: { id: 'admin.typesense.purgeIndexesButton', defaultMessage: 'Purge Indexes' },

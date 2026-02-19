@@ -334,7 +334,7 @@ export default class LicenseSettings extends React.PureComponent<Props, State> {
 			);
 		} else {
 			// Note: DO NOT LOCALISE THESE STRINGS. Legally we can not since the license is in English.
-			// This is Mattermost Starter (Already downloaded the binary but no license has been set, or ended the trial period)
+			// This is Aura Starter (Already downloaded the binary but no license has been set, or ended the trial period)
 			leftPanel = (
 				<StarterLeftPanel
 					openEELicenseModal={this.openEELicenseModal}

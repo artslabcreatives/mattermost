@@ -962,7 +962,7 @@ defineMessages({
 	},
 	socketError: {
 		id: 'channel_loader.socketError',
-		defaultMessage: 'Please check connection, Mattermost unreachable. If issue persists, ask administrator to [check WebSocket port](!https://docs.mattermost.com/install/troubleshooting.html#please-check-connection-mattermost-unreachable-if-issue-persists-ask-administrator-to-check-websocket-port).',
+		defaultMessage: 'Please check connection, Aura unreachable. If issue persists, ask administrator to [check WebSocket port](!https://docs.mattermost.com/install/troubleshooting.html#please-check-connection-mattermost-unreachable-if-issue-persists-ask-administrator-to-check-websocket-port).',
 	},
 	trialLicenseExpiring: {
 		id: 'announcement_bar.error.trial_license_expiring',
