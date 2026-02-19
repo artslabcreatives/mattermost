@@ -43,7 +43,7 @@ func (a *App) TestTypesense(rctx request.CTX, cfg *model.Config) *model.AppError
 
 	seI := a.SearchEngine().TypesenseEngine
 	if seI == nil {
-		err := model.NewAppError("TestTypesense", "ent.typesense.test_config.license.error", nil, "", http.StatusNotImplemented)
+		err := model.NewAppError("TestTypesense", "ent.typesense.test_config.not_available.error", nil, "", http.StatusNotImplemented)
 		return err
 	}
 	if err := seI.TestConfig(rctx, cfg); err != nil {
@@ -77,7 +77,7 @@ func (a *App) PurgeElasticsearchIndexes(rctx request.CTX, indexes []string) *mod
 func (a *App) PurgeTypesenseIndexes(rctx request.CTX, indexes []string) *model.AppError {
 	engine := a.SearchEngine().TypesenseEngine
 	if engine == nil {
-		err := model.NewAppError("PurgeTypesenseIndexes", "ent.typesense.test_config.license.error", nil, "", http.StatusNotImplemented)
+		err := model.NewAppError("PurgeTypesenseIndexes", "ent.typesense.test_config.not_available.error", nil, "", http.StatusNotImplemented)
 		return err
 	}
 

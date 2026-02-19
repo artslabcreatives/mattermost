@@ -8773,6 +8773,26 @@
     "translation": "The Search Server URL or Username has changed. Please re-enter the password to test connection."
   },
   {
+    "id": "ent.typesense.not_started",
+    "translation": "Typesense engine is not started."
+  },
+  {
+    "id": "ent.typesense.start.health_check_failed",
+    "translation": "Failed to connect to Typesense server. Please check your connection settings."
+  },
+  {
+    "id": "ent.typesense.test_config.health_check_failed",
+    "translation": "Failed to connect to Typesense server. Please check your configuration."
+  },
+  {
+    "id": "ent.typesense.test_config.not_available.error",
+    "translation": "Typesense search engine is not available."
+  },
+  {
+    "id": "ent.typesense.test_config.reenter_apikey",
+    "translation": "The Typesense Server URL has changed. Please re-enter the API Key to test connection."
+  },
+  {
     "id": "ent.id_loaded.license_disable.app_error",
     "translation": "Your license does not support ID Loaded Push Notifications."
   },

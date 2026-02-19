@@ -60,7 +60,7 @@ func (ts *TypesenseInterfaceImpl) IsIndexingSync() bool {
 }
 
 func (ts *TypesenseInterfaceImpl) Start() *model.AppError {
-	if license := ts.Platform.License(); license == nil || !*ts.Platform.Config().TypesenseSettings.EnableIndexing {
+	if !*ts.Platform.Config().TypesenseSettings.EnableIndexing {
 		return nil
 	}
 
