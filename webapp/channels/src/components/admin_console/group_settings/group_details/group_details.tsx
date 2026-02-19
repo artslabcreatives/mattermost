@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -754,7 +754,7 @@ class GroupDetails extends React.PureComponent<Props, State> {
                         <AdminPanel
                             id='group_users'
                             title={defineMessage({id: 'admin.group_settings.group_detail.groupUsersTitle', defaultMessage: 'Users'})}
-                            subtitle={defineMessage({id: 'admin.group_settings.group_detail.groupUsersDescription', defaultMessage: 'Listing of users in Mattermost associated with this group.'})}
+                            subtitle={defineMessage({id: 'admin.group_settings.group_detail.groupUsersDescription', defaultMessage: 'Listing of users in Aura associated with this group.'})}
                         >
                             <GroupUsers
                                 members={members}

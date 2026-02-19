@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -71,7 +71,7 @@ class UserGuideDropdown extends React.PureComponent<Props, State> {
                     id='mattermostUserGuideLink'
                     iconClassName='icon-file-text-outline'
                     url={mattermostUserGuideLink}
-                    text={intl.formatMessage({id: 'userGuideHelp.mattermostUserGuide', defaultMessage: 'Mattermost user guide'})}
+                    text={intl.formatMessage({id: 'userGuideHelp.mattermostUserGuide', defaultMessage: 'Aura user guide'})}
                 />
                 {this.props.helpLink && (
                     <Menu.ItemExternalLink

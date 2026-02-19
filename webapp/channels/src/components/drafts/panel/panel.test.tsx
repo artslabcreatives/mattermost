@@ -1,28 +1,28 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {shallow} from 'enzyme';
+import { shallow } from 'enzyme';
 import React from 'react';
 
 import Panel from './panel';
 
 describe('components/drafts/panel/', () => {
-    function Component() {
-        return null;
-    }
-    const baseProps = {
-        children: <Component/>,
-        onClick: jest.fn(),
-        hasError: false,
-    };
+	function Component() {
+		return null;
+	}
+	const baseProps = {
+		children: <Component />,
+		onClick: jest.fn(),
+		hasError: false,
+	};
 
-    it('should match snapshot', () => {
-        const wrapper = shallow(
-            <Panel
-                {...baseProps}
-            />,
-        );
+	it('should match snapshot', () => {
+		const wrapper = shallow(
+			<Panel
+				{...baseProps}
+			/>,
+		);
 
-        expect(wrapper).toMatchSnapshot();
-    });
+		expect(wrapper).toMatchSnapshot();
+	});
 });

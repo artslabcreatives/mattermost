@@ -1,8 +1,8 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {useIntl, FormattedMessage} from 'react-intl';
+import { useIntl, FormattedMessage } from 'react-intl';
 import styled from 'styled-components';
 
 import useCopyText from 'components/common/hooks/useCopyText';
@@ -77,143 +77,143 @@ const CopyButton = styled(Button)`
 `;
 
 export interface Props {
-    channelType: string;
-    channelURL?: string;
+	channelType: string;
+	channelURL?: string;
 
-    isFavorite: boolean;
-    isMuted: boolean;
-    isInvitingPeople: boolean;
+	isFavorite: boolean;
+	isMuted: boolean;
+	isInvitingPeople: boolean;
 
-    canAddPeople: boolean;
+	canAddPeople: boolean;
 
-    actions: {
-        toggleFavorite: () => void;
-        toggleMute: () => void;
-        addPeople: () => void;
-    };
+	actions: {
+		toggleFavorite: () => void;
+		toggleMute: () => void;
+		addPeople: () => void;
+	};
 }
 
 export default function TopButtons({
-    channelType,
-    channelURL,
-    isFavorite,
-    isMuted,
-    isInvitingPeople,
-    canAddPeople: propsCanAddPeople,
-    actions,
+	channelType,
+	channelURL,
+	isFavorite,
+	isMuted,
+	isInvitingPeople,
+	canAddPeople: propsCanAddPeople,
+	actions,
 }: Props) {
-    const {formatMessage} = useIntl();
+	const { formatMessage } = useIntl();
 
-    const copyLink = useCopyText({
-        text: channelURL || '',
-        successCopyTimeout: 1000,
-    });
+	const copyLink = useCopyText({
+		text: channelURL || '',
+		successCopyTimeout: 1000,
+	});
 
-    const canAddPeople = ([Constants.OPEN_CHANNEL, Constants.PRIVATE_CHANNEL].includes(channelType) && propsCanAddPeople) || channelType === Constants.GM_CHANNEL;
+	const canAddPeople = ([Constants.OPEN_CHANNEL, Constants.PRIVATE_CHANNEL].includes(channelType) && propsCanAddPeople) || channelType === Constants.GM_CHANNEL;
 
-    const canCopyLink = [Constants.OPEN_CHANNEL, Constants.PRIVATE_CHANNEL].includes(channelType);
+	const canCopyLink = [Constants.OPEN_CHANNEL, Constants.PRIVATE_CHANNEL].includes(channelType);
 
-    // Favorite Button State
-    const favoriteIcon = isFavorite ? 'icon-star' : 'icon-star-outline';
-    const favoriteText = isFavorite ? formatMessage({id: 'channel_info_rhs.top_buttons.favorited', defaultMessage: 'Favorited'}) : formatMessage({id: 'channel_info_rhs.top_buttons.favorite', defaultMessage: 'Favorite'});
+	// Favorite Button State
+	const favoriteIcon = isFavorite ? 'icon-star' : 'icon-star-outline';
+	const favoriteText = isFavorite ? formatMessage({ id: 'channel_info_rhs.top_buttons.favorited', defaultMessage: 'Favorited' }) : formatMessage({ id: 'channel_info_rhs.top_buttons.favorite', defaultMessage: 'Favorite' });
 
-    // Mute Button State
-    const mutedIcon = isMuted ? 'icon-bell-off-outline' : 'icon-bell-outline';
-    const mutedText = isMuted ? formatMessage({id: 'channel_info_rhs.top_buttons.muted', defaultMessage: 'Muted'}) : formatMessage({id: 'channel_info_rhs.top_buttons.mute', defaultMessage: 'Mute'});
+	// Mute Button State
+	const mutedIcon = isMuted ? 'icon-bell-off-outline' : 'icon-bell-outline';
+	const mutedText = isMuted ? formatMessage({ id: 'channel_info_rhs.top_buttons.muted', defaultMessage: 'Muted' }) : formatMessage({ id: 'channel_info_rhs.top_buttons.mute', defaultMessage: 'Mute' });
 
-    // Copy Button State
-    const copyIcon = copyLink.copiedRecently ? 'icon-check' : 'icon-link-variant';
-    const copyText = copyLink.copiedRecently ? formatMessage({id: 'channel_info_rhs.top_buttons.copied', defaultMessage: 'Copied'}) : formatMessage({id: 'channel_info_rhs.top_buttons.copy', defaultMessage: 'Copy Link'});
+	// Copy Button State
+	const copyIcon = copyLink.copiedRecently ? 'icon-check' : 'icon-link-variant';
+	const copyText = copyLink.copiedRecently ? formatMessage({ id: 'channel_info_rhs.top_buttons.copied', defaultMessage: 'Copied' }) : formatMessage({ id: 'channel_info_rhs.top_buttons.copy', defaultMessage: 'Copy Link' });
 
-    return (
-        <ChannelInfoRhsTopButtons>
-            <WithTooltip
-                title={
-                    <FormattedMessage
-                        id='channel_info_rhs.top_buttons.favorite.tooltip'
-                        defaultMessage='Add this channel to favorites'
-                    />
-                }
-            >
-                <Button
-                    onClick={actions.toggleFavorite}
-                    className={isFavorite ? 'active' : ''}
-                    aria-label={favoriteText}
-                    id='channelInfoRHSAddFavoriteButton'
-                >
-                    <div>
-                        <i className={'icon ' + favoriteIcon}/>
-                    </div>
-                    <span>{favoriteText}</span>
-                </Button>
-            </WithTooltip>
-            <WithTooltip
-                title={
-                    <FormattedMessage
-                        id='channel_info_rhs.top_buttons.mute.tooltip'
-                        defaultMessage='Mute notifications for this channel'
-                    />
-                }
-            >
-                <Button
-                    onClick={actions.toggleMute}
-                    className={isMuted ? 'active' : ''}
-                    aria-label={mutedText}
-                    id='channelInfoRHSMuteChannelButton'
-                >
-                    <div>
-                        <i className={'icon ' + mutedIcon}/>
-                    </div>
-                    <span>{mutedText}</span>
-                </Button>
-            </WithTooltip>
-            {canAddPeople && (
-                <WithTooltip
-                    title={
-                        <FormattedMessage
-                            id='channel_info_rhs.top_buttons.add_people.tooltip'
-                            defaultMessage='Add team members to this channel'
-                        />
-                    }
-                >
-                    <Button
-                        onClick={actions.addPeople}
-                        className={isInvitingPeople ? 'active' : ''}
-                        id='channelInfoRHSAddPeopleButton'
-                    >
-                        <div>
-                            <i className='icon icon-account-plus-outline'/>
-                        </div>
-                        <span>
-                            <FormattedMessage
-                                id='channel_info_rhs.top_buttons.add_people'
-                                defaultMessage='Add People'
-                            />
-                        </span>
-                    </Button>
-                </WithTooltip>
-            )}
-            {canCopyLink && (
-                <WithTooltip
-                    title={
-                        <FormattedMessage
-                            id='channel_info_rhs.top_buttons.copy_link.tooltip'
-                            defaultMessage='Copy link to this channel'
-                        />
-                    }
-                >
-                    <CopyButton
-                        onClick={copyLink.onClick}
-                        className={copyLink.copiedRecently ? 'success' : ''}
-                        aria-label={copyText}
-                    >
-                        <div>
-                            <i className={'icon ' + copyIcon}/>
-                        </div>
-                        <span>{copyText}</span>
-                    </CopyButton>
-                </WithTooltip>
-            )}
-        </ChannelInfoRhsTopButtons>
-    );
+	return (
+		<ChannelInfoRhsTopButtons>
+			<WithTooltip
+				title={
+					<FormattedMessage
+						id='channel_info_rhs.top_buttons.favorite.tooltip'
+						defaultMessage='Add this channel to favorites'
+					/>
+				}
+			>
+				<Button
+					onClick={actions.toggleFavorite}
+					className={isFavorite ? 'active' : ''}
+					aria-label={favoriteText}
+					id='channelInfoRHSAddFavoriteButton'
+				>
+					<div>
+						<i className={'icon ' + favoriteIcon} />
+					</div>
+					<span>{favoriteText}</span>
+				</Button>
+			</WithTooltip>
+			<WithTooltip
+				title={
+					<FormattedMessage
+						id='channel_info_rhs.top_buttons.mute.tooltip'
+						defaultMessage='Mute notifications for this channel'
+					/>
+				}
+			>
+				<Button
+					onClick={actions.toggleMute}
+					className={isMuted ? 'active' : ''}
+					aria-label={mutedText}
+					id='channelInfoRHSMuteChannelButton'
+				>
+					<div>
+						<i className={'icon ' + mutedIcon} />
+					</div>
+					<span>{mutedText}</span>
+				</Button>
+			</WithTooltip>
+			{canAddPeople && (
+				<WithTooltip
+					title={
+						<FormattedMessage
+							id='channel_info_rhs.top_buttons.add_people.tooltip'
+							defaultMessage='Add team members to this channel'
+						/>
+					}
+				>
+					<Button
+						onClick={actions.addPeople}
+						className={isInvitingPeople ? 'active' : ''}
+						id='channelInfoRHSAddPeopleButton'
+					>
+						<div>
+							<i className='icon icon-account-plus-outline' />
+						</div>
+						<span>
+							<FormattedMessage
+								id='channel_info_rhs.top_buttons.add_people'
+								defaultMessage='Add People'
+							/>
+						</span>
+					</Button>
+				</WithTooltip>
+			)}
+			{canCopyLink && (
+				<WithTooltip
+					title={
+						<FormattedMessage
+							id='channel_info_rhs.top_buttons.copy_link.tooltip'
+							defaultMessage='Copy link to this channel'
+						/>
+					}
+				>
+					<CopyButton
+						onClick={copyLink.onClick}
+						className={copyLink.copiedRecently ? 'success' : ''}
+						aria-label={copyText}
+					>
+						<div>
+							<i className={'icon ' + copyIcon} />
+						</div>
+						<span>{copyText}</span>
+					</CopyButton>
+				</WithTooltip>
+			)}
+		</ChannelInfoRhsTopButtons>
+	);
 }

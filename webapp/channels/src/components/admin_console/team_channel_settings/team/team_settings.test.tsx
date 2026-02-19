@@ -1,18 +1,18 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {shallow} from 'enzyme';
+import { shallow } from 'enzyme';
 import React from 'react';
 
-import {TeamsSettings} from './team_settings';
+import { TeamsSettings } from './team_settings';
 
 describe('admin_console/team_channel_settings/team/TeamSettings', () => {
-    test('should match snapshot', () => {
-        const wrapper = shallow(
-            <TeamsSettings
-                siteName='site'
-            />,
-        );
-        expect(wrapper).toMatchSnapshot();
-    });
+	test('should match snapshot', () => {
+		const wrapper = shallow(
+			<TeamsSettings
+				siteName='site'
+			/>,
+		);
+		expect(wrapper).toMatchSnapshot();
+	});
 });

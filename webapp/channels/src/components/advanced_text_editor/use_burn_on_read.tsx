@@ -1,15 +1,15 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useCallback, useMemo} from 'react';
-import {useSelector} from 'react-redux';
+import React, { useCallback, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 
-import {PostTypes} from 'mattermost-redux/constants/posts';
+import { PostTypes } from 'mattermost-redux/constants/posts';
 
 import {
-    isBurnOnReadEnabled,
-    getBurnOnReadDurationMinutes,
-    canUserSendBurnOnRead,
+	isBurnOnReadEnabled,
+	getBurnOnReadDurationMinutes,
+	canUserSendBurnOnRead,
 } from 'selectors/burn_on_read';
 
 import BurnOnReadButton from 'components/burn_on_read/burn_on_read_button';
@@ -18,7 +18,7 @@ import BurnOnReadTourTip from 'components/burn_on_read/burn_on_read_tour_tip';
 
 import 'components/burn_on_read/burn_on_read_control.scss';
 
-import type {PostDraft} from 'types/store/draft';
+import type { PostDraft } from 'types/store/draft';
 
 /**
  * Hook that manages Burn-on-Read functionality in the message composer.
@@ -33,71 +33,71 @@ import type {PostDraft} from 'types/store/draft';
  * @returns Object containing label and control components, plus handlers
  */
 const useBurnOnRead = (
-    draft: PostDraft,
-    handleDraftChange: (draft: PostDraft, options: {instant?: boolean; show?: boolean}) => void,
-    focusTextbox: (keepFocus?: boolean) => void,
-    shouldShowPreview: boolean,
-    showIndividualCloseButton = true,
+	draft: PostDraft,
+	handleDraftChange: (draft: PostDraft, options: { instant?: boolean; show?: boolean }) => void,
+	focusTextbox: (keepFocus?: boolean) => void,
+	shouldShowPreview: boolean,
+	showIndividualCloseButton = true,
 ) => {
-    const rootId = draft.rootId;
-    const isEnabled = useSelector(isBurnOnReadEnabled);
-    const durationMinutes = useSelector(getBurnOnReadDurationMinutes);
-    const canSend = useSelector(canUserSendBurnOnRead);
+	const rootId = draft.rootId;
+	const isEnabled = useSelector(isBurnOnReadEnabled);
+	const durationMinutes = useSelector(getBurnOnReadDurationMinutes);
+	const canSend = useSelector(canUserSendBurnOnRead);
 
-    const hasBurnOnReadSet = isEnabled && draft.type === PostTypes.BURN_ON_READ;
+	const hasBurnOnReadSet = isEnabled && draft.type === PostTypes.BURN_ON_READ;
 
-    const handleBurnOnReadApply = useCallback((enabled: boolean) => {
-        const updatedDraft = {
-            ...draft,
-            type: enabled ? PostTypes.BURN_ON_READ : undefined,
-        };
+	const handleBurnOnReadApply = useCallback((enabled: boolean) => {
+		const updatedDraft = {
+			...draft,
+			type: enabled ? PostTypes.BURN_ON_READ : undefined,
+		};
 
-        handleDraftChange(updatedDraft, {instant: true});
-        focusTextbox();
-    }, [draft, handleDraftChange, focusTextbox]);
+		handleDraftChange(updatedDraft, { instant: true });
+		focusTextbox();
+	}, [draft, handleDraftChange, focusTextbox]);
 
-    const handleRemoveBurnOnRead = useCallback(() => {
-        handleBurnOnReadApply(false);
-    }, [handleBurnOnReadApply]);
+	const handleRemoveBurnOnRead = useCallback(() => {
+		handleBurnOnReadApply(false);
+	}, [handleBurnOnReadApply]);
 
-    // Label component (shows above editor when active)
-    const labels = useMemo(() => (
-        (hasBurnOnReadSet && !rootId) ? (
-            <BurnOnReadLabel
-                canRemove={showIndividualCloseButton && !shouldShowPreview}
-                onRemove={handleRemoveBurnOnRead}
-                durationMinutes={durationMinutes}
-            />
-        ) : undefined
-    ), [hasBurnOnReadSet, rootId, showIndividualCloseButton, shouldShowPreview, handleRemoveBurnOnRead, durationMinutes]);
+	// Label component (shows above editor when active)
+	const labels = useMemo(() => (
+		(hasBurnOnReadSet && !rootId) ? (
+			<BurnOnReadLabel
+				canRemove={showIndividualCloseButton && !shouldShowPreview}
+				onRemove={handleRemoveBurnOnRead}
+				durationMinutes={durationMinutes}
+			/>
+		) : undefined
+	), [hasBurnOnReadSet, rootId, showIndividualCloseButton, shouldShowPreview, handleRemoveBurnOnRead, durationMinutes]);
 
-    // Button component with tour tip wrapper (in formatting bar)
-    const additionalControl = useMemo(() =>
-        (!rootId && isEnabled && canSend ? (
-            <div
-                key='burn-on-read-control-key'
-                className='BurnOnReadControl'
-            >
-                <BurnOnReadButton
-                    key='burn-on-read-button-key'
-                    enabled={hasBurnOnReadSet}
-                    onToggle={handleBurnOnReadApply}
-                    disabled={shouldShowPreview}
-                    durationMinutes={durationMinutes}
-                />
-                <BurnOnReadTourTip
-                    key='burn-on-read-tour-tip-key'
-                    onTryItOut={() => handleBurnOnReadApply(true)}
-                />
-            </div>
-        ) : undefined), [rootId, isEnabled, canSend, hasBurnOnReadSet, handleBurnOnReadApply, shouldShowPreview, durationMinutes]);
+	// Button component with tour tip wrapper (in formatting bar)
+	const additionalControl = useMemo(() =>
+	(!rootId && isEnabled && canSend ? (
+		<div
+			key='burn-on-read-control-key'
+			className='BurnOnReadControl'
+		>
+			<BurnOnReadButton
+				key='burn-on-read-button-key'
+				enabled={hasBurnOnReadSet}
+				onToggle={handleBurnOnReadApply}
+				disabled={shouldShowPreview}
+				durationMinutes={durationMinutes}
+			/>
+			<BurnOnReadTourTip
+				key='burn-on-read-tour-tip-key'
+				onTryItOut={() => handleBurnOnReadApply(true)}
+			/>
+		</div>
+	) : undefined), [rootId, isEnabled, canSend, hasBurnOnReadSet, handleBurnOnReadApply, shouldShowPreview, durationMinutes]);
 
-    return {
-        labels,
-        additionalControl,
-        handleBurnOnReadApply,
-        handleRemoveBurnOnRead,
-    };
+	return {
+		labels,
+		additionalControl,
+		handleBurnOnReadApply,
+		handleRemoveBurnOnRead,
+	};
 };
 
 export default useBurnOnRead;

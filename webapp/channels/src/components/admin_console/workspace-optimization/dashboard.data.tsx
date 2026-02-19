@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {useEffect, useMemo, useState} from 'react';
@@ -109,7 +109,7 @@ const getAccessData = async (
     }),
     description: formatMessage({
         id: 'admin.reporting.workspace_optimization.access.description',
-        defaultMessage: 'Web server configuration may be affecting access to your Mattermost workspace.',
+        defaultMessage: 'Web server configuration may be affecting access to your Aura workspace.',
     }),
     hide: options.isCloud,
     descriptionOk: formatMessage({
@@ -195,7 +195,7 @@ const getEaseOfManagementData = async (
     }),
     description: formatMessage({
         id: 'admin.reporting.workspace_optimization.ease_of_management.description',
-        defaultMessage: 'Make it easier to manage your Mattermost workspace.',
+        defaultMessage: 'Make it easier to manage your Aura workspace.',
     }),
     descriptionOk: formatMessage({
         id: 'admin.reporting.workspace_optimization.ease_of_management.descriptionOk',

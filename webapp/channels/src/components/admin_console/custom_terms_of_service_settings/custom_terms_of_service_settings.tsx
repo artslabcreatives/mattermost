@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -53,7 +53,7 @@ export const messages = defineMessages({
     termsOfServiceTextHelp: {id: 'admin.support.termsOfServiceTextHelp', defaultMessage: 'Text that will appear in your custom Terms of Service. Supports Markdown-formatted text.'},
     termsOfServiceReAcceptanceTitle: {id: 'admin.support.termsOfServiceReAcceptanceTitle', defaultMessage: 'Re-Acceptance Period'},
     termsOfServiceReAcceptanceHelp: {id: 'admin.support.termsOfServiceReAcceptanceHelp', defaultMessage: 'The number of days before Terms of Service acceptance expires, and the terms must be re-accepted.'},
-    enableTermsOfServiceHelp: {id: 'admin.support.enableTermsOfServiceHelp', defaultMessage: 'When true, new users must accept the terms of service before accessing any Mattermost teams on desktop, web or mobile. Existing users must accept them after login or a page refresh. To update terms of service link displayed in account creation and login pages, go to <a>Site Configuration > Customization</a>'},
+    enableTermsOfServiceHelp: {id: 'admin.support.enableTermsOfServiceHelp', defaultMessage: 'When true, new users must accept the terms of service before accessing any Aura teams on desktop, web or mobile. Existing users must accept them after login or a page refresh. To update terms of service link displayed in account creation and login pages, go to <a>Site Configuration > Customization</a>'},
 });
 
 export const searchableStrings = [

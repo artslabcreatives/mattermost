@@ -1,43 +1,43 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {shallow} from 'enzyme';
+import { shallow } from 'enzyme';
 import React from 'react';
 
-import {NotificationLevels} from 'utils/constants';
+import { NotificationLevels } from 'utils/constants';
 
 import UnmuteChannelButton from './unmute_channel_button';
 
 describe('components/ChannelHeaderMobile/UnmuteChannelButton', () => {
-    const baseProps = {
-        user: {
-            id: 'user_id',
-        },
-        channel: {
-            id: 'channel_id',
-        },
-        actions: {
-            updateChannelNotifyProps: jest.fn(),
-        },
-    };
+	const baseProps = {
+		user: {
+			id: 'user_id',
+		},
+		channel: {
+			id: 'channel_id',
+		},
+		actions: {
+			updateChannelNotifyProps: jest.fn(),
+		},
+	};
 
-    it('should match snapshot', () => {
-        const wrapper = shallow(<UnmuteChannelButton {...baseProps}/>);
+	it('should match snapshot', () => {
+		const wrapper = shallow(<UnmuteChannelButton {...baseProps} />);
 
-        expect(wrapper).toMatchSnapshot();
-    });
+		expect(wrapper).toMatchSnapshot();
+	});
 
-    it('should runs updateChannelNotifyProps on click', () => {
-        const props = baseProps;
-        props.actions.updateChannelNotifyProps = jest.fn();
+	it('should runs updateChannelNotifyProps on click', () => {
+		const props = baseProps;
+		props.actions.updateChannelNotifyProps = jest.fn();
 
-        const wrapper = shallow(<UnmuteChannelButton {...props}/>);
-        wrapper.simulate('click');
+		const wrapper = shallow(<UnmuteChannelButton {...props} />);
+		wrapper.simulate('click');
 
-        expect(props.actions.updateChannelNotifyProps).toHaveBeenCalledWith(
-            props.user.id,
-            props.channel.id,
-            {mark_unread: NotificationLevels.ALL},
-        );
-    });
+		expect(props.actions.updateChannelNotifyProps).toHaveBeenCalledWith(
+			props.user.id,
+			props.channel.id,
+			{ mark_unread: NotificationLevels.ALL },
+		);
+	});
 });

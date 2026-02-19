@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
@@ -9,45 +9,45 @@ import WithTooltip from 'components/with_tooltip';
 import './action.scss';
 
 type Props = {
-    icon: string;
-    id: string;
-    name: string;
-    onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
-    tooltipText: React.ReactElement | string;
+	icon: string;
+	id: string;
+	name: string;
+	onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+	tooltipText: React.ReactElement | string;
 };
 
 function Action({
-    name,
-    icon,
-    onClick,
-    id,
-    tooltipText,
+	name,
+	icon,
+	onClick,
+	id,
+	tooltipText,
 }: Props) {
-    return (
-        <div className='DraftAction'>
-            <WithTooltip
-                title={tooltipText}
-                id={`draft_tooltip_${id}`}
-            >
-                <button
-                    className={classNames(
-                        'DraftAction__button',
-                        {'DraftAction__button--delete': name === 'delete'},
-                    )}
-                    id={`draft_${icon}_${id}`}
-                    onClick={onClick}
-                    aria-labelledby={`draft_tooltip_${id}`}
-                >
-                    <i
-                        className={classNames(
-                            'icon',
-                            icon,
-                        )}
-                    />
-                </button>
-            </WithTooltip>
-        </div>
-    );
+	return (
+		<div className='DraftAction'>
+			<WithTooltip
+				title={tooltipText}
+				id={`draft_tooltip_${id}`}
+			>
+				<button
+					className={classNames(
+						'DraftAction__button',
+						{ 'DraftAction__button--delete': name === 'delete' },
+					)}
+					id={`draft_${icon}_${id}`}
+					onClick={onClick}
+					aria-labelledby={`draft_tooltip_${id}`}
+				>
+					<i
+						className={classNames(
+							'icon',
+							icon,
+						)}
+					/>
+				</button>
+			</WithTooltip>
+		</div>
+	);
 }
 
 export default Action;

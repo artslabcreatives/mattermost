@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -72,7 +72,7 @@ describe('components/announcement_bar/CloudPreviewAnnouncementBar', () => {
         );
 
         expect(wrapper.find('AnnouncementBar').exists()).toEqual(true);
-        expect(wrapper.text()).toContain('This is your Mattermost preview environment');
+        expect(wrapper.text()).toContain('This is your Aura preview environment');
     });
 
     it('should not show banner when is_cloud_preview is false', () => {

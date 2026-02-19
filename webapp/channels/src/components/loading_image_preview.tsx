@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -6,35 +6,35 @@ import React from 'react';
 import LoadingSpinner from 'components/widgets/loading/loading_spinner';
 
 type Props = {
-    loading?: React.ReactNode;
-    progress?: number;
-    containerClass?: string;
+	loading?: React.ReactNode;
+	progress?: number;
+	containerClass?: string;
 }
 
 const LoadingImagePreview: React.FC<Props> = ({
-    loading,
-    progress,
-    containerClass = 'view-image__loading',
+	loading,
+	progress,
+	containerClass = 'view-image__loading',
 }: Props) => {
-    let progressView: JSX.Element = (
-        <span className='loader-percent'/>
-    );
+	let progressView: JSX.Element = (
+		<span className='loader-percent' />
+	);
 
-    if (progress) {
-        progressView = (
-            <span className='loader-percent'>
-                {loading}
-                {` ${progress}%`}
-            </span>
-        );
-    }
+	if (progress) {
+		progressView = (
+			<span className='loader-percent'>
+				{loading}
+				{` ${progress}%`}
+			</span>
+		);
+	}
 
-    return (
-        <div className={containerClass}>
-            <LoadingSpinner/>
-            {progressView}
-        </div>
-    );
+	return (
+		<div className={containerClass}>
+			<LoadingSpinner />
+			{progressView}
+		</div>
+	);
 };
 
 export default LoadingImagePreview;

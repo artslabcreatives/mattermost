@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
@@ -333,7 +333,7 @@ function StartTrialFormModal(props: Props): JSX.Element | null {
                 <div className='disclaimer'>
                     <FormattedMessage
                         id='start_trial_form.disclaimer'
-                        defaultMessage='By selecting Start trial, I agree to the <agreement>Mattermost Software Evaluation Agreement</agreement>, <privacypolicy>Privacy Policy</privacypolicy>, and receiving product emails.'
+                        defaultMessage='By selecting Start trial, I agree to the <agreement>Aura Software Evaluation Agreement</agreement>, <privacypolicy>Privacy Policy</privacypolicy>, and receiving product emails.'
                         values={{
                             agreement: (msg: React.ReactNode) => (
                                 <ExternalLink

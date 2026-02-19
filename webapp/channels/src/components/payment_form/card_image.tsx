@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -13,41 +13,41 @@ import visa from 'images/cloud/cards/visa.jpg';
 import './card_image.css';
 
 type Props = {
-    brand: string;
+	brand: string;
 }
 
 export default function CardImage(props: Props) {
-    const {brand} = props;
+	const { brand } = props;
 
-    const cardImageSrc = getCardImage(brand);
-    if (cardImageSrc) {
-        return (
-            <img
-                className='CardImage'
-                src={cardImageSrc}
-                alt={brand}
-            />
-        );
-    }
+	const cardImageSrc = getCardImage(brand);
+	if (cardImageSrc) {
+		return (
+			<img
+				className='CardImage'
+				src={cardImageSrc}
+				alt={brand}
+			/>
+		);
+	}
 
-    return null;
+	return null;
 }
 
 function getCardImage(brand: string): string {
-    switch (brand) {
-    case 'amex':
-        return amex;
-    case 'diners':
-        return dinersclub;
-    case 'discover':
-        return discover;
-    case 'jcb':
-        return jcb;
-    case 'mastercard':
-        return mastercard;
-    case 'visa':
-        return visa;
-    }
+	switch (brand) {
+		case 'amex':
+			return amex;
+		case 'diners':
+			return dinersclub;
+		case 'discover':
+			return discover;
+		case 'jcb':
+			return jcb;
+		case 'mastercard':
+			return mastercard;
+		case 'visa':
+			return visa;
+	}
 
-    return '';
+	return '';
 }

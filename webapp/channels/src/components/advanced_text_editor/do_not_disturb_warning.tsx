@@ -1,8 +1,8 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {FormattedMessage} from 'react-intl';
+import { FormattedMessage } from 'react-intl';
 import styled from 'styled-components';
 
 const Container = styled.div`
@@ -22,20 +22,20 @@ const Icon = styled.i`
 `;
 
 type Props = {
-    displayName: string;
+	displayName: string;
 }
 
-const DoNotDisturbWarning = ({displayName}: Props) => {
-    return (
-        <Container className='DoNotDisturbWarning'>
-            <Icon className='icon-minus-circle'/>
-            <FormattedMessage
-                id='advanced_create_post.doNotDisturbWarning'
-                defaultMessage='{displayName} is set to <b>Do Not Disturb</b>'
-                values={{displayName, b: (chunks: React.ReactNode) => <b>{chunks}</b>}}
-            />
-        </Container>
-    );
+const DoNotDisturbWarning = ({ displayName }: Props) => {
+	return (
+		<Container className='DoNotDisturbWarning'>
+			<Icon className='icon-minus-circle' />
+			<FormattedMessage
+				id='advanced_create_post.doNotDisturbWarning'
+				defaultMessage='{displayName} is set to <b>Do Not Disturb</b>'
+				values={{ displayName, b: (chunks: React.ReactNode) => <b>{chunks}</b> }}
+			/>
+		</Container>
+	);
 };
 
 export default DoNotDisturbWarning;

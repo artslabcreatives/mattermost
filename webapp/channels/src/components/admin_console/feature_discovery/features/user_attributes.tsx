@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -17,7 +17,7 @@ const UserAttributesFeatureDiscovery: React.FC = () => {
             minimumSKURequiredForFeature={LicenseSkus.Enterprise}
             title={defineMessage({
                 id: 'admin.user_attributes_feature_discovery.title',
-                defaultMessage: 'Add critical metadata to user profiles using custom user attributes with Mattermost Enterprise',
+                defaultMessage: 'Add critical metadata to user profiles using custom user attributes with Aura Enterprise',
             })}
             copy={defineMessage({
                 id: 'admin.user_attributes_feature_discovery.desc',

@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -17,7 +17,7 @@ const ComplianceExportFeatureDiscovery: React.FC = () => {
             minimumSKURequiredForFeature={LicenseSkus.Enterprise}
             title={defineMessage({
                 id: 'admin.compliance_export_feature_discovery.title',
-                defaultMessage: 'Run compliance exports with Mattermost Enterprise',
+                defaultMessage: 'Run compliance exports with Aura Enterprise',
             })}
             copy={defineMessage({
                 id: 'admin.compliance_export_feature_discovery.copy',

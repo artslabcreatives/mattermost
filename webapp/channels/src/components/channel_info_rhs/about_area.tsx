@@ -1,18 +1,18 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
 import styled from 'styled-components';
 
-import type {Channel} from '@mattermost/types/channels';
-import type {UserProfile} from '@mattermost/types/users';
+import type { Channel } from '@mattermost/types/channels';
+import type { UserProfile } from '@mattermost/types/users';
 
 import Constants from 'utils/constants';
 
 import AboutAreaChannel from './about_area_channel';
 import AboutAreaDM from './about_area_dm';
 import AboutAreaGM from './about_area_gm';
-import type {DMUser} from './channel_info_rhs';
+import type { DMUser } from './channel_info_rhs';
 
 const Container = styled.div`
     overflow-wrap: anywhere;
@@ -35,42 +35,42 @@ const Container = styled.div`
 `;
 
 interface Props {
-    channel: Channel;
-    dmUser?: DMUser;
-    gmUsers?: UserProfile[];
-    canEditChannelProperties: boolean;
-    actions: {
-        editChannelPurpose: () => void;
-        editChannelHeader: () => void;
-    };
+	channel: Channel;
+	dmUser?: DMUser;
+	gmUsers?: UserProfile[];
+	canEditChannelProperties: boolean;
+	actions: {
+		editChannelPurpose: () => void;
+		editChannelHeader: () => void;
+	};
 }
 
-const AboutArea = ({channel, dmUser, gmUsers, canEditChannelProperties, actions}: Props) => {
-    return (
-        <Container>
-            {channel.type === Constants.DM_CHANNEL && dmUser && (
-                <AboutAreaDM
-                    channel={channel}
-                    dmUser={dmUser}
-                    actions={{editChannelHeader: actions.editChannelHeader}}
-                />
-            )}
-            {channel.type === Constants.GM_CHANNEL && gmUsers && (
-                <AboutAreaGM
-                    channel={channel}
-                    gmUsers={gmUsers!}
-                    actions={{editChannelHeader: actions.editChannelHeader}}
-                />
-            )}
-            {[Constants.OPEN_CHANNEL, Constants.PRIVATE_CHANNEL].includes(channel.type) && (
-                <AboutAreaChannel
-                    channel={channel}
-                    canEditChannelProperties={canEditChannelProperties}
-                    actions={actions}
-                />
-            )}
-        </Container>
-    );
+const AboutArea = ({ channel, dmUser, gmUsers, canEditChannelProperties, actions }: Props) => {
+	return (
+		<Container>
+			{channel.type === Constants.DM_CHANNEL && dmUser && (
+				<AboutAreaDM
+					channel={channel}
+					dmUser={dmUser}
+					actions={{ editChannelHeader: actions.editChannelHeader }}
+				/>
+			)}
+			{channel.type === Constants.GM_CHANNEL && gmUsers && (
+				<AboutAreaGM
+					channel={channel}
+					gmUsers={gmUsers!}
+					actions={{ editChannelHeader: actions.editChannelHeader }}
+				/>
+			)}
+			{[Constants.OPEN_CHANNEL, Constants.PRIVATE_CHANNEL].includes(channel.type) && (
+				<AboutAreaChannel
+					channel={channel}
+					canEditChannelProperties={canEditChannelProperties}
+					actions={actions}
+				/>
+			)}
+		</Container>
+	);
 };
 
 export default AboutArea;

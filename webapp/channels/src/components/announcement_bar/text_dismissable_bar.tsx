@@ -1,7 +1,7 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useCallback, useEffect, useState} from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import Markdown from 'components/markdown';
 
@@ -12,63 +12,63 @@ const localStoragePrefix = '__announcement__';
 type AnnouncementBarProps = React.ComponentProps<typeof AnnouncementBar>;
 
 interface Props extends Partial<AnnouncementBarProps> {
-    allowDismissal: boolean;
-    text: React.ReactNode;
-    onDismissal?: () => void;
-    className?: string;
+	allowDismissal: boolean;
+	text: React.ReactNode;
+	onDismissal?: () => void;
+	className?: string;
 }
 
 const options = {
-    singleline: true,
-    mentionHighlight: false,
+	singleline: true,
+	mentionHighlight: false,
 };
 
 const getDismissed = (text?: React.ReactNode) => localStorage.getItem(localStoragePrefix + text?.toString()) === 'true';
 
 const TextDismissableBar = ({
-    allowDismissal,
-    text,
-    onDismissal,
-    ...extraProps
+	allowDismissal,
+	text,
+	onDismissal,
+	...extraProps
 }: Props) => {
-    const [dismissed, setDismissed] = useState<boolean>(() => getDismissed(text));
+	const [dismissed, setDismissed] = useState<boolean>(() => getDismissed(text));
 
-    useEffect(() => {
-        setDismissed(getDismissed(text));
-    }, [text]);
+	useEffect(() => {
+		setDismissed(getDismissed(text));
+	}, [text]);
 
-    const handleDismiss = useCallback(() => {
-        if (!allowDismissal) {
-            return;
-        }
+	const handleDismiss = useCallback(() => {
+		if (!allowDismissal) {
+			return;
+		}
 
-        localStorage.setItem(localStoragePrefix + text?.toString(), 'true');
-        setDismissed(true);
-        onDismissal?.();
-    }, [allowDismissal, onDismissal, text]);
+		localStorage.setItem(localStoragePrefix + text?.toString(), 'true');
+		setDismissed(true);
+		onDismissal?.();
+	}, [allowDismissal, onDismissal, text]);
 
-    if (dismissed) {
-        return null;
-    }
+	if (dismissed) {
+		return null;
+	}
 
-    return (
-        <AnnouncementBar
-            {...extraProps}
-            showCloseButton={allowDismissal}
-            handleClose={handleDismiss}
-            message={
-                <>
-                    <i className='icon icon-information-outline'/>
-                    {typeof text === 'string' ? (
-                        <Markdown
-                            message={text}
-                            options={options}
-                        />
-                    ) : text}
-                </>
-            }
-        />
-    );
+	return (
+		<AnnouncementBar
+			{...extraProps}
+			showCloseButton={allowDismissal}
+			handleClose={handleDismiss}
+			message={
+				<>
+					<i className='icon icon-information-outline' />
+					{typeof text === 'string' ? (
+						<Markdown
+							message={text}
+							options={options}
+						/>
+					) : text}
+				</>
+			}
+		/>
+	);
 };
 
 export default TextDismissableBar;

@@ -8,15 +8,18 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
 
 WORKDIR /build
 
-# Copy source code
-COPY . .
+# Copy only what we need for each build stage to maximize caching
 
 # Build the webapp first
 WORKDIR /build/webapp
+COPY webapp/ .
+COPY Makefile config.mk /build/
 RUN make dist
 
-# Build the server
+# Build the server (copy server code separately so webapp cache isn't invalidated)
 WORKDIR /build/server
+COPY server/ .
+COPY Makefile config.mk /build/
 RUN make build BUILD_NUMBER=custom
 
 # Build mmctl

@@ -1,21 +1,21 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {shallow} from 'enzyme';
+import { shallow } from 'enzyme';
 import React from 'react';
 
-import {MenuItemActionImpl} from './menu_item_action';
+import { MenuItemActionImpl } from './menu_item_action';
 
 describe('components/MenuItemAction', () => {
-    test('should match snapshot', () => {
-        const wrapper = shallow(
-            <MenuItemActionImpl
-                onClick={jest.fn()}
-                text='Whatever'
-            />,
-        );
+	test('should match snapshot', () => {
+		const wrapper = shallow(
+			<MenuItemActionImpl
+				onClick={jest.fn()}
+				text='Whatever'
+			/>,
+		);
 
-        expect(wrapper).toMatchInlineSnapshot(`
+		expect(wrapper).toMatchInlineSnapshot(`
             <Fragment>
               <button
                 className="style--none"
@@ -29,17 +29,17 @@ describe('components/MenuItemAction', () => {
               </button>
             </Fragment>
         `);
-    });
-    test('should match snapshot with extra text', () => {
-        const wrapper = shallow(
-            <MenuItemActionImpl
-                onClick={jest.fn()}
-                text='Whatever'
-                extraText='Extra Text'
-            />,
-        );
+	});
+	test('should match snapshot with extra text', () => {
+		const wrapper = shallow(
+			<MenuItemActionImpl
+				onClick={jest.fn()}
+				text='Whatever'
+				extraText='Extra Text'
+			/>,
+		);
 
-        expect(wrapper).toMatchInlineSnapshot(`
+		expect(wrapper).toMatchInlineSnapshot(`
             <Fragment>
               <button
                 className="style--none MenuItem__with-help"
@@ -58,5 +58,5 @@ describe('components/MenuItemAction', () => {
               </button>
             </Fragment>
         `);
-    });
+	});
 });

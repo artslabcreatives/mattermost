@@ -1,16 +1,16 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useCallback} from 'react';
-import {useSelector} from 'react-redux';
+import React, { useCallback } from 'react';
+import { useSelector } from 'react-redux';
 import styled from 'styled-components';
 
-import {getSearchPluginSuggestions} from 'selectors/plugins';
+import { getSearchPluginSuggestions } from 'selectors/plugins';
 
-import {SuggestionListStatus} from 'components/suggestion/suggestion_list';
+import { SuggestionListStatus } from 'components/suggestion/suggestion_list';
 import SuggestionListContents from 'components/suggestion/suggestion_list_contents';
-import type {SuggestionResults} from 'components/suggestion/suggestion_results';
-import {hasResults} from 'components/suggestion/suggestion_results';
+import type { SuggestionResults } from 'components/suggestion/suggestion_results';
+import { hasResults } from 'components/suggestion/suggestion_results';
 
 import ErrorBoundary from 'plugins/pluggable/error_boundary';
 
@@ -31,81 +31,81 @@ const SuggestionsBody = styled.div`
 `;
 
 type Props = {
-    id: string;
-    searchType: string;
-    searchTeam: string;
-    searchTerms: string;
-    selectedTerm: string;
-    setSelectedTerm: (newSelectedTerm: string) => void;
-    results: SuggestionResults;
-    onSearch: (searchType: string, searchTeam: string, searchTerms: string) => void;
-    onSuggestionSelected: (value: string, matchedPretext: string) => void;
+	id: string;
+	searchType: string;
+	searchTeam: string;
+	searchTerms: string;
+	selectedTerm: string;
+	setSelectedTerm: (newSelectedTerm: string) => void;
+	results: SuggestionResults;
+	onSearch: (searchType: string, searchTeam: string, searchTerms: string) => void;
+	onSuggestionSelected: (value: string, matchedPretext: string) => void;
 }
 
 const SearchSuggestions = ({
-    id,
-    searchType,
-    searchTeam,
-    searchTerms,
-    results,
-    selectedTerm,
-    setSelectedTerm,
-    onSearch,
-    onSuggestionSelected,
+	id,
+	searchType,
+	searchTeam,
+	searchTerms,
+	results,
+	selectedTerm,
+	setSelectedTerm,
+	onSearch,
+	onSuggestionSelected,
 }: Props) => {
-    const runSearch = useCallback((searchTerms: string) => {
-        onSearch(searchType, searchTeam, searchTerms);
-    }, [onSearch, searchTeam, searchType]);
+	const runSearch = useCallback((searchTerms: string) => {
+		onSearch(searchType, searchTeam, searchTerms);
+	}, [onSearch, searchTeam, searchType]);
 
-    const searchPluginSuggestions = useSelector(getSearchPluginSuggestions);
+	const searchPluginSuggestions = useSelector(getSearchPluginSuggestions);
 
-    const getItemId = useCallback((term: string) => `searchBoxSuggestions_item_${term}`, []);
+	const getItemId = useCallback((term: string) => `searchBoxSuggestions_item_${term}`, []);
 
-    if (searchType === '' || searchType === 'messages' || searchType === 'files') {
-        if (!hasResults(results)) {
-            return null;
-        }
+	if (searchType === '' || searchType === 'messages' || searchType === 'files') {
+		if (!hasResults(results)) {
+			return null;
+		}
 
-        return (
-            <SuggestionsBody>
-                <SuggestionListContents
-                    id={id}
+		return (
+			<SuggestionsBody>
+				<SuggestionListContents
+					id={id}
 
-                    results={results}
-                    selectedTerm={selectedTerm}
+					results={results}
+					selectedTerm={selectedTerm}
 
-                    getItemId={getItemId}
-                    onItemClick={onSuggestionSelected}
-                    onItemHover={setSelectedTerm}
-                />
-                <SuggestionListStatus results={results}/>
-            </SuggestionsBody>
-        );
-    }
+					getItemId={getItemId}
+					onItemClick={onSuggestionSelected}
+					onItemHover={setSelectedTerm}
+				/>
+				<SuggestionListStatus results={results} />
+			</SuggestionsBody>
+		);
+	}
 
-    const pluginComponentInfo = searchPluginSuggestions.find(({pluginId}) => {
-        if (searchType === pluginId) {
-            return true;
-        }
-        return false;
-    });
+	const pluginComponentInfo = searchPluginSuggestions.find(({ pluginId }) => {
+		if (searchType === pluginId) {
+			return true;
+		}
+		return false;
+	});
 
-    if (!pluginComponentInfo) {
-        return null;
-    }
+	if (!pluginComponentInfo) {
+		return null;
+	}
 
-    const Component = pluginComponentInfo.component;
+	const Component = pluginComponentInfo.component;
 
-    return (
-        <ErrorBoundary>
-            <Component
-                key={pluginComponentInfo.pluginId}
-                searchTerms={searchTerms}
-                onChangeSearch={onSuggestionSelected}
-                onRunSearch={runSearch}
-            />
-        </ErrorBoundary>
-    );
+	return (
+		<ErrorBoundary>
+			<Component
+				key={pluginComponentInfo.pluginId}
+				searchTerms={searchTerms}
+				onChangeSearch={onSuggestionSelected}
+				onRunSearch={runSearch}
+			/>
+		</ErrorBoundary>
+	);
 };
 
 export default SearchSuggestions;

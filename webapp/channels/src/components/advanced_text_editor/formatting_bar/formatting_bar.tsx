@@ -1,21 +1,21 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {useFloating, offset, useClick, useDismiss, useInteractions} from '@floating-ui/react';
+import { useFloating, offset, useClick, useDismiss, useInteractions } from '@floating-ui/react';
 import classNames from 'classnames';
-import React, {memo, useCallback, useEffect, useRef, useState} from 'react';
-import {useIntl} from 'react-intl';
-import {CSSTransition} from 'react-transition-group';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { useIntl } from 'react-intl';
+import { CSSTransition } from 'react-transition-group';
 import styled from 'styled-components';
 
-import {DotsHorizontalIcon} from '@mattermost/compass-icons/components';
+import { DotsHorizontalIcon } from '@mattermost/compass-icons/components';
 
 import WithTooltip from 'components/with_tooltip';
 
-import type {ApplyMarkdownOptions, MarkdownMode} from 'utils/markdown/apply_markdown';
+import type { ApplyMarkdownOptions, MarkdownMode } from 'utils/markdown/apply_markdown';
 
-import FormattingIcon, {IconContainer} from './formatting_icon';
-import {useFormattingBarControls} from './hooks';
+import FormattingIcon, { IconContainer } from './formatting_icon';
+import { useFormattingBarControls } from './hooks';
 
 export const Separator = styled.div`
     display: block;
@@ -96,206 +96,206 @@ const HiddenControlsContainer = styled.div`
 
 interface FormattingBarProps {
 
-    /**
-     * the current inputValue
-     * This is needed to apply the markdown to the correct place
-     */
-    getCurrentMessage: () => string;
+	/**
+	 * the current inputValue
+	 * This is needed to apply the markdown to the correct place
+	 */
+	getCurrentMessage: () => string;
 
-    /**
-     * The textbox element tied to the advanced texteditor
-     * NOTE: Since the only thing we need from that is the current selection
-     *       range we should probably refactor this and only pass down the
-     *       selectionStart and selectionEnd values
-     */
-    getCurrentSelection: () => {start: number; end: number};
+	/**
+	 * The textbox element tied to the advanced texteditor
+	 * NOTE: Since the only thing we need from that is the current selection
+	 *       range we should probably refactor this and only pass down the
+	 *       selectionStart and selectionEnd values
+	 */
+	getCurrentSelection: () => { start: number; end: number };
 
-    /**
-     * the handler function that applies the markdown to the value
-     */
-    applyMarkdown: (options: ApplyMarkdownOptions) => void;
+	/**
+	 * the handler function that applies the markdown to the value
+	 */
+	applyMarkdown: (options: ApplyMarkdownOptions) => void;
 
-    /**
-     * disable formatting controls when the texteditor is in preview state
-     */
-    disableControls: boolean;
+	/**
+	 * disable formatting controls when the texteditor is in preview state
+	 */
+	disableControls: boolean;
 
-    /**
-     * location of the advanced text editor in the UI (center channel / RHS)
-     */
-    location: string;
+	/**
+	 * location of the advanced text editor in the UI (center channel / RHS)
+	 */
+	location: string;
 
-    /**
-     * controls that enhance the message,
-     * e.g: message priority picker
-     */
-    additionalControls?: React.ReactNodeArray;
+	/**
+	 * controls that enhance the message,
+	 * e.g: message priority picker
+	 */
+	additionalControls?: React.ReactNodeArray;
 }
 
 const DEFAULT_MIN_MODE_X_COORD = 55;
 
 const FormattingBar = (props: FormattingBarProps): JSX.Element => {
-    const {
-        applyMarkdown,
-        getCurrentSelection,
-        getCurrentMessage,
-        disableControls,
-        location,
-        additionalControls,
-    } = props;
-    const [showHiddenControls, setShowHiddenControls] = useState(false);
-    const formattingBarRef = useRef<HTMLDivElement>(null);
-    const {controls, hiddenControls, wideMode} = useFormattingBarControls(formattingBarRef);
+	const {
+		applyMarkdown,
+		getCurrentSelection,
+		getCurrentMessage,
+		disableControls,
+		location,
+		additionalControls,
+	} = props;
+	const [showHiddenControls, setShowHiddenControls] = useState(false);
+	const formattingBarRef = useRef<HTMLDivElement>(null);
+	const { controls, hiddenControls, wideMode } = useFormattingBarControls(formattingBarRef);
 
-    const {formatMessage} = useIntl();
-    const HiddenControlsButtonAriaLabel = formatMessage({id: 'accessibility.button.hidden_controls_button', defaultMessage: 'show hidden formatting options'});
+	const { formatMessage } = useIntl();
+	const HiddenControlsButtonAriaLabel = formatMessage({ id: 'accessibility.button.hidden_controls_button', defaultMessage: 'show hidden formatting options' });
 
-    const {x, y, strategy, update, context, refs: {setReference, setFloating}} = useFloating<HTMLButtonElement>({
-        open: showHiddenControls,
-        onOpenChange: setShowHiddenControls,
-        placement: 'top',
-        middleware: [offset({mainAxis: 4})],
-    });
+	const { x, y, strategy, update, context, refs: { setReference, setFloating } } = useFloating<HTMLButtonElement>({
+		open: showHiddenControls,
+		onOpenChange: setShowHiddenControls,
+		placement: 'top',
+		middleware: [offset({ mainAxis: 4 })],
+	});
 
-    const click = useClick(context);
-    const {getReferenceProps: getClickReferenceProps, getFloatingProps: getClickFloatingProps} = useInteractions([
-        click,
-    ]);
+	const click = useClick(context);
+	const { getReferenceProps: getClickReferenceProps, getFloatingProps: getClickFloatingProps } = useInteractions([
+		click,
+	]);
 
-    const dismiss = useDismiss(context);
-    const {getReferenceProps: getDismissReferenceProps, getFloatingProps: getDismissFloatingProps} = useInteractions([
-        dismiss,
-    ]);
+	const dismiss = useDismiss(context);
+	const { getReferenceProps: getDismissReferenceProps, getFloatingProps: getDismissFloatingProps } = useInteractions([
+		dismiss,
+	]);
 
-    useEffect(() => {
-        update?.();
-    }, [wideMode, update, showHiddenControls]);
+	useEffect(() => {
+		update?.();
+	}, [wideMode, update, showHiddenControls]);
 
-    const hasHiddenControls = wideMode !== 'wide';
+	const hasHiddenControls = wideMode !== 'wide';
 
-    /**
-     * wrapping this factory in useCallback prevents it from constantly getting a new
-     * function signature as if we would define it directly in the props of
-     * the FormattingIcon component. This should improve render-performance
-     */
-    const makeFormattingHandler = useCallback((mode: MarkdownMode) => () => {
-        // if the formatting is disabled just return without doing anything
-        if (disableControls) {
-            return;
-        }
+	/**
+	 * wrapping this factory in useCallback prevents it from constantly getting a new
+	 * function signature as if we would define it directly in the props of
+	 * the FormattingIcon component. This should improve render-performance
+	 */
+	const makeFormattingHandler = useCallback((mode: MarkdownMode) => () => {
+		// if the formatting is disabled just return without doing anything
+		if (disableControls) {
+			return;
+		}
 
-        // get the current selection values and return early (doing nothing) when we don't get valid values
-        const {start, end} = getCurrentSelection();
+		// get the current selection values and return early (doing nothing) when we don't get valid values
+		const { start, end } = getCurrentSelection();
 
-        if (start === null || end === null) {
-            return;
-        }
+		if (start === null || end === null) {
+			return;
+		}
 
-        const value = getCurrentMessage();
+		const value = getCurrentMessage();
 
-        applyMarkdown({
-            markdownMode: mode,
-            selectionStart: start,
-            selectionEnd: end,
-            message: value,
-        });
+		applyMarkdown({
+			markdownMode: mode,
+			selectionStart: start,
+			selectionEnd: end,
+			message: value,
+		});
 
-        // if hidden controls are currently open close them
-        if (showHiddenControls) {
-            setShowHiddenControls(true);
-        }
-    }, [getCurrentSelection, getCurrentMessage, applyMarkdown, showHiddenControls, disableControls]);
+		// if hidden controls are currently open close them
+		if (showHiddenControls) {
+			setShowHiddenControls(true);
+		}
+	}, [getCurrentSelection, getCurrentMessage, applyMarkdown, showHiddenControls, disableControls]);
 
-    const leftPosition = wideMode === 'min' ? (x ?? 0) + DEFAULT_MIN_MODE_X_COORD : x ?? 0;
+	const leftPosition = wideMode === 'min' ? (x ?? 0) + DEFAULT_MIN_MODE_X_COORD : x ?? 0;
 
-    const hiddenControlsContainerStyles: React.CSSProperties = {
-        position: strategy,
-        top: y ?? 0,
-        left: leftPosition,
-    };
+	const hiddenControlsContainerStyles: React.CSSProperties = {
+		position: strategy,
+		top: y ?? 0,
+		left: leftPosition,
+	};
 
-    const showSeparators = wideMode === 'wide';
+	const showSeparators = wideMode === 'wide';
 
-    return (
-        <FormattingBarContainer
-            ref={formattingBarRef}
-            data-testid='formattingBarContainer'
-        >
-            {controls.map((mode) => {
-                return (
-                    <React.Fragment key={mode}>
-                        <FormattingIcon
-                            mode={mode}
-                            className='control'
-                            onClick={makeFormattingHandler(mode)}
-                            disabled={disableControls}
-                        />
-                        {mode === 'heading' && showSeparators && <Separator/>}
-                    </React.Fragment>
-                );
-            })}
+	return (
+		<FormattingBarContainer
+			ref={formattingBarRef}
+			data-testid='formattingBarContainer'
+		>
+			{controls.map((mode) => {
+				return (
+					<React.Fragment key={mode}>
+						<FormattingIcon
+							mode={mode}
+							className='control'
+							onClick={makeFormattingHandler(mode)}
+							disabled={disableControls}
+						/>
+						{mode === 'heading' && showSeparators && <Separator />}
+					</React.Fragment>
+				);
+			})}
 
-            {Array.isArray(additionalControls) && additionalControls.length > 0 && (
-                <>
-                    {showSeparators && <Separator/>}
-                    {additionalControls}
-                </>
-            )}
+			{Array.isArray(additionalControls) && additionalControls.length > 0 && (
+				<>
+					{showSeparators && <Separator />}
+					{additionalControls}
+				</>
+			)}
 
-            {hasHiddenControls && (
-                <>
-                    <WithTooltip
-                        title={formatMessage({
-                            id: 'shortcuts.msgs.formatting_bar.more_formatting_options',
-                            defaultMessage: 'More formatting options',
-                        })}
-                        disabled={showHiddenControls}
-                    >
-                        <IconContainer
-                            id={'HiddenControlsButton' + location}
-                            ref={setReference}
-                            className={classNames({active: showHiddenControls})}
-                            aria-label={HiddenControlsButtonAriaLabel}
-                            type='button'
-                            {...getClickReferenceProps()}
-                            {...getDismissReferenceProps()}
-                        >
-                            <DotsHorizontalIcon
-                                color={'currentColor'}
-                                size={18}
-                            />
-                        </IconContainer>
-                    </WithTooltip>
-                </>
-            )}
+			{hasHiddenControls && (
+				<>
+					<WithTooltip
+						title={formatMessage({
+							id: 'shortcuts.msgs.formatting_bar.more_formatting_options',
+							defaultMessage: 'More formatting options',
+						})}
+						disabled={showHiddenControls}
+					>
+						<IconContainer
+							id={'HiddenControlsButton' + location}
+							ref={setReference}
+							className={classNames({ active: showHiddenControls })}
+							aria-label={HiddenControlsButtonAriaLabel}
+							type='button'
+							{...getClickReferenceProps()}
+							{...getDismissReferenceProps()}
+						>
+							<DotsHorizontalIcon
+								color={'currentColor'}
+								size={18}
+							/>
+						</IconContainer>
+					</WithTooltip>
+				</>
+			)}
 
-            <CSSTransition
-                timeout={250}
-                classNames='scale'
-                in={showHiddenControls}
-                unmountOnExit={true}
-            >
-                <HiddenControlsContainer
-                    ref={setFloating}
-                    style={hiddenControlsContainerStyles}
-                    {...getClickFloatingProps()}
-                    {...getDismissFloatingProps()}
-                >
-                    {hiddenControls.map((mode) => {
-                        return (
-                            <FormattingIcon
-                                key={mode}
-                                mode={mode}
-                                className='control'
-                                onClick={makeFormattingHandler(mode)}
-                                disabled={disableControls}
-                            />
-                        );
-                    })}
-                </HiddenControlsContainer>
-            </CSSTransition>
-        </FormattingBarContainer>
-    );
+			<CSSTransition
+				timeout={250}
+				classNames='scale'
+				in={showHiddenControls}
+				unmountOnExit={true}
+			>
+				<HiddenControlsContainer
+					ref={setFloating}
+					style={hiddenControlsContainerStyles}
+					{...getClickFloatingProps()}
+					{...getDismissFloatingProps()}
+				>
+					{hiddenControls.map((mode) => {
+						return (
+							<FormattingIcon
+								key={mode}
+								mode={mode}
+								className='control'
+								onClick={makeFormattingHandler(mode)}
+								disabled={disableControls}
+							/>
+						);
+					})}
+				</HiddenControlsContainer>
+			</CSSTransition>
+		</FormattingBarContainer>
+	);
 };
 
 export default memo(FormattingBar);

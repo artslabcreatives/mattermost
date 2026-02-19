@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -56,13 +56,13 @@ const ContactSalesCard = (props: Props) => {
         title = (
             <FormattedMessage
                 id='admin.billing.subscription.privateCloudCard.cloudEnterprise.title'
-                defaultMessage='Looking to rollout Mattermost for your entire organization? '
+                defaultMessage='Looking to rollout Aura for your entire organization? '
             />
         );
         description = (
             <FormattedMessage
                 id='admin.billing.subscription.privateCloudCard.cloudEnterprise.description'
-                defaultMessage="At Mattermost, we work with you and your organization to meet your needs throughout the product. If you're considering a wider rollout, talk to us."
+                defaultMessage="At Aura, we work with you and your organization to meet your needs throughout the product. If you're considering a wider rollout, talk to us."
             />
         );
     } else {
@@ -100,13 +100,13 @@ const ContactSalesCard = (props: Props) => {
             title = (
                 <FormattedMessage
                     id='admin.billing.subscription.privateCloudCard.cloudEnterprise.title'
-                    defaultMessage='Looking to rollout Mattermost for your entire organization? '
+                    defaultMessage='Looking to rollout Aura for your entire organization? '
                 />
             );
             description = (
                 <FormattedMessage
                     id='admin.billing.subscription.privateCloudCard.cloudEnterprise.description'
-                    defaultMessage="At Mattermost, we work with you and your organization to meet your needs throughout the product. If you're considering a wider rollout, talk to us."
+                    defaultMessage="At Aura, we work with you and your organization to meet your needs throughout the product. If you're considering a wider rollout, talk to us."
                 />
             );
             break;

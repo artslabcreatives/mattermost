@@ -1,16 +1,16 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
 import styled from 'styled-components';
 
-import {CompletedAnimation} from './onboarding_tasklist_animations';
+import { CompletedAnimation } from './onboarding_tasklist_animations';
 
 export interface TaskProps {
-    label: React.ReactElement;
-    icon?: React.ReactNode;
-    onClick?: () => void;
-    completedStatus: boolean;
+	label: React.ReactElement;
+	icon?: React.ReactNode;
+	onClick?: () => void;
+	completedStatus: boolean;
 }
 
 const StyledTask = styled.div`
@@ -63,21 +63,21 @@ const StyledTask = styled.div`
 `;
 
 export const Task = (props: TaskProps): JSX.Element => {
-    const {label, completedStatus, onClick} = props;
+	const { label, completedStatus, onClick } = props;
 
-    const handleOnClick = () => {
-        if (onClick) {
-            onClick();
-        }
-    };
+	const handleOnClick = () => {
+		if (onClick) {
+			onClick();
+		}
+	};
 
-    return (
-        <StyledTask
-            className={completedStatus ? 'completed' : ''}
-            onClick={handleOnClick}
-        >
-            {completedStatus && <CompletedAnimation completed={completedStatus}/>}
-            <span>{label}</span>
-        </StyledTask>
-    );
+	return (
+		<StyledTask
+			className={completedStatus ? 'completed' : ''}
+			onClick={handleOnClick}
+		>
+			{completedStatus && <CompletedAnimation completed={completedStatus} />}
+			<span>{label}</span>
+		</StyledTask>
+	);
 };

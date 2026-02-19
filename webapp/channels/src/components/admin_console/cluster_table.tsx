@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {PureComponent} from 'react';
@@ -74,7 +74,7 @@ export default class ClusterTable extends PureComponent<Props> {
                         <WarningIcon/>
                         <FormattedMessage
                             id='admin.cluster.version_mismatch_warning'
-                            defaultMessage='WARNING: Multiple Mattermost versions have been detected in your HA cluster, or the running versions cannot be properly identified. Unless upgrading, ensure all nodes are on the same version and can communicate via Gossip to prevent platform issues.'
+                            defaultMessage='WARNING: Multiple Aura versions have been detected in your HA cluster, or the running versions cannot be properly identified. Unless upgrading, ensure all nodes are on the same version and can communicate via Gossip to prevent platform issues.'
                         />
                     </div>
                 );

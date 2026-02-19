@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -167,7 +167,7 @@ export default class FeatureDiscovery extends React.PureComponent<Props, State> 
 
                     <FormattedMessage
                         id='admin.feature_discovery.trial-request.accept-terms'
-                        defaultMessage='By clicking <highlight>Start trial</highlight>, I agree to the <linkEvaluation>Mattermost Software Evaluation Agreement</linkEvaluation>, <linkPrivacy>Privacy Policy</linkPrivacy> and receiving product emails.'
+                        defaultMessage='By clicking <highlight>Start trial</highlight>, I agree to the <linkEvaluation>Aura Software Evaluation Agreement</linkEvaluation>, <linkPrivacy>Privacy Policy</linkPrivacy> and receiving product emails.'
                         values={{
                             highlight: (msg: React.ReactNode) => (
                                 <strong>{msg}</strong>

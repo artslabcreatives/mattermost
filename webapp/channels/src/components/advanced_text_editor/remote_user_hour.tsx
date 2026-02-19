@@ -1,11 +1,11 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {FormattedMessage} from 'react-intl';
+import { FormattedMessage } from 'react-intl';
 import styled from 'styled-components';
 
-import type {UserTimezone} from '@mattermost/types/users';
+import type { UserTimezone } from '@mattermost/types/users';
 
 import Moon from 'components/common/svg_images_components/moon_svg';
 import Timestamp from 'components/timestamp';
@@ -38,40 +38,40 @@ const Icon = styled(Moon)`
 `;
 
 type Props = {
-    displayName: string;
-    timestamp: number;
-    teammateTimezone: UserTimezone;
+	displayName: string;
+	timestamp: number;
+	teammateTimezone: UserTimezone;
 }
 
-const RemoteUserHour = ({displayName, timestamp, teammateTimezone}: Props) => {
-    return (
-        <Container className='RemoteUserHour'>
-            <Icon className='icon moonIcon'/>
-            <FormattedMessage
-                id='advanced_text_editor.remote_user_hour'
-                defaultMessage='The time for {user} is {time}'
-                values={{
-                    user: (
-                        <span className='userDisplayName'>
-                            {displayName}
-                        </span>
-                    ),
-                    time: (
-                        <Timestamp
-                            useRelative={false}
-                            value={timestamp}
-                            useDate={false}
-                            userTimezone={teammateTimezone}
-                            useTime={{
-                                hour: 'numeric',
-                                minute: 'numeric',
-                            }}
-                        />
-                    ),
-                }}
-            />
-        </Container>
-    );
+const RemoteUserHour = ({ displayName, timestamp, teammateTimezone }: Props) => {
+	return (
+		<Container className='RemoteUserHour'>
+			<Icon className='icon moonIcon' />
+			<FormattedMessage
+				id='advanced_text_editor.remote_user_hour'
+				defaultMessage='The time for {user} is {time}'
+				values={{
+					user: (
+						<span className='userDisplayName'>
+							{displayName}
+						</span>
+					),
+					time: (
+						<Timestamp
+							useRelative={false}
+							value={timestamp}
+							useDate={false}
+							userTimezone={teammateTimezone}
+							useTime={{
+								hour: 'numeric',
+								minute: 'numeric',
+							}}
+						/>
+					),
+				}}
+			/>
+		</Container>
+	);
 };
 
 export default RemoteUserHour;

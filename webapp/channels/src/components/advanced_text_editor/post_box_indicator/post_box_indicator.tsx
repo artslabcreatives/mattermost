@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -11,41 +11,41 @@ import useTimePostBoxIndicator from '../use_post_box_indicator';
 import './style.scss';
 
 type Props = {
-    channelId: string;
-    teammateDisplayName: string;
-    location: string;
-    postId: string;
+	channelId: string;
+	teammateDisplayName: string;
+	location: string;
+	postId: string;
 }
 
-export default function PostBoxIndicator({channelId, teammateDisplayName, location, postId}: Props) {
-    const {
-        showRemoteUserHour,
-        isScheduledPostEnabled,
-        currentUserTimesStamp,
-        teammateTimezone,
-    } = useTimePostBoxIndicator(channelId);
+export default function PostBoxIndicator({ channelId, teammateDisplayName, location, postId }: Props) {
+	const {
+		showRemoteUserHour,
+		isScheduledPostEnabled,
+		currentUserTimesStamp,
+		teammateTimezone,
+	} = useTimePostBoxIndicator(channelId);
 
-    return (
-        <div className='postBoxIndicator'>
-            {
-                showRemoteUserHour &&
-                <RemoteUserHour
-                    displayName={teammateDisplayName}
-                    timestamp={currentUserTimesStamp}
-                    teammateTimezone={teammateTimezone}
-                />
-            }
+	return (
+		<div className='postBoxIndicator'>
+			{
+				showRemoteUserHour &&
+				<RemoteUserHour
+					displayName={teammateDisplayName}
+					timestamp={currentUserTimesStamp}
+					teammateTimezone={teammateTimezone}
+				/>
+			}
 
-            {
+			{
 
-                isScheduledPostEnabled &&
-                <ScheduledPostIndicator
-                    location={location}
-                    channelId={channelId}
-                    postId={postId}
-                    remoteUserHourDisplayed={showRemoteUserHour}
-                />
-            }
-        </div>
-    );
+				isScheduledPostEnabled &&
+				<ScheduledPostIndicator
+					location={location}
+					channelId={channelId}
+					postId={postId}
+					remoteUserHourDisplayed={showRemoteUserHour}
+				/>
+			}
+		</div>
+	);
 }

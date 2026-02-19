@@ -1,35 +1,35 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {shallow} from 'enzyme';
+import { shallow } from 'enzyme';
 import React from 'react';
 
 import EmojiPickerHeader from 'components/emoji_picker/components/emoji_picker_header';
 
 describe('components/emoji_picker/components/EmojiPickerHeader', () => {
-    test('should match snapshot, ', () => {
-        const props = {
-            handleEmojiPickerClose: jest.fn(),
-        };
+	test('should match snapshot, ', () => {
+		const props = {
+			handleEmojiPickerClose: jest.fn(),
+		};
 
-        const wrapper = shallow(
-            <EmojiPickerHeader {...props}/>,
-        );
+		const wrapper = shallow(
+			<EmojiPickerHeader {...props} />,
+		);
 
-        expect(wrapper).toMatchSnapshot();
-    });
-    test('handleEmojiPickerClose, should have called props.handleEmojiPickerClose', () => {
-        const props = {
-            handleEmojiPickerClose: jest.fn(),
-        };
+		expect(wrapper).toMatchSnapshot();
+	});
+	test('handleEmojiPickerClose, should have called props.handleEmojiPickerClose', () => {
+		const props = {
+			handleEmojiPickerClose: jest.fn(),
+		};
 
-        const wrapper = shallow(
-            <EmojiPickerHeader {...props}/>,
-        );
+		const wrapper = shallow(
+			<EmojiPickerHeader {...props} />,
+		);
 
-        expect(wrapper).toMatchSnapshot();
+		expect(wrapper).toMatchSnapshot();
 
-        wrapper.find('button').first().simulate('click');
-        expect(props.handleEmojiPickerClose).toHaveBeenCalledTimes(1);
-    });
+		wrapper.find('button').first().simulate('click');
+		expect(props.handleEmojiPickerClose).toHaveBeenCalledTimes(1);
+	});
 });

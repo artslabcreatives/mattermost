@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import {shallow} from 'enzyme';
@@ -28,7 +28,7 @@ describe('components/select_team/SelectTeam', () => {
             {id: 'team_id_1', delete_at: 0, name: 'team-a', display_name: 'Team A', allow_open_invite: true} as Team,
             {id: 'team_id_2', delete_at: 0, name: 'b-team', display_name: 'B Team', allow_open_invite: true} as Team,
         ],
-        siteName: 'Mattermost',
+        siteName: 'Aura',
         canCreateTeams: false,
         canManageSystem: true,
         canJoinPublicTeams: true,

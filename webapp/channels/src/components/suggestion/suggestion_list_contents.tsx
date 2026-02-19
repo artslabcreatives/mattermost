@@ -1,128 +1,128 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import type {MessageDescriptor} from 'react-intl';
-import {useIntl} from 'react-intl';
+import type { MessageDescriptor } from 'react-intl';
+import { useIntl } from 'react-intl';
 
 import LoadingSpinner from 'components/widgets/loading/loading_spinner';
 
-import {formatAsComponent} from 'utils/i18n';
+import { formatAsComponent } from 'utils/i18n';
 
-import {isItemLoaded, type SuggestionResults} from './suggestion_results';
+import { isItemLoaded, type SuggestionResults } from './suggestion_results';
 
 export type SuggestionListContentsProps = {
-    id: string;
-    className?: string;
-    style?: React.CSSProperties;
+	id: string;
+	className?: string;
+	style?: React.CSSProperties;
 
-    results: SuggestionResults;
-    selectedTerm: string;
+	results: SuggestionResults;
+	selectedTerm: string;
 
-    getItemId: (term: string) => string;
-    setItemRef?: (term: string, ref: HTMLElement | null) => void;
-    onItemClick: (term: string, matchedPretext: string) => void;
-    onItemHover: (term: string) => void;
-    onMouseDown?: () => void;
+	getItemId: (term: string) => string;
+	setItemRef?: (term: string, ref: HTMLElement | null) => void;
+	onItemClick: (term: string, matchedPretext: string) => void;
+	onItemHover: (term: string) => void;
+	onMouseDown?: () => void;
 };
 
 const SuggestionListContents = React.forwardRef<HTMLElement, SuggestionListContentsProps>(({
-    id,
-    className,
-    style,
+	id,
+	className,
+	style,
 
-    results,
-    selectedTerm,
+	results,
+	selectedTerm,
 
-    getItemId,
-    setItemRef,
-    onItemClick,
-    onItemHover,
-    onMouseDown,
+	getItemId,
+	setItemRef,
+	onItemClick,
+	onItemHover,
+	onMouseDown,
 }, ref) => {
-    function renderItem(item: unknown, term: string, Component: React.ElementType<any>) {
-        if (!isItemLoaded(item)) {
-            return <LoadingSpinner key={term}/>;
-        }
+	function renderItem(item: unknown, term: string, Component: React.ElementType<any>) {
+		if (!isItemLoaded(item)) {
+			return <LoadingSpinner key={term} />;
+		}
 
-        const itemRef = setItemRef ? (ref: HTMLElement) => setItemRef(term, ref) : undefined;
+		const itemRef = setItemRef ? (ref: HTMLElement) => setItemRef(term, ref) : undefined;
 
-        return (
-            <Component
-                key={term}
-                ref={itemRef}
-                id={getItemId(term)}
-                item={item}
-                term={term}
-                matchedPretext={results.matchedPretext}
-                isSelection={selectedTerm === term}
-                onClick={onItemClick}
-                onMouseMove={onItemHover}
-            />
-        );
-    }
+		return (
+			<Component
+				key={term}
+				ref={itemRef}
+				id={getItemId(term)}
+				item={item}
+				term={term}
+				matchedPretext={results.matchedPretext}
+				isSelection={selectedTerm === term}
+				onClick={onItemClick}
+				onMouseMove={onItemHover}
+			/>
+		);
+	}
 
-    if ('groups' in results) {
-        const contents = [];
+	if ('groups' in results) {
+		const contents = [];
 
-        for (const group of results.groups) {
-            if (group.items.length === 0) {
-                continue;
-            }
+		for (const group of results.groups) {
+			if (group.items.length === 0) {
+				continue;
+			}
 
-            const items = group.items.map((item, i) => {
-                return renderItem(item, group.terms[i], group.components[i]);
-            });
+			const items = group.items.map((item, i) => {
+				return renderItem(item, group.terms[i], group.components[i]);
+			});
 
-            contents.push(
-                <GroupedSuggestionsGroup
-                    key={group.key}
-                    groupKey={group.key}
-                    labelMessage={group.label}
-                >
-                    {items}
-                </GroupedSuggestionsGroup>,
-            );
-        }
+			contents.push(
+				<GroupedSuggestionsGroup
+					key={group.key}
+					groupKey={group.key}
+					labelMessage={group.label}
+				>
+					{items}
+				</GroupedSuggestionsGroup>,
+			);
+		}
 
-        return (
-            <GroupedSuggestions
-                ref={ref as React.ForwardedRef<HTMLDivElement>}
+		return (
+			<GroupedSuggestions
+				ref={ref as React.ForwardedRef<HTMLDivElement>}
 
-                id={id}
-                className={className}
-                style={style}
+				id={id}
+				className={className}
+				style={style}
 
-                onMouseDown={onMouseDown}
-            >
-                {contents}
-            </GroupedSuggestions>
-        );
-    }
+				onMouseDown={onMouseDown}
+			>
+				{contents}
+			</GroupedSuggestions>
+		);
+	}
 
-    const contents = [];
-    for (let i = 0; i < results.items.length; i++) {
-        contents.push(renderItem(results.items[i], results.terms[i], results.components[i]));
-    }
+	const contents = [];
+	for (let i = 0; i < results.items.length; i++) {
+		contents.push(renderItem(results.items[i], results.terms[i], results.components[i]));
+	}
 
-    return (
-        <UngroupedSuggestions
-            ref={ref as React.ForwardedRef<HTMLUListElement>}
-            id={id}
-            className={className}
-            style={style}
+	return (
+		<UngroupedSuggestions
+			ref={ref as React.ForwardedRef<HTMLUListElement>}
+			id={id}
+			className={className}
+			style={style}
 
-            onMouseDown={onMouseDown}
-        >
-            {contents}
-        </UngroupedSuggestions>
-    );
+			onMouseDown={onMouseDown}
+		>
+			{contents}
+		</UngroupedSuggestions>
+	);
 });
 SuggestionListContents.displayName = 'SuggestionListContents';
 export default SuggestionListContents;
 
 type UngroupedSuggestionsProps = Omit<React.HTMLAttributes<HTMLUListElement>, 'aria-label' | 'id' | 'role'> & {
-    id: string;
+	id: string;
 };
 
 /**
@@ -139,29 +139,29 @@ type UngroupedSuggestionsProps = Omit<React.HTMLAttributes<HTMLUListElement>, 'a
  * ```
  */
 export const UngroupedSuggestions = React.forwardRef<HTMLUListElement, UngroupedSuggestionsProps>(({
-    id,
-    ...otherProps
+	id,
+	...otherProps
 }: UngroupedSuggestionsProps, ref) => {
-    const {formatMessage} = useIntl();
+	const { formatMessage } = useIntl();
 
-    return (
-        <ul
-            ref={ref}
-            id={id}
+	return (
+		<ul
+			ref={ref}
+			id={id}
 
-            aria-label={formatMessage({id: 'suggestionList.label', defaultMessage: 'Suggestions'})}
+			aria-label={formatMessage({ id: 'suggestionList.label', defaultMessage: 'Suggestions' })}
 
-            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
-            role='listbox'
+			// eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
+			role='listbox'
 
-            {...otherProps}
-        />
-    );
+			{...otherProps}
+		/>
+	);
 });
 UngroupedSuggestions.displayName = 'UngroupedSuggestions';
 
 type GroupedSuggestionsProps = Omit<React.HTMLAttributes<HTMLDivElement>, 'aria-label' | 'id' | 'role'> & {
-    id: string;
+	id: string;
 };
 
 /**
@@ -184,51 +184,51 @@ type GroupedSuggestionsProps = Omit<React.HTMLAttributes<HTMLDivElement>, 'aria-
  * ```
  */
 const GroupedSuggestions = React.forwardRef<HTMLDivElement, GroupedSuggestionsProps>(({
-    id,
-    ...otherProps
+	id,
+	...otherProps
 }: GroupedSuggestionsProps, ref) => {
-    const {formatMessage} = useIntl();
+	const { formatMessage } = useIntl();
 
-    return (
-        <div
-            ref={ref}
-            id={id}
+	return (
+		<div
+			ref={ref}
+			id={id}
 
-            aria-label={formatMessage({id: 'suggestionList.label', defaultMessage: 'Suggestions'})}
+			aria-label={formatMessage({ id: 'suggestionList.label', defaultMessage: 'Suggestions' })}
 
-            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
-            role='listbox'
+			// eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
+			role='listbox'
 
-            {...otherProps}
-        />
-    );
+			{...otherProps}
+		/>
+	);
 });
 GroupedSuggestions.displayName = 'GroupedSuggestions';
 
 function GroupedSuggestionsGroup({
-    children,
-    groupKey,
-    labelMessage,
+	children,
+	groupKey,
+	labelMessage,
 }: {
-    children: React.ReactNode;
-    groupKey: string | undefined;
-    labelMessage: MessageDescriptor | string;
+	children: React.ReactNode;
+	groupKey: string | undefined;
+	labelMessage: MessageDescriptor | string;
 }) {
-    const labelId = `suggestionListGroup-${groupKey}`;
+	const labelId = `suggestionListGroup-${groupKey}`;
 
-    return (
-        <ul
-            role='group'
-            aria-labelledby={labelId}
-        >
-            <li
-                id={labelId}
-                className='suggestion-list__divider'
-                role='presentation'
-            >
-                {formatAsComponent(labelMessage)}
-            </li>
-            {children}
-        </ul>
-    );
+	return (
+		<ul
+			role='group'
+			aria-labelledby={labelId}
+		>
+			<li
+				id={labelId}
+				className='suggestion-list__divider'
+				role='presentation'
+			>
+				{formatAsComponent(labelMessage)}
+			</li>
+			{children}
+		</ul>
+	);
 }

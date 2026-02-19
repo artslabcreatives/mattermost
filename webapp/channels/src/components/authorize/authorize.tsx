@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -135,7 +135,7 @@ export default class Authorize extends React.PureComponent<Props, State> {
                         <div className='text'>
                             <FormattedMessage
                                 id='authorize.connectTitle'
-                                defaultMessage='Authorize <b>{appName}</b> to Connect to Your <b>Mattermost</b> User Account'
+                                defaultMessage='Authorize <b>{appName}</b> to Connect to Your <b>Aura</b> User Account'
                                 values={{
                                     appName: app.name,
                                     b: (chunks) => <b>{chunks}</b>,

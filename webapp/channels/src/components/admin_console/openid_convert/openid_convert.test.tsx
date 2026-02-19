@@ -1,23 +1,23 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {shallow} from 'enzyme';
+import { shallow } from 'enzyme';
 import React from 'react';
 
 import OpenIdConvert from 'components/admin_console/openid_convert/openid_convert';
 
 describe('components/OpenIdConvert', () => {
-    const baseProps = {
-        actions: {
-            patchConfig: jest.fn(),
-        },
-    };
+	const baseProps = {
+		actions: {
+			patchConfig: jest.fn(),
+		},
+	};
 
-    test('should match snapshot', () => {
-        const wrapper = shallow(
-            <OpenIdConvert {...baseProps}/>,
-        );
+	test('should match snapshot', () => {
+		const wrapper = shallow(
+			<OpenIdConvert {...baseProps} />,
+		);
 
-        expect(wrapper).toMatchSnapshot();
-    });
+		expect(wrapper).toMatchSnapshot();
+	});
 });

@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {useEffect} from 'react';
@@ -171,7 +171,7 @@ const Completed = (props: Props): JSX.Element => {
                     <span className='completed-subtitle'>
                         <FormattedMessage
                             id={'onboardingTask.checklist.completed_subtitle'}
-                            defaultMessage='We hope Mattermost is more familiar now.'
+                            defaultMessage='We hope Aura is more familiar now.'
                         />
                     </span>
 
@@ -234,7 +234,7 @@ const Completed = (props: Props): JSX.Element => {
                         <span>
                             <FormattedMessage
                                 id='onboardingTask.checklist.disclaimer'
-                                defaultMessage='By clicking “Start trial”, I agree to the <linkEvaluation>Mattermost Software Evaluation Agreement</linkEvaluation>, <linkPrivacy>privacy policy</linkPrivacy> and receiving product emails.'
+                                defaultMessage='By clicking “Start trial”, I agree to the <linkEvaluation>Aura Software Evaluation Agreement</linkEvaluation>, <linkPrivacy>privacy policy</linkPrivacy> and receiving product emails.'
                                 values={{
                                     linkEvaluation: (msg: React.ReactNode) => (
                                         <ExternalLink

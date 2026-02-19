@@ -1,8 +1,8 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {Parser, ProcessNodeDefinitions} from 'html-to-react';
-import type {AllHTMLAttributes} from 'react';
+import { Parser, ProcessNodeDefinitions } from 'html-to-react';
+import type { AllHTMLAttributes } from 'react';
 import React from 'react';
 
 import AtMention from 'components/at_mention';
@@ -17,39 +17,39 @@ import PostEmoji from 'components/post_emoji';
 import PostEditedIndicator from 'components/post_view/post_edited_indicator';
 
 export type Options = Partial<{
-    postId: string;
-    editedAt: number;
-    hasPluginTooltips: boolean;
-    mentions: boolean;
-    mentionHighlight: boolean;
-    disableGroupHighlight: boolean;
-    markdown: boolean;
-    latex: boolean;
-    inlinelatex: boolean;
-    postType: string;
-    imageProps: {[key: string]: any};
-    atSumOfMembersMentions: boolean;
-    userIds: string[];
-    imagesMetadata: any;
-    emoji: boolean;
-    messageMetadata: any;
-    images: boolean;
-    atPlanMentions: boolean;
-    channelId: string;
-    channelIsShared: boolean;
+	postId: string;
+	editedAt: number;
+	hasPluginTooltips: boolean;
+	mentions: boolean;
+	mentionHighlight: boolean;
+	disableGroupHighlight: boolean;
+	markdown: boolean;
+	latex: boolean;
+	inlinelatex: boolean;
+	postType: string;
+	imageProps: { [key: string]: any };
+	atSumOfMembersMentions: boolean;
+	userIds: string[];
+	imagesMetadata: any;
+	emoji: boolean;
+	messageMetadata: any;
+	images: boolean;
+	atPlanMentions: boolean;
+	channelId: string;
+	channelIsShared: boolean;
 
-    /**
-     * Whether or not the AtMention component should attempt to fetch at-mentioned users if none can be found for
-     * something that looks like an at-mention. This defaults to false because the web app currently loads at-mentioned
-     * users automatically for all posts.
-     */
-    fetchMissingUsers: boolean;
+	/**
+	 * Whether or not the AtMention component should attempt to fetch at-mentioned users if none can be found for
+	 * something that looks like an at-mention. This defaults to false because the web app currently loads at-mentioned
+	 * users automatically for all posts.
+	 */
+	fetchMissingUsers: boolean;
 }>
 
 type ProcessingInstruction = {
-    replaceChildren: boolean;
-    shouldProcessNode: (node: any) => boolean;
-    processNode: (node: any, children?: any, index?: number) => any;
+	replaceChildren: boolean;
+	shouldProcessNode: (node: any) => boolean;
+	processNode: (node: any, children?: any, index?: number) => any;
 }
 
 /*
@@ -67,221 +67,221 @@ type ProcessingInstruction = {
  * - channelId = If specified, to be passed along to ProfilePopover via AtMention
  */
 export default function messageHtmlToComponent(html: string, options: Options = {}) {
-    if (!html) {
-        return null;
-    }
+	if (!html) {
+		return null;
+	}
 
-    const parser = new (Parser as any)();
-    const processNodeDefinitions = new (ProcessNodeDefinitions as any)();
+	const parser = new (Parser as any)();
+	const processNodeDefinitions = new (ProcessNodeDefinitions as any)();
 
-    function isValidNode() {
-        return true;
-    }
+	function isValidNode() {
+		return true;
+	}
 
-    const processingInstructions: ProcessingInstruction[] = [
+	const processingInstructions: ProcessingInstruction[] = [
 
-        // Workaround to fix MM-14931
-        {
-            replaceChildren: false,
-            shouldProcessNode: (node: any) => node.type === 'tag' && node.name === 'input' && node.attribs.type === 'checkbox',
-            processNode: (node: any) => {
-                const attribs = node.attribs || {};
-                node.attribs.checked = Boolean(attribs.checked);
+		// Workaround to fix MM-14931
+		{
+			replaceChildren: false,
+			shouldProcessNode: (node: any) => node.type === 'tag' && node.name === 'input' && node.attribs.type === 'checkbox',
+			processNode: (node: any) => {
+				const attribs = node.attribs || {};
+				node.attribs.checked = Boolean(attribs.checked);
 
-                return React.createElement('input', {...node.attribs});
-            },
-        },
-        {
-            replaceChildren: false,
-            shouldProcessNode: (node: any) => node.type === 'tag' && node.name === 'span' && node.attribs['data-edited-post-id'] && node.attribs['data-edited-post-id'] === options.postId,
-            processNode: () => {
-                return options.postId && options.editedAt && options.editedAt > 0 ? (
-                    <React.Fragment key={`edited-${options.postId}`}>
-                        {' '}
-                        <PostEditedIndicator
-                            postId={options.postId}
-                            editedAt={options.editedAt}
-                        />
-                    </React.Fragment>
-                ) : null;
-            },
-        },
-    ];
+				return React.createElement('input', { ...node.attribs });
+			},
+		},
+		{
+			replaceChildren: false,
+			shouldProcessNode: (node: any) => node.type === 'tag' && node.name === 'span' && node.attribs['data-edited-post-id'] && node.attribs['data-edited-post-id'] === options.postId,
+			processNode: () => {
+				return options.postId && options.editedAt && options.editedAt > 0 ? (
+					<React.Fragment key={`edited-${options.postId}`}>
+						{' '}
+						<PostEditedIndicator
+							postId={options.postId}
+							editedAt={options.editedAt}
+						/>
+					</React.Fragment>
+				) : null;
+			},
+		},
+	];
 
-    if (options.hasPluginTooltips) {
-        processingInstructions.push({
-            replaceChildren: false,
-            shouldProcessNode: (node: any) => node.type === 'tag' && node.name === 'a' && node.attribs.href,
-            processNode: (node: any, children: any) => {
-                return (
-                    <PluginLinkTooltip nodeAttributes={convertPropsToReactStandard(node.attribs)}>
-                        {children}
-                    </PluginLinkTooltip>
-                );
-            },
-        });
-    }
+	if (options.hasPluginTooltips) {
+		processingInstructions.push({
+			replaceChildren: false,
+			shouldProcessNode: (node: any) => node.type === 'tag' && node.name === 'a' && node.attribs.href,
+			processNode: (node: any, children: any) => {
+				return (
+					<PluginLinkTooltip nodeAttributes={convertPropsToReactStandard(node.attribs)}>
+						{children}
+					</PluginLinkTooltip>
+				);
+			},
+		});
+	}
 
-    if (!('mentions' in options) || options.mentions) {
-        const mentionHighlight = 'mentionHighlight' in options ? options.mentionHighlight : true;
-        const disableGroupHighlight = 'disableGroupHighlight' in options ? options.disableGroupHighlight === true : false;
-        const mentionAttrib = 'data-mention';
-        processingInstructions.push({
-            replaceChildren: true,
-            shouldProcessNode: (node) => node.attribs && node.attribs[mentionAttrib],
-            processNode: (node: any, children: any) => {
-                const mentionName = node.attribs[mentionAttrib];
-                const callAtMention = (
-                    <AtMention
-                        mentionName={mentionName}
-                        disableHighlight={!mentionHighlight}
-                        disableGroupHighlight={disableGroupHighlight}
-                        channelId={options.channelId}
-                        fetchMissingUsers={options.fetchMissingUsers}
-                    >
-                        {children}
-                    </AtMention>
-                );
-                return callAtMention;
-            },
-        });
-    }
+	if (!('mentions' in options) || options.mentions) {
+		const mentionHighlight = 'mentionHighlight' in options ? options.mentionHighlight : true;
+		const disableGroupHighlight = 'disableGroupHighlight' in options ? options.disableGroupHighlight === true : false;
+		const mentionAttrib = 'data-mention';
+		processingInstructions.push({
+			replaceChildren: true,
+			shouldProcessNode: (node) => node.attribs && node.attribs[mentionAttrib],
+			processNode: (node: any, children: any) => {
+				const mentionName = node.attribs[mentionAttrib];
+				const callAtMention = (
+					<AtMention
+						mentionName={mentionName}
+						disableHighlight={!mentionHighlight}
+						disableGroupHighlight={disableGroupHighlight}
+						channelId={options.channelId}
+						fetchMissingUsers={options.fetchMissingUsers}
+					>
+						{children}
+					</AtMention>
+				);
+				return callAtMention;
+			},
+		});
+	}
 
-    if (options.atSumOfMembersMentions) {
-        const mentionAttrib = 'data-sum-of-members-mention';
-        processingInstructions.push({
-            replaceChildren: true,
-            shouldProcessNode: (node: any) => node.attribs && node.attribs[mentionAttrib],
-            processNode: (node: any) => {
-                const mentionName = node.attribs[mentionAttrib];
-                const sumOfMembersMention = (
-                    <AtSumOfMembersMention
-                        postId={options.postId || ''}
-                        userIds={options.userIds || []}
-                        messageMetadata={options.messageMetadata}
-                        text={mentionName}
-                    />);
-                return sumOfMembersMention;
-            },
-        });
-    }
+	if (options.atSumOfMembersMentions) {
+		const mentionAttrib = 'data-sum-of-members-mention';
+		processingInstructions.push({
+			replaceChildren: true,
+			shouldProcessNode: (node: any) => node.attribs && node.attribs[mentionAttrib],
+			processNode: (node: any) => {
+				const mentionName = node.attribs[mentionAttrib];
+				const sumOfMembersMention = (
+					<AtSumOfMembersMention
+						postId={options.postId || ''}
+						userIds={options.userIds || []}
+						messageMetadata={options.messageMetadata}
+						text={mentionName}
+					/>);
+				return sumOfMembersMention;
+			},
+		});
+	}
 
-    if (options.atPlanMentions) {
-        const mentionAttrib = 'data-plan-mention';
-        processingInstructions.push({
-            replaceChildren: true,
-            shouldProcessNode: (node: any) => node.attribs && node.attribs[mentionAttrib],
-            processNode: (node: any) => {
-                const mentionName = node.attribs[mentionAttrib];
-                const sumOfMembersMention = (
-                    <AtPlanMention
-                        plan={mentionName}
-                    />);
-                return sumOfMembersMention;
-            },
-        });
-    }
+	if (options.atPlanMentions) {
+		const mentionAttrib = 'data-plan-mention';
+		processingInstructions.push({
+			replaceChildren: true,
+			shouldProcessNode: (node: any) => node.attribs && node.attribs[mentionAttrib],
+			processNode: (node: any) => {
+				const mentionName = node.attribs[mentionAttrib];
+				const sumOfMembersMention = (
+					<AtPlanMention
+						plan={mentionName}
+					/>);
+				return sumOfMembersMention;
+			},
+		});
+	}
 
-    if (!('emoji' in options) || options.emoji) {
-        const emojiAttrib = 'data-emoticon';
-        processingInstructions.push({
-            replaceChildren: true,
-            shouldProcessNode: (node: any) => node.attribs && node.attribs[emojiAttrib],
-            processNode: (node: any, children: any) => {
-                const emojiName = node.attribs[emojiAttrib];
+	if (!('emoji' in options) || options.emoji) {
+		const emojiAttrib = 'data-emoticon';
+		processingInstructions.push({
+			replaceChildren: true,
+			shouldProcessNode: (node: any) => node.attribs && node.attribs[emojiAttrib],
+			processNode: (node: any, children: any) => {
+				const emojiName = node.attribs[emojiAttrib];
 
-                return <PostEmoji name={emojiName}>{children}</PostEmoji>;
-            },
-        });
-    }
+				return <PostEmoji name={emojiName}>{children}</PostEmoji>;
+			},
+		});
+	}
 
-    if (!('images' in options) || options.images) {
-        processingInstructions.push({
-            replaceChildren: false,
-            shouldProcessNode: (node: any) => node.type === 'tag' && node.name === 'img',
-            processNode: (node: any) => {
-                const {
-                    class: className,
-                    ...attribs
-                } = node.attribs;
+	if (!('images' in options) || options.images) {
+		processingInstructions.push({
+			replaceChildren: false,
+			shouldProcessNode: (node: any) => node.type === 'tag' && node.name === 'img',
+			processNode: (node: any) => {
+				const {
+					class: className,
+					...attribs
+				} = node.attribs;
 
-                const imageIsLink = (parentNode: any) => {
-                    if (parentNode &&
-                        parentNode.type === 'tag' &&
-                        parentNode.name === 'a'
-                    ) {
-                        return true;
-                    }
-                    return false;
-                };
+				const imageIsLink = (parentNode: any) => {
+					if (parentNode &&
+						parentNode.type === 'tag' &&
+						parentNode.name === 'a'
+					) {
+						return true;
+					}
+					return false;
+				};
 
-                return (
-                    <MarkdownImage
-                        className={className}
-                        imageMetadata={options.imagesMetadata && options.imagesMetadata[attribs.src]}
-                        {...attribs}
-                        {...options.imageProps}
-                        postId={options.postId}
-                        imageIsLink={imageIsLink(node.parentNode)}
-                        postType={options.postType}
-                    />
-                );
-            },
-        });
-    }
+				return (
+					<MarkdownImage
+						className={className}
+						imageMetadata={options.imagesMetadata && options.imagesMetadata[attribs.src]}
+						{...attribs}
+						{...options.imageProps}
+						postId={options.postId}
+						imageIsLink={imageIsLink(node.parentNode)}
+						postType={options.postType}
+					/>
+				);
+			},
+		});
+	}
 
-    if (!('latex' in options) || options.latex) {
-        processingInstructions.push({
-            replaceChildren: false,
-            shouldProcessNode: (node: any) => node.attribs && node.attribs['data-latex'],
-            processNode: (node: any) => {
-                return (
-                    <LatexBlock
-                        key={node.attribs['data-latex']}
-                        content={node.attribs['data-latex']}
-                    />
-                );
-            },
-        });
-    }
+	if (!('latex' in options) || options.latex) {
+		processingInstructions.push({
+			replaceChildren: false,
+			shouldProcessNode: (node: any) => node.attribs && node.attribs['data-latex'],
+			processNode: (node: any) => {
+				return (
+					<LatexBlock
+						key={node.attribs['data-latex']}
+						content={node.attribs['data-latex']}
+					/>
+				);
+			},
+		});
+	}
 
-    if (!('inlinelatex' in options) || options.inlinelatex) {
-        processingInstructions.push({
-            replaceChildren: false,
-            shouldProcessNode: (node) => node.attribs && node.attribs['data-inline-latex'],
-            processNode: (node: any) => {
-                return (
-                    <LatexInline content={node.attribs['data-inline-latex']}/>
-                );
-            },
-        });
-    }
+	if (!('inlinelatex' in options) || options.inlinelatex) {
+		processingInstructions.push({
+			replaceChildren: false,
+			shouldProcessNode: (node) => node.attribs && node.attribs['data-inline-latex'],
+			processNode: (node: any) => {
+				return (
+					<LatexInline content={node.attribs['data-inline-latex']} />
+				);
+			},
+		});
+	}
 
-    if (!('markdown' in options) || options.markdown) {
-        processingInstructions.push({
-            replaceChildren: false,
-            shouldProcessNode: (node) => node.attribs && node.attribs['data-codeblock-code'],
-            processNode: (node: any) => {
-                return (
-                    <CodeBlock
-                        key={node.attribs['data-codeblock-code']}
-                        code={node.attribs['data-codeblock-code']}
-                        language={node.attribs['data-codeblock-language']}
-                        searchedContent={node.attribs['data-codeblock-searchedcontent']}
-                        channelId={options.channelId}
-                    />
-                );
-            },
-        });
-    }
+	if (!('markdown' in options) || options.markdown) {
+		processingInstructions.push({
+			replaceChildren: false,
+			shouldProcessNode: (node) => node.attribs && node.attribs['data-codeblock-code'],
+			processNode: (node: any) => {
+				return (
+					<CodeBlock
+						key={node.attribs['data-codeblock-code']}
+						code={node.attribs['data-codeblock-code']}
+						language={node.attribs['data-codeblock-language']}
+						searchedContent={node.attribs['data-codeblock-searchedcontent']}
+						channelId={options.channelId}
+					/>
+				);
+			},
+		});
+	}
 
-    processingInstructions.push({
-        replaceChildren: false,
-        shouldProcessNode: () => true,
-        processNode: processNodeDefinitions.processDefaultNode as (node: any, children?: any, index?: number) => any,
-    });
+	processingInstructions.push({
+		replaceChildren: false,
+		shouldProcessNode: () => true,
+		processNode: processNodeDefinitions.processDefaultNode as (node: any, children?: any, index?: number) => any,
+	});
 
-    return parser.parseWithInstructions(html, isValidNode, processingInstructions);
+	return parser.parseWithInstructions(html, isValidNode, processingInstructions);
 }
 
 /**
@@ -290,26 +290,26 @@ export default function messageHtmlToComponent(html: string, options: Options = 
  * is not exhaustive and may not cover all HTML attributes. Add more cases as needed.
  */
 export function convertPropsToReactStandard(propsToConvert: AllHTMLAttributes<HTMLElement>): Record<string, unknown> {
-    const newProps: Record<string, unknown> = {};
+	const newProps: Record<string, unknown> = {};
 
-    for (const [key, value] of Object.entries(propsToConvert)) {
-        switch (key) {
-        case 'class':
-            newProps.className = value;
-            break;
-        case 'for':
-            newProps.htmlFor = value;
-            break;
-        case 'tabindex':
-            newProps.tabIndex = value;
-            break;
-        case 'readonly':
-            newProps.readOnly = value;
-            break;
-        default:
-            newProps[key] = value;
-        }
-    }
+	for (const [key, value] of Object.entries(propsToConvert)) {
+		switch (key) {
+			case 'class':
+				newProps.className = value;
+				break;
+			case 'for':
+				newProps.htmlFor = value;
+				break;
+			case 'tabindex':
+				newProps.tabIndex = value;
+				break;
+			case 'readonly':
+				newProps.readOnly = value;
+				break;
+			default:
+				newProps[key] = value;
+		}
+	}
 
-    return newProps;
+	return newProps;
 }

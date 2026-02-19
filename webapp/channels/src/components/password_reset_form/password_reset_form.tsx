@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
@@ -33,7 +33,7 @@ const PasswordResetForm = ({location, siteName, actions}: Props) => {
                 id: 'password_form.pageTitle',
                 defaultMessage: 'Password Reset | {siteName}',
             },
-            {siteName: siteName || 'Mattermost'},
+            {siteName: siteName || 'Aura'},
         );
     }, [intl, siteName]);
 

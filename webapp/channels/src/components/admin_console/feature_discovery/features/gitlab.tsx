@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -17,11 +17,11 @@ const GitLabFeatureDiscovery: React.FC = () => {
             minimumSKURequiredForFeature={LicenseSkus.Professional}
             title={defineMessage({
                 id: 'admin.gitlab_feature_discovery.title',
-                defaultMessage: 'Integrate GitLab SSO with OpenID Connect in Mattermost Professional',
+                defaultMessage: 'Integrate GitLab SSO with OpenID Connect in Aura Professional',
             })}
             copy={defineMessage({
                 id: 'admin.gitlab_feature_discovery.copy',
-                defaultMessage: 'When you connect GitLab as your single sign-on provider, your team can access Mattermost without having to re-enter their GitLab credentials. Available only on Mattermost Professional and above.',
+                defaultMessage: 'When you connect GitLab as your single sign-on provider, your team can access Aura without having to re-enter their GitLab credentials. Available only on Aura Professional and above.',
             })}
             learnMoreURL='https://docs.mattermost.com/administration-guide/onboard/sso-gitlab.html'
             featureDiscoveryImage={

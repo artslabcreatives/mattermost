@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {useEffect, useState, useCallback} from 'react';
@@ -105,7 +105,7 @@ const CloudPreviewAnnouncementBar: React.FC = () => {
     const message = (
         <FormattedMessage
             id='announcement_bar.cloud_preview.message'
-            defaultMessage='This is your Mattermost preview environment. Time left: {timeLeft}'
+            defaultMessage='This is your Aura preview environment. Time left: {timeLeft}'
             values={{timeLeft: timeLeft || '00:00'}}
         />
     );

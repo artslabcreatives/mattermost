@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -17,7 +17,7 @@ const MobileSecurityFeatureDiscovery = () => {
             minimumSKURequiredForFeature={LicenseSkus.Enterprise}
             title={defineMessage({
                 id: 'admin.mobile_security_feature_discovery.title',
-                defaultMessage: 'Enhance mobile app security with Mattermost Enterprise',
+                defaultMessage: 'Enhance mobile app security with Aura Enterprise',
             })}
             copy={defineMessage({
                 id: 'admin.mobile_security_feature_discovery.copy',

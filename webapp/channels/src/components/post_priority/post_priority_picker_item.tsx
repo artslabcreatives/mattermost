@@ -1,23 +1,23 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import MenuList from '@mui/material/MenuList';
 import React from 'react';
 import styled from 'styled-components';
 
-import {CheckIcon, AlertOutlineIcon, AlertCircleOutlineIcon, MessageTextOutlineIcon, CheckCircleOutlineIcon, BellRingOutlineIcon} from '@mattermost/compass-icons/components';
+import { CheckIcon, AlertOutlineIcon, AlertCircleOutlineIcon, MessageTextOutlineIcon, CheckCircleOutlineIcon, BellRingOutlineIcon } from '@mattermost/compass-icons/components';
 
-import {MenuItem} from 'components/menu/menu_item';
+import { MenuItem } from 'components/menu/menu_item';
 import Toggle from 'components/toggle';
 
 type ToggleProps = {
-    ariaLabel?: string;
-    description: React.ReactNode;
-    disabled: boolean;
-    icon: React.ReactNode;
-    onClick: () => void;
-    text: React.ReactNode;
-    toggled: boolean;
+	ariaLabel?: string;
+	description: React.ReactNode;
+	disabled: boolean;
+	icon: React.ReactNode;
+	onClick: () => void;
+	text: React.ReactNode;
+	toggled: boolean;
 }
 
 const Wrapper = styled(MenuItem)`
@@ -100,46 +100,46 @@ const PersistentNotificationsIcon = styled(BellRingOutlineIcon)`
 `;
 
 function ToggleItem({
-    ariaLabel,
-    description,
-    disabled,
-    icon,
-    onClick,
-    text,
-    toggled,
+	ariaLabel,
+	description,
+	disabled,
+	icon,
+	onClick,
+	text,
+	toggled,
 }: ToggleProps) {
-    return (
-        <Wrapper
-            onClick={disabled ? undefined : onClick}
-            disabled={disabled}
-            leadingElement={icon}
-            tabIndex={-1}
-            role='menuitemcheckbox'
-            aria-checked={toggled}
-            aria-label={ariaLabel}
-            trailingElements={<>
-                <Toggle
-                    ariaLabel={ariaLabel}
-                    size='btn-sm'
-                    disabled={disabled}
-                    onToggle={onClick}
-                    toggled={toggled}
-                    toggleClassName='btn-toggle-primary'
-                    tabIndex={-1}
-                />
-            </>}
-            labels={<>
-                <div>
-                    {text}
-                </div>
-                <Description>
-                    {description}
-                </Description>
-            </>}
-        />
-    );
+	return (
+		<Wrapper
+			onClick={disabled ? undefined : onClick}
+			disabled={disabled}
+			leadingElement={icon}
+			tabIndex={-1}
+			role='menuitemcheckbox'
+			aria-checked={toggled}
+			aria-label={ariaLabel}
+			trailingElements={<>
+				<Toggle
+					ariaLabel={ariaLabel}
+					size='btn-sm'
+					disabled={disabled}
+					onToggle={onClick}
+					toggled={toggled}
+					toggleClassName='btn-toggle-primary'
+					tabIndex={-1}
+				/>
+			</>}
+			labels={<>
+				<div>
+					{text}
+				</div>
+				<Description>
+					{description}
+				</Description>
+			</>}
+		/>
+	);
 }
 
-export {MenuItem, ToggleItem, StyledCheckIcon, Header, UrgentIcon, ImportantIcon, StandardIcon, AcknowledgementIcon, PersistentNotificationsIcon, Footer};
+export { MenuItem, ToggleItem, StyledCheckIcon, Header, UrgentIcon, ImportantIcon, StandardIcon, AcknowledgementIcon, PersistentNotificationsIcon, Footer };
 
 export default Menu;

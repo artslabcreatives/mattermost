@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -17,7 +17,7 @@ const SystemRolesFeatureDiscovery: React.FC = () => {
             minimumSKURequiredForFeature={LicenseSkus.Enterprise}
             title={defineMessage({
                 id: 'admin.system_roles_feature_discovery.title',
-                defaultMessage: 'Provide controlled access to the System Console with Mattermost Enterprise',
+                defaultMessage: 'Provide controlled access to the System Console with Aura Enterprise',
             })}
             copy={defineMessage({
                 id: 'admin.system_roles_feature_discovery.copy',

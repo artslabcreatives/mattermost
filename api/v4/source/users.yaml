@@ -264,7 +264,7 @@
         "501":
           description: >
             Not Implemented - Intune MAM feature is not available. This occurs when
-            running Mattermost Team Edition or when enterprise features are not loaded.
+            running Aura Artslab Edition or when enterprise features are not loaded.
           content:
             application/json:
               schema:

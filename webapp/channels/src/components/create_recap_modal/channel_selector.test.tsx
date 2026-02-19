@@ -1,290 +1,290 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
 
-import type {Channel} from '@mattermost/types/channels';
+import type { Channel } from '@mattermost/types/channels';
 
-import {renderWithContext, screen, userEvent} from 'tests/react_testing_utils';
+import { renderWithContext, screen, userEvent } from 'tests/react_testing_utils';
 
 import ChannelSelector from './channel_selector';
 
 describe('ChannelSelector', () => {
-    const mockChannels: Channel[] = [
-        {
-            id: 'channel1',
-            name: 'town-square',
-            display_name: 'Town Square',
-            type: 'O',
-            create_at: 1000,
-            update_at: 1000,
-            delete_at: 0,
-            team_id: 'team1',
-            creator_id: 'user1',
-        } as Channel,
-        {
-            id: 'channel2',
-            name: 'off-topic',
-            display_name: 'Off-Topic',
-            type: 'O',
-            create_at: 2000,
-            update_at: 2000,
-            delete_at: 0,
-            team_id: 'team1',
-            creator_id: 'user1',
-        } as Channel,
-        {
-            id: 'channel3',
-            name: 'private-channel',
-            display_name: 'Private Channel',
-            type: 'P',
-            create_at: 3000,
-            update_at: 3000,
-            delete_at: 0,
-            team_id: 'team1',
-            creator_id: 'user1',
-        } as Channel,
-        {
-            id: 'channel4',
-            name: 'dev-team',
-            display_name: 'Dev Team',
-            type: 'O',
-            create_at: 4000,
-            update_at: 4000,
-            delete_at: 0,
-            team_id: 'team1',
-            creator_id: 'user1',
-        } as Channel,
-    ];
+	const mockChannels: Channel[] = [
+		{
+			id: 'channel1',
+			name: 'town-square',
+			display_name: 'Town Square',
+			type: 'O',
+			create_at: 1000,
+			update_at: 1000,
+			delete_at: 0,
+			team_id: 'team1',
+			creator_id: 'user1',
+		} as Channel,
+		{
+			id: 'channel2',
+			name: 'off-topic',
+			display_name: 'Off-Topic',
+			type: 'O',
+			create_at: 2000,
+			update_at: 2000,
+			delete_at: 0,
+			team_id: 'team1',
+			creator_id: 'user1',
+		} as Channel,
+		{
+			id: 'channel3',
+			name: 'private-channel',
+			display_name: 'Private Channel',
+			type: 'P',
+			create_at: 3000,
+			update_at: 3000,
+			delete_at: 0,
+			team_id: 'team1',
+			creator_id: 'user1',
+		} as Channel,
+		{
+			id: 'channel4',
+			name: 'dev-team',
+			display_name: 'Dev Team',
+			type: 'O',
+			create_at: 4000,
+			update_at: 4000,
+			delete_at: 0,
+			team_id: 'team1',
+			creator_id: 'user1',
+		} as Channel,
+	];
 
-    const mockUnreadChannels: Channel[] = [mockChannels[0], mockChannels[2]];
+	const mockUnreadChannels: Channel[] = [mockChannels[0], mockChannels[2]];
 
-    const defaultProps = {
-        selectedChannelIds: [],
-        setSelectedChannelIds: jest.fn(),
-        myChannels: mockChannels,
-        unreadChannels: mockUnreadChannels,
-    };
+	const defaultProps = {
+		selectedChannelIds: [],
+		setSelectedChannelIds: jest.fn(),
+		myChannels: mockChannels,
+		unreadChannels: mockUnreadChannels,
+	};
 
-    beforeEach(() => {
-        jest.clearAllMocks();
-    });
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
 
-    describe('Rendering', () => {
-        it('should render the component with label', () => {
-            renderWithContext(<ChannelSelector {...defaultProps}/>);
+	describe('Rendering', () => {
+		it('should render the component with label', () => {
+			renderWithContext(<ChannelSelector {...defaultProps} />);
 
-            expect(screen.getByText('Select the channels you want to include')).toBeInTheDocument();
-        });
+			expect(screen.getByText('Select the channels you want to include')).toBeInTheDocument();
+		});
 
-        it('should render search input', () => {
-            renderWithContext(<ChannelSelector {...defaultProps}/>);
+		it('should render search input', () => {
+			renderWithContext(<ChannelSelector {...defaultProps} />);
 
-            expect(screen.getByPlaceholderText('Search and select channels')).toBeInTheDocument();
-        });
+			expect(screen.getByPlaceholderText('Search and select channels')).toBeInTheDocument();
+		});
 
-        it('should render all channels', () => {
-            renderWithContext(<ChannelSelector {...defaultProps}/>);
+		it('should render all channels', () => {
+			renderWithContext(<ChannelSelector {...defaultProps} />);
 
-            expect(screen.getByText('Town Square')).toBeInTheDocument();
-            expect(screen.getByText('Off-Topic')).toBeInTheDocument();
-            expect(screen.getByText('Private Channel')).toBeInTheDocument();
-            expect(screen.getByText('Dev Team')).toBeInTheDocument();
-        });
-    });
+			expect(screen.getByText('Town Square')).toBeInTheDocument();
+			expect(screen.getByText('Off-Topic')).toBeInTheDocument();
+			expect(screen.getByText('Private Channel')).toBeInTheDocument();
+			expect(screen.getByText('Dev Team')).toBeInTheDocument();
+		});
+	});
 
-    describe('Channel Groups', () => {
-        it('should show recommended channels group with unread channels', () => {
-            renderWithContext(<ChannelSelector {...defaultProps}/>);
+	describe('Channel Groups', () => {
+		it('should show recommended channels group with unread channels', () => {
+			renderWithContext(<ChannelSelector {...defaultProps} />);
 
-            expect(screen.getByText('RECOMMENDED')).toBeInTheDocument();
-            expect(screen.getByText('Town Square')).toBeInTheDocument();
-            expect(screen.getByText('Private Channel')).toBeInTheDocument();
-        });
+			expect(screen.getByText('RECOMMENDED')).toBeInTheDocument();
+			expect(screen.getByText('Town Square')).toBeInTheDocument();
+			expect(screen.getByText('Private Channel')).toBeInTheDocument();
+		});
 
-        it('should show all channels group', () => {
-            renderWithContext(<ChannelSelector {...defaultProps}/>);
+		it('should show all channels group', () => {
+			renderWithContext(<ChannelSelector {...defaultProps} />);
 
-            expect(screen.getByText('ALL CHANNELS')).toBeInTheDocument();
-        });
+			expect(screen.getByText('ALL CHANNELS')).toBeInTheDocument();
+		});
 
-        it('should limit recommended channels to 5', () => {
-            const manyUnreadChannels: Channel[] = Array.from({length: 10}, (_, i) => ({
-                id: `channel${i}`,
-                name: `channel-${i}`,
-                display_name: `Channel ${i}`,
-                type: 'O',
-                create_at: i * 1000,
-                update_at: i * 1000,
-                delete_at: 0,
-                team_id: 'team1',
-                creator_id: 'user1',
-            } as Channel));
+		it('should limit recommended channels to 5', () => {
+			const manyUnreadChannels: Channel[] = Array.from({ length: 10 }, (_, i) => ({
+				id: `channel${i}`,
+				name: `channel-${i}`,
+				display_name: `Channel ${i}`,
+				type: 'O',
+				create_at: i * 1000,
+				update_at: i * 1000,
+				delete_at: 0,
+				team_id: 'team1',
+				creator_id: 'user1',
+			} as Channel));
 
-            renderWithContext(
-                <ChannelSelector
-                    {...defaultProps}
-                    myChannels={manyUnreadChannels}
-                    unreadChannels={manyUnreadChannels}
-                />,
-            );
+			renderWithContext(
+				<ChannelSelector
+					{...defaultProps}
+					myChannels={manyUnreadChannels}
+					unreadChannels={manyUnreadChannels}
+				/>,
+			);
 
-            const recommendedSection = screen.getByText('RECOMMENDED').parentElement;
-            const channelItems = recommendedSection?.querySelectorAll('.channel-selector-item');
-            expect(channelItems?.length).toBeLessThanOrEqual(5);
-        });
-    });
+			const recommendedSection = screen.getByText('RECOMMENDED').parentElement;
+			const channelItems = recommendedSection?.querySelectorAll('.channel-selector-item');
+			expect(channelItems?.length).toBeLessThanOrEqual(5);
+		});
+	});
 
-    describe('Search Functionality', () => {
-        it('should filter channels by display name', async () => {
-            renderWithContext(<ChannelSelector {...defaultProps}/>);
+	describe('Search Functionality', () => {
+		it('should filter channels by display name', async () => {
+			renderWithContext(<ChannelSelector {...defaultProps} />);
 
-            const searchInput = screen.getByPlaceholderText('Search and select channels');
-            await userEvent.type(searchInput, 'Town');
+			const searchInput = screen.getByPlaceholderText('Search and select channels');
+			await userEvent.type(searchInput, 'Town');
 
-            expect(screen.getByText('Town Square')).toBeInTheDocument();
-            expect(screen.queryByText('Off-Topic')).not.toBeInTheDocument();
-        });
+			expect(screen.getByText('Town Square')).toBeInTheDocument();
+			expect(screen.queryByText('Off-Topic')).not.toBeInTheDocument();
+		});
 
-        it('should filter channels by channel name', async () => {
-            renderWithContext(<ChannelSelector {...defaultProps}/>);
+		it('should filter channels by channel name', async () => {
+			renderWithContext(<ChannelSelector {...defaultProps} />);
 
-            const searchInput = screen.getByPlaceholderText('Search and select channels');
-            await userEvent.type(searchInput, 'off-topic');
+			const searchInput = screen.getByPlaceholderText('Search and select channels');
+			await userEvent.type(searchInput, 'off-topic');
 
-            expect(screen.getByText('Off-Topic')).toBeInTheDocument();
-            expect(screen.queryByText('Town Square')).not.toBeInTheDocument();
-        });
+			expect(screen.getByText('Off-Topic')).toBeInTheDocument();
+			expect(screen.queryByText('Town Square')).not.toBeInTheDocument();
+		});
 
-        it('should be case insensitive', async () => {
-            renderWithContext(<ChannelSelector {...defaultProps}/>);
+		it('should be case insensitive', async () => {
+			renderWithContext(<ChannelSelector {...defaultProps} />);
 
-            const searchInput = screen.getByPlaceholderText('Search and select channels');
-            await userEvent.type(searchInput, 'PRIVATE');
+			const searchInput = screen.getByPlaceholderText('Search and select channels');
+			await userEvent.type(searchInput, 'PRIVATE');
 
-            expect(screen.getByText('Private Channel')).toBeInTheDocument();
-        });
+			expect(screen.getByText('Private Channel')).toBeInTheDocument();
+		});
 
-        it('should show empty state when no channels match search', async () => {
-            renderWithContext(<ChannelSelector {...defaultProps}/>);
+		it('should show empty state when no channels match search', async () => {
+			renderWithContext(<ChannelSelector {...defaultProps} />);
 
-            const searchInput = screen.getByPlaceholderText('Search and select channels');
-            await userEvent.type(searchInput, 'nonexistent');
+			const searchInput = screen.getByPlaceholderText('Search and select channels');
+			await userEvent.type(searchInput, 'nonexistent');
 
-            expect(screen.getByText('No channels found')).toBeInTheDocument();
-        });
+			expect(screen.getByText('No channels found')).toBeInTheDocument();
+		});
 
-        it('should update recommended channels based on search', async () => {
-            renderWithContext(<ChannelSelector {...defaultProps}/>);
+		it('should update recommended channels based on search', async () => {
+			renderWithContext(<ChannelSelector {...defaultProps} />);
 
-            const searchInput = screen.getByPlaceholderText('Search and select channels');
-            await userEvent.type(searchInput, 'Private');
+			const searchInput = screen.getByPlaceholderText('Search and select channels');
+			await userEvent.type(searchInput, 'Private');
 
-            // Only Private Channel should be visible, and it should be in recommended
-            expect(screen.getByText('Private Channel')).toBeInTheDocument();
-            expect(screen.queryByText('Town Square')).not.toBeInTheDocument();
-        });
-    });
+			// Only Private Channel should be visible, and it should be in recommended
+			expect(screen.getByText('Private Channel')).toBeInTheDocument();
+			expect(screen.queryByText('Town Square')).not.toBeInTheDocument();
+		});
+	});
 
-    describe('Channel Selection', () => {
-        it('should show checkbox for each channel', () => {
-            renderWithContext(<ChannelSelector {...defaultProps}/>);
+	describe('Channel Selection', () => {
+		it('should show checkbox for each channel', () => {
+			renderWithContext(<ChannelSelector {...defaultProps} />);
 
-            const checkboxes = screen.getAllByRole('checkbox');
-            expect(checkboxes.length).toBe(mockChannels.length);
-        });
+			const checkboxes = screen.getAllByRole('checkbox');
+			expect(checkboxes.length).toBe(mockChannels.length);
+		});
 
-        it('should check checkbox for selected channels', () => {
-            renderWithContext(
-                <ChannelSelector
-                    {...defaultProps}
-                    selectedChannelIds={['channel1', 'channel2']}
-                />,
-            );
+		it('should check checkbox for selected channels', () => {
+			renderWithContext(
+				<ChannelSelector
+					{...defaultProps}
+					selectedChannelIds={['channel1', 'channel2']}
+				/>,
+			);
 
-            const checkboxes = screen.getAllByRole('checkbox');
-            const checkedBoxes = checkboxes.filter((cb) => (cb as HTMLInputElement).checked);
-            expect(checkedBoxes.length).toBe(2);
-        });
+			const checkboxes = screen.getAllByRole('checkbox');
+			const checkedBoxes = checkboxes.filter((cb) => (cb as HTMLInputElement).checked);
+			expect(checkedBoxes.length).toBe(2);
+		});
 
-        it('should call setSelectedChannelIds when channel is clicked', async () => {
-            const setSelectedChannelIds = jest.fn();
-            renderWithContext(
-                <ChannelSelector
-                    {...defaultProps}
-                    setSelectedChannelIds={setSelectedChannelIds}
-                />,
-            );
+		it('should call setSelectedChannelIds when channel is clicked', async () => {
+			const setSelectedChannelIds = jest.fn();
+			renderWithContext(
+				<ChannelSelector
+					{...defaultProps}
+					setSelectedChannelIds={setSelectedChannelIds}
+				/>,
+			);
 
-            const channelItem = screen.getByText('Town Square').closest('.channel-selector-item');
-            await userEvent.click(channelItem!);
+			const channelItem = screen.getByText('Town Square').closest('.channel-selector-item');
+			await userEvent.click(channelItem!);
 
-            expect(setSelectedChannelIds).toHaveBeenCalledWith(['channel1']);
-        });
+			expect(setSelectedChannelIds).toHaveBeenCalledWith(['channel1']);
+		});
 
-        it('should add channel to selection when unselected channel is clicked', async () => {
-            const setSelectedChannelIds = jest.fn();
-            renderWithContext(
-                <ChannelSelector
-                    {...defaultProps}
-                    selectedChannelIds={['channel1']}
-                    setSelectedChannelIds={setSelectedChannelIds}
-                />,
-            );
+		it('should add channel to selection when unselected channel is clicked', async () => {
+			const setSelectedChannelIds = jest.fn();
+			renderWithContext(
+				<ChannelSelector
+					{...defaultProps}
+					selectedChannelIds={['channel1']}
+					setSelectedChannelIds={setSelectedChannelIds}
+				/>,
+			);
 
-            const channelItem = screen.getByText('Off-Topic').closest('.channel-selector-item');
-            await userEvent.click(channelItem!);
+			const channelItem = screen.getByText('Off-Topic').closest('.channel-selector-item');
+			await userEvent.click(channelItem!);
 
-            expect(setSelectedChannelIds).toHaveBeenCalledWith(['channel1', 'channel2']);
-        });
+			expect(setSelectedChannelIds).toHaveBeenCalledWith(['channel1', 'channel2']);
+		});
 
-        it('should remove channel from selection when selected channel is clicked', async () => {
-            const setSelectedChannelIds = jest.fn();
-            renderWithContext(
-                <ChannelSelector
-                    {...defaultProps}
-                    selectedChannelIds={['channel1', 'channel2']}
-                    setSelectedChannelIds={setSelectedChannelIds}
-                />,
-            );
+		it('should remove channel from selection when selected channel is clicked', async () => {
+			const setSelectedChannelIds = jest.fn();
+			renderWithContext(
+				<ChannelSelector
+					{...defaultProps}
+					selectedChannelIds={['channel1', 'channel2']}
+					setSelectedChannelIds={setSelectedChannelIds}
+				/>,
+			);
 
-            const channelItem = screen.getByText('Town Square').closest('.channel-selector-item');
-            await userEvent.click(channelItem!);
+			const channelItem = screen.getByText('Town Square').closest('.channel-selector-item');
+			await userEvent.click(channelItem!);
 
-            expect(setSelectedChannelIds).toHaveBeenCalledWith(['channel2']);
-        });
-    });
+			expect(setSelectedChannelIds).toHaveBeenCalledWith(['channel2']);
+		});
+	});
 
-    describe('Channel Icons', () => {
-        it('should show globe icon for open channels', () => {
-            renderWithContext(<ChannelSelector {...defaultProps}/>);
+	describe('Channel Icons', () => {
+		it('should show globe icon for open channels', () => {
+			renderWithContext(<ChannelSelector {...defaultProps} />);
 
-            const townSquareItem = screen.getByText('Town Square').closest('.channel-selector-item');
-            const icon = townSquareItem?.querySelector('.icon-globe');
-            expect(icon).toBeInTheDocument();
-        });
+			const townSquareItem = screen.getByText('Town Square').closest('.channel-selector-item');
+			const icon = townSquareItem?.querySelector('.icon-globe');
+			expect(icon).toBeInTheDocument();
+		});
 
-        it('should show lock icon for private channels', () => {
-            renderWithContext(<ChannelSelector {...defaultProps}/>);
+		it('should show lock icon for private channels', () => {
+			renderWithContext(<ChannelSelector {...defaultProps} />);
 
-            const privateChannelItem = screen.getByText('Private Channel').closest('.channel-selector-item');
-            const icon = privateChannelItem?.querySelector('.icon-lock-outline');
-            expect(icon).toBeInTheDocument();
-        });
-    });
+			const privateChannelItem = screen.getByText('Private Channel').closest('.channel-selector-item');
+			const icon = privateChannelItem?.querySelector('.icon-lock-outline');
+			expect(icon).toBeInTheDocument();
+		});
+	});
 
-    describe('Empty State', () => {
-        it('should show empty state when no channels available', () => {
-            renderWithContext(
-                <ChannelSelector
-                    {...defaultProps}
-                    myChannels={[]}
-                    unreadChannels={[]}
-                />,
-            );
+	describe('Empty State', () => {
+		it('should show empty state when no channels available', () => {
+			renderWithContext(
+				<ChannelSelector
+					{...defaultProps}
+					myChannels={[]}
+					unreadChannels={[]}
+				/>,
+			);
 
-            expect(screen.getByText('No channels found')).toBeInTheDocument();
-        });
-    });
+			expect(screen.getByText('No channels found')).toBeInTheDocument();
+		});
+	});
 });
 

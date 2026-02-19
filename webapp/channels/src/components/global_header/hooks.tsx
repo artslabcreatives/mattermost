@@ -1,49 +1,49 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {useEffect, useRef} from 'react';
-import type {MutableRefObject} from 'react';
-import {useSelector} from 'react-redux';
+import { useEffect, useRef } from 'react';
+import type { MutableRefObject } from 'react';
+import { useSelector } from 'react-redux';
 
-import type {UserProfile} from '@mattermost/types/users';
+import type { UserProfile } from '@mattermost/types/users';
 
-import {getCurrentUser, isFirstAdmin, isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
+import { getCurrentUser, isFirstAdmin, isCurrentUserSystemAdmin } from 'mattermost-redux/selectors/entities/users';
 
-import {isModalOpen} from 'selectors/views/modals';
+import { isModalOpen } from 'selectors/views/modals';
 
-import type {GlobalState} from 'types/store';
+import type { GlobalState } from 'types/store';
 
 /**
  * Hook that alerts clicks outside of the passed ref.
  */
 export function useClickOutsideRef(ref: MutableRefObject<HTMLElement | null>, handler: () => void): void {
-    useEffect(() => {
-        function onMouseDown(event: MouseEvent) {
-            const target = event.target as any;
-            if (ref.current && target instanceof Node && !ref.current.contains(target)) {
-                handler();
-            }
-        }
+	useEffect(() => {
+		function onMouseDown(event: MouseEvent) {
+			const target = event.target as any;
+			if (ref.current && target instanceof Node && !ref.current.contains(target)) {
+				handler();
+			}
+		}
 
-        // Bind the event listener
-        document.addEventListener('mousedown', onMouseDown);
-        return () => {
-            // Unbind the event listener on clean up
-            document.removeEventListener('mousedown', onMouseDown);
-        };
-    }, [ref, handler]);
+		// Bind the event listener
+		document.addEventListener('mousedown', onMouseDown);
+		return () => {
+			// Unbind the event listener on clean up
+			document.removeEventListener('mousedown', onMouseDown);
+		};
+	}, [ref, handler]);
 }
 
 export const useFirstAdminUser = (): boolean => {
-    return useSelector(isFirstAdmin);
+	return useSelector(isFirstAdmin);
 };
 
 export const useIsCurrentUserSystemAdmin = (): boolean => {
-    return useSelector(isCurrentUserSystemAdmin);
+	return useSelector(isCurrentUserSystemAdmin);
 };
 
 export const useIsLoggedIn = (): boolean => {
-    return Boolean(useSelector<GlobalState, UserProfile>(getCurrentUser));
+	return Boolean(useSelector<GlobalState, UserProfile>(getCurrentUser));
 };
 
 /**
@@ -51,12 +51,12 @@ export const useIsLoggedIn = (): boolean => {
  * - returns both the direct boolean for regular use and a ref that contains the boolean for usage in a callback
  */
 export const useIsModalOpen = (modalIdentifier: string): [boolean, React.RefObject<boolean>] => {
-    const modalOpenState = useSelector((state: GlobalState) => isModalOpen(state, modalIdentifier));
-    const modalOpenStateRef = useRef(modalOpenState);
+	const modalOpenState = useSelector((state: GlobalState) => isModalOpen(state, modalIdentifier));
+	const modalOpenStateRef = useRef(modalOpenState);
 
-    useEffect(() => {
-        modalOpenStateRef.current = modalOpenState;
-    }, [modalOpenState]);
+	useEffect(() => {
+		modalOpenStateRef.current = modalOpenState;
+	}, [modalOpenState]);
 
-    return [modalOpenState, modalOpenStateRef];
+	return [modalOpenState, modalOpenStateRef];
 };

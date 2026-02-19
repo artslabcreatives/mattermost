@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -30,28 +30,28 @@ export function ExportUserDataModal({onConfirm, onExited}: Props) {
     let message = (
         <FormattedMessage
             id='export_user_data_modal.dange_range.all_time'
-            defaultMessage={'You\'re about to export user data for all time. When the export is ready, a CSV file will be sent to you in a Mattermost direct message. This export will take a few minutes.'}
+            defaultMessage={'You\'re about to export user data for all time. When the export is ready, a CSV file will be sent to you in a Aura direct message. This export will take a few minutes.'}
         />
     );
     if (dateRange === ReportDuration.Last30Days) {
         message = (
             <FormattedMessage
                 id='export_user_data_modal.dange_range.last_30_days'
-                defaultMessage={'You\'re about to export user data for the last 30 days. When the export is ready, a CSV file will be sent to you in a Mattermost direct message. This export will take a few minutes.'}
+                defaultMessage={'You\'re about to export user data for the last 30 days. When the export is ready, a CSV file will be sent to you in a Aura direct message. This export will take a few minutes.'}
             />
         );
     } else if (dateRange === ReportDuration.PreviousMonth) {
         message = (
             <FormattedMessage
                 id='export_user_data_modal.dange_range.previous_month'
-                defaultMessage={'You\'re about to export user data for the previous month. When the export is ready, a CSV file will be sent to you in a Mattermost direct message. This export will take a few minutes.'}
+                defaultMessage={'You\'re about to export user data for the previous month. When the export is ready, a CSV file will be sent to you in a Aura direct message. This export will take a few minutes.'}
             />
         );
     } else if (dateRange === ReportDuration.Last6Months) {
         message = (
             <FormattedMessage
                 id='export_user_data_modal.dange_range.last_6_months'
-                defaultMessage={'You\'re about to export user data for the last 6 months. When the export is ready, a CSV file will be sent to you in a Mattermost direct message. This export will take a few minutes.'}
+                defaultMessage={'You\'re about to export user data for the last 6 months. When the export is ready, a CSV file will be sent to you in a Aura direct message. This export will take a few minutes.'}
             />
         );
     }

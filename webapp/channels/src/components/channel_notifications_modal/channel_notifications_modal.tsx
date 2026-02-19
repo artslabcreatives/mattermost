@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {useCallback, useState} from 'react';
@@ -306,7 +306,7 @@ export default function ChannelNotificationsModal(props: Props) {
                 }
                 description={formatMessage({
                     id: 'channel_notifications.desktopNotificationsDesc',
-                    defaultMessage: 'Available on Chrome, Edge, Firefox, and the Mattermost Desktop App.',
+                    defaultMessage: 'Available on Chrome, Edge, Firefox, and the Aura Desktop App.',
                 })}
                 content={desktopNotificationsSectionContent}
             />
@@ -326,7 +326,7 @@ export default function ChannelNotificationsModal(props: Props) {
                 }
                 description={formatMessage({
                     id: 'channel_notifications.mobileNotificationsDesc',
-                    defaultMessage: 'Notification alerts are pushed to your mobile device when there is activity in Mattermost.',
+                    defaultMessage: 'Notification alerts are pushed to your mobile device when there is activity in Aura.',
                 })}
                 content={mobileNotificationsSectionContent}
             />

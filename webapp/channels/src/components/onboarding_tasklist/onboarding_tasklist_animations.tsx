@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -113,13 +113,13 @@ const Animation = styled.div`
 
 `;
 
-export const CompletedAnimation = (props: {completed: boolean}) => {
-    return (
-        <Animation className={props.completed ? 'completed' : ''}>
-            <i className='icon-check-circle x1'/>
-            <i className='icon-check-circle x2'/>
-            <i className='icon-check-circle x3'/>
-            <i className='icon-check-circle x4'/>
-        </Animation>
-    );
+export const CompletedAnimation = (props: { completed: boolean }) => {
+	return (
+		<Animation className={props.completed ? 'completed' : ''}>
+			<i className='icon-check-circle x1' />
+			<i className='icon-check-circle x2' />
+			<i className='icon-check-circle x3' />
+			<i className='icon-check-circle x4' />
+		</Animation>
+	);
 };

@@ -1,12 +1,12 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useCallback} from 'react';
-import {FormattedMessage} from 'react-intl';
-import {useSelector} from 'react-redux';
+import React, { useCallback } from 'react';
+import { FormattedMessage } from 'react-intl';
+import { useSelector } from 'react-redux';
 import styled from 'styled-components';
 
-import {getSearchButtons} from 'selectors/plugins';
+import { getSearchButtons } from 'selectors/plugins';
 
 import ErrorBoundary from 'plugins/pluggable/error_boundary';
 
@@ -23,7 +23,7 @@ const SearchTypeSelectorContainer = styled.div`
 `;
 
 type SearchTypeItemProps = {
-    selected: boolean;
+	selected: boolean;
 };
 
 const SearchTypeItem = styled.button<SearchTypeItemProps>`
@@ -44,57 +44,57 @@ const SearchTypeItem = styled.button<SearchTypeItemProps>`
 `;
 
 type Props = {
-    searchType: string;
-    setSearchType: (searchType: string) => void;
+	searchType: string;
+	setSearchType: (searchType: string) => void;
 }
 
-const SearchTypeSelector = ({searchType, setSearchType}: Props) => {
-    const setMessagesSearchType = useCallback(() => setSearchType('messages'), [setSearchType]);
-    const setFilesSearchType = useCallback(() => setSearchType('files'), [setSearchType]);
+const SearchTypeSelector = ({ searchType, setSearchType }: Props) => {
+	const setMessagesSearchType = useCallback(() => setSearchType('messages'), [setSearchType]);
+	const setFilesSearchType = useCallback(() => setSearchType('files'), [setSearchType]);
 
-    const searchPluginButtons = useSelector(getSearchButtons);
+	const searchPluginButtons = useSelector(getSearchButtons);
 
-    return (
-        <SearchTypeSelectorContainer
-            role='radiogroup'
-        >
-            <SearchTypeItem
-                selected={searchType === 'messages'}
-                onClick={setMessagesSearchType}
-                role='radio'
-            >
-                <FormattedMessage
-                    id='search_bar.usage.search_type_messages'
-                    defaultMessage='Messages'
-                />
-            </SearchTypeItem>
-            <SearchTypeItem
-                selected={searchType === 'files'}
-                onClick={setFilesSearchType}
-                role='radio'
-            >
-                <FormattedMessage
-                    id='search_bar.usage.search_type_files'
-                    defaultMessage='Files'
-                />
-            </SearchTypeItem>
-            {searchPluginButtons.map(({component, pluginId}: any) => {
-                const Component = component as React.ComponentType;
-                return (
-                    <SearchTypeItem
-                        key={pluginId}
-                        selected={searchType === pluginId}
-                        onClick={() => setSearchType(pluginId)}
-                        role='radio'
-                    >
-                        <ErrorBoundary>
-                            <Component/>
-                        </ErrorBoundary>
-                    </SearchTypeItem>
-                );
-            })}
-        </SearchTypeSelectorContainer>
-    );
+	return (
+		<SearchTypeSelectorContainer
+			role='radiogroup'
+		>
+			<SearchTypeItem
+				selected={searchType === 'messages'}
+				onClick={setMessagesSearchType}
+				role='radio'
+			>
+				<FormattedMessage
+					id='search_bar.usage.search_type_messages'
+					defaultMessage='Messages'
+				/>
+			</SearchTypeItem>
+			<SearchTypeItem
+				selected={searchType === 'files'}
+				onClick={setFilesSearchType}
+				role='radio'
+			>
+				<FormattedMessage
+					id='search_bar.usage.search_type_files'
+					defaultMessage='Files'
+				/>
+			</SearchTypeItem>
+			{searchPluginButtons.map(({ component, pluginId }: any) => {
+				const Component = component as React.ComponentType;
+				return (
+					<SearchTypeItem
+						key={pluginId}
+						selected={searchType === pluginId}
+						onClick={() => setSearchType(pluginId)}
+						role='radio'
+					>
+						<ErrorBoundary>
+							<Component />
+						</ErrorBoundary>
+					</SearchTypeItem>
+				);
+			})}
+		</SearchTypeSelectorContainer>
+	);
 };
 
 export default SearchTypeSelector;

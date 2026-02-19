@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {useEffect, useState} from 'react';
@@ -106,7 +106,7 @@ const InstalledOutgoingOAuthConnections = (props: Props) => {
             helpText={
                 <FormattedMessage
                     id='installed_outgoing_oauth_connections.help'
-                    defaultMessage='Create {outgoingOauthConnections} to securely integrate bots and third-party apps with Mattermost.'
+                    defaultMessage='Create {outgoingOauthConnections} to securely integrate bots and third-party apps with Aura.'
                     values={{
                         outgoingOauthConnections: (
                             <ExternalLink

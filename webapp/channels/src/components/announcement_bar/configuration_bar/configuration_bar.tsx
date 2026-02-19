@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -144,7 +144,7 @@ const ConfigurationAnnouncementBar = (props: Props) => {
                     defaultMessage: 'This is the last day of your free trial.'},
                 ) : formatMessage({
                     id: 'announcement_bar.error.trial_license_expiring_last_day',
-                    defaultMessage: 'This is the last day of your free trial. Purchase a license now to continue using Mattermost Professional and Enterprise features.',
+                    defaultMessage: 'This is the last day of your free trial. Purchase a license now to continue using Aura Professional and Enterprise features.',
                 });
                 message = (
                     <>
@@ -271,7 +271,7 @@ const ConfigurationAnnouncementBar = (props: Props) => {
         if (props.config?.EnableSignUpWithGitLab === 'true') {
             siteURLMessage = formatMessage({
                 id: 'announcement_bar.error.site_url_gitlab.full',
-                defaultMessage: 'Please configure your <linkSite>site URL</linkSite> either on the <linkConsole>System Console</linkConsole> or, if you\'re using GitLab Mattermost, in gitlab.rb.',
+                defaultMessage: 'Please configure your <linkSite>site URL</linkSite> either on the <linkConsole>System Console</linkConsole> or, if you\'re using GitLab Aura, in gitlab.rb.',
             }, values);
         } else {
             siteURLMessage = formatMessage({

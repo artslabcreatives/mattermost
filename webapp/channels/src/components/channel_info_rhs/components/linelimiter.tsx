@@ -1,75 +1,75 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useEffect, useRef, useState} from 'react';
-import {CSSTransition} from 'react-transition-group';
+import React, { useEffect, useRef, useState } from 'react';
+import { CSSTransition } from 'react-transition-group';
 import styled from 'styled-components';
 
 interface LineLimiterProps {
-    children: React.ReactNode;
-    maxLines: number;
-    lineHeight: number;
-    moreText: string;
-    lessText: string;
-    className?: string;
-    errorMargin?: number;
+	children: React.ReactNode;
+	maxLines: number;
+	lineHeight: number;
+	moreText: string;
+	lessText: string;
+	className?: string;
+	errorMargin?: number;
 }
 
-const LineLimiterBase = ({children, maxLines, lineHeight, moreText, lessText, errorMargin = 0.1, className}: LineLimiterProps) => {
-    const maxLineHeight = maxLines * lineHeight;
+const LineLimiterBase = ({ children, maxLines, lineHeight, moreText, lessText, errorMargin = 0.1, className }: LineLimiterProps) => {
+	const maxLineHeight = maxLines * lineHeight;
 
-    const [needLimiter, setNeedLimiter] = useState(false);
-    const [open, setOpen] = useState(false);
-    const [maxHeight, setMaxHeight] = useState('inherit');
-    const ref = useRef<HTMLDivElement>(null);
+	const [needLimiter, setNeedLimiter] = useState(false);
+	const [open, setOpen] = useState(false);
+	const [maxHeight, setMaxHeight] = useState('inherit');
+	const ref = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        if (ref === null || ref.current === null) {
-            return;
-        }
+	useEffect(() => {
+		if (ref === null || ref.current === null) {
+			return;
+		}
 
-        const contentHeight = ref.current.scrollHeight;
-        const margin = maxLineHeight * errorMargin;
-        if (contentHeight > (maxLineHeight + margin)) {
-            setNeedLimiter(true);
+		const contentHeight = ref.current.scrollHeight;
+		const margin = maxLineHeight * errorMargin;
+		if (contentHeight > (maxLineHeight + margin)) {
+			setNeedLimiter(true);
 
-            if (open) {
-                setMaxHeight(`${contentHeight}px`);
-            } else {
-                setMaxHeight(`${maxLineHeight}px`);
-            }
-        } else {
-            setNeedLimiter(false);
-            setMaxHeight('inherit');
-        }
-    }, [children, open]);
+			if (open) {
+				setMaxHeight(`${contentHeight}px`);
+			} else {
+				setMaxHeight(`${maxLineHeight}px`);
+			}
+		} else {
+			setNeedLimiter(false);
+			setMaxHeight('inherit');
+		}
+	}, [children, open]);
 
-    return (
-        <CSSTransition
-            in={open}
-            timeout={500}
-            classNames='LineLimiter--Transition-'
-        >
-            <>
-                <div
-                    className={className}
-                    style={{maxHeight}}
-                >
-                    <div>
-                        <div ref={ref}>{children}</div>
-                    </div>
-                </div>
-                {needLimiter && (
-                    <ToggleButton
-                        className='LineLimiter__toggler'
-                        onClick={() => setOpen(!open)}
-                    >
-                        {open ? lessText : moreText}
-                    </ToggleButton>
-                )}
-            </>
-        </CSSTransition>
-    );
+	return (
+		<CSSTransition
+			in={open}
+			timeout={500}
+			classNames='LineLimiter--Transition-'
+		>
+			<>
+				<div
+					className={className}
+					style={{ maxHeight }}
+				>
+					<div>
+						<div ref={ref}>{children}</div>
+					</div>
+				</div>
+				{needLimiter && (
+					<ToggleButton
+						className='LineLimiter__toggler'
+						onClick={() => setOpen(!open)}
+					>
+						{open ? lessText : moreText}
+					</ToggleButton>
+				)}
+			</>
+		</CSSTransition>
+	);
 };
 
 const ToggleButton = styled.button`
@@ -80,7 +80,7 @@ const ToggleButton = styled.button`
     margin: 0;
 `;
 
-const LineLimiter = styled(LineLimiterBase)<LineLimiterProps>`
+const LineLimiter = styled(LineLimiterBase) <LineLimiterProps>`
     transition: max-height 0.5s ease;
     line-height: ${(props) => props.lineHeight}px;
     overflow: hidden;

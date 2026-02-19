@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -8,7 +8,7 @@ type Props = {
     customDescriptionText?: string;
     siteName: string | undefined;
 };
-const SiteNameAndDescription = ({customDescriptionText, siteName = 'Mattermost'}: Props) => {
+const SiteNameAndDescription = ({customDescriptionText, siteName = 'Aura'}: Props) => {
     const description = customDescriptionText || (
         <FormattedMessage
             id='web.root.signup_info'

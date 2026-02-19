@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import moment from 'moment';
@@ -135,7 +135,7 @@ const TrialBenefitsModal = ({
             <>
                 <FormattedMessage
                     id='trial_benefits.modal.trialStartedDescriptionIntro'
-                    defaultMessage='Welcome to your Mattermost Enterprise trial! It expires on {trialExpirationDate}. '
+                    defaultMessage='Welcome to your Aura Enterprise trial! It expires on {trialExpirationDate}. '
                     values={{
                         trialExpirationDate: trialEndDate,
                     }}

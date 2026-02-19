@@ -1,52 +1,52 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {useSelector} from 'react-redux';
+import { useSelector } from 'react-redux';
 
-import type {GlobalState} from '@mattermost/types/store';
+import type { GlobalState } from '@mattermost/types/store';
 
-import {haveISystemPermission} from 'mattermost-redux/selectors/entities/roles_helpers';
+import { haveISystemPermission } from 'mattermost-redux/selectors/entities/roles_helpers';
 
 import Gate from './gate';
 
 type Props = {
-    permissions: string[];
+	permissions: string[];
 
-    /**
-     * Invert the permission (used for else)
-     */
-    invert?: boolean;
+	/**
+	 * Invert the permission (used for else)
+	 */
+	invert?: boolean;
 
-    /**
-     * Content protected by the permissions gate
-     */
-    children: React.ReactNode;
+	/**
+	 * Content protected by the permissions gate
+	 */
+	children: React.ReactNode;
 };
 
 const SystemPermissionGate = ({
-    invert = false,
-    permissions,
-    children,
+	invert = false,
+	permissions,
+	children,
 }: Props) => {
-    const hasPermission = useSelector((state: GlobalState) => {
-        for (const permission of permissions) {
-            if (haveISystemPermission(state, {permission})) {
-                return true;
-            }
-        }
+	const hasPermission = useSelector((state: GlobalState) => {
+		for (const permission of permissions) {
+			if (haveISystemPermission(state, { permission })) {
+				return true;
+			}
+		}
 
-        return false;
-    });
+		return false;
+	});
 
-    return (
-        <Gate
-            invert={invert}
-            hasPermission={hasPermission}
-        >
-            {children}
-        </Gate>
-    );
+	return (
+		<Gate
+			invert={invert}
+			hasPermission={hasPermission}
+		>
+			{children}
+		</Gate>
+	);
 };
 
 export default React.memo(SystemPermissionGate);

@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import {shallow} from 'enzyme';
@@ -33,7 +33,7 @@ describe('components/admin_console/license_settings/LicenseSettings', () => {
             ExpiresAt: '1620335443650',
             SkuShortName: LicenseSkus.E20,
             Name: 'LicenseName',
-            Company: 'Mattermost Inc.',
+            Company: 'Aura Inc.',
             Users: '100',
         },
         prevTrialLicense: {

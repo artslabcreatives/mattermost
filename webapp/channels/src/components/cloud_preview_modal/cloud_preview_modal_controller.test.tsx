@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import {fireEvent, screen, waitFor} from '@testing-library/react';
@@ -388,7 +388,7 @@ describe('CloudPreviewModal', () => {
         expect(screen.getByTestId('preview-modal-controller')).toBeInTheDocument();
         const missionOpsContent = modalContent.filter((content) => content.useCase === 'mission-ops');
         expect(lastContentData).toHaveLength(missionOpsContent.length);
-        expect(lastContentData[0].title.defaultMessage).toBe('Welcome to your Mattermost preview');
+        expect(lastContentData[0].title.defaultMessage).toBe('Welcome to your Aura preview');
     });
 
     it('should fallback to hardcoded content when dynamic content is empty', () => {
@@ -409,7 +409,7 @@ describe('CloudPreviewModal', () => {
         expect(screen.getByTestId('preview-modal-controller')).toBeInTheDocument();
         const missionOpsContent = modalContent.filter((content) => content.useCase === 'mission-ops');
         expect(lastContentData).toHaveLength(missionOpsContent.length);
-        expect(lastContentData[0].title.defaultMessage).toBe('Welcome to your Mattermost preview');
+        expect(lastContentData[0].title.defaultMessage).toBe('Welcome to your Aura preview');
     });
 
     it('should not show modal when content is loading', () => {
@@ -448,6 +448,6 @@ describe('CloudPreviewModal', () => {
         expect(screen.getByTestId('preview-modal-controller')).toBeInTheDocument();
         const missionOpsContent = modalContent.filter((content) => content.useCase === 'mission-ops');
         expect(lastContentData).toHaveLength(missionOpsContent.length);
-        expect(lastContentData[0].title.defaultMessage).toBe('Welcome to your Mattermost preview');
+        expect(lastContentData[0].title.defaultMessage).toBe('Welcome to your Aura preview');
     });
 });

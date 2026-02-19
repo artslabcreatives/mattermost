@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -17,7 +17,7 @@ const AnnouncementBannerFeatureDiscovery: React.FC = () => {
             minimumSKURequiredForFeature={LicenseSkus.Professional}
             title={defineMessage({
                 id: 'admin.announcement_banner_feature_discovery.title',
-                defaultMessage: 'Create custom announcement banners with Mattermost Professional',
+                defaultMessage: 'Create custom announcement banners with Aura Professional',
             })}
             copy={defineMessage({
                 id: 'admin.announcement_banner_feature_discovery.copy',

@@ -1,24 +1,24 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
 
-import {shallowWithIntl} from 'tests/helpers/intl-test-helper';
+import { shallowWithIntl } from 'tests/helpers/intl-test-helper';
 
 import FullScreenModal from './full_screen_modal';
 
 describe('components/widgets/modals/FullScreenModal', () => {
-    test('showing content', () => {
-        const wrapper = shallowWithIntl(
-            <FullScreenModal
-                show={true}
-                onClose={jest.fn()}
-                ariaLabel='test'
-            >
-                {'test'}
-            </FullScreenModal>,
-        );
-        expect(wrapper).toMatchInlineSnapshot(`
+	test('showing content', () => {
+		const wrapper = shallowWithIntl(
+			<FullScreenModal
+				show={true}
+				onClose={jest.fn()}
+				ariaLabel='test'
+			>
+				{'test'}
+			</FullScreenModal>,
+		);
+		expect(wrapper).toMatchInlineSnapshot(`
             <CSSTransition
               appear={true}
               classNames="FullScreenModal"
@@ -55,18 +55,18 @@ describe('components/widgets/modals/FullScreenModal', () => {
               />
             </CSSTransition>
         `);
-    });
-    test('not showing content', () => {
-        const wrapper = shallowWithIntl(
-            <FullScreenModal
-                show={false}
-                onClose={jest.fn()}
-                ariaLabel='test'
-            >
-                {'test'}
-            </FullScreenModal>,
-        );
-        expect(wrapper).toMatchInlineSnapshot(`
+	});
+	test('not showing content', () => {
+		const wrapper = shallowWithIntl(
+			<FullScreenModal
+				show={false}
+				onClose={jest.fn()}
+				ariaLabel='test'
+			>
+				{'test'}
+			</FullScreenModal>,
+		);
+		expect(wrapper).toMatchInlineSnapshot(`
             <CSSTransition
               appear={true}
               classNames="FullScreenModal"
@@ -103,19 +103,19 @@ describe('components/widgets/modals/FullScreenModal', () => {
               />
             </CSSTransition>
         `);
-    });
-    test('with back icon', () => {
-        const wrapper = shallowWithIntl(
-            <FullScreenModal
-                show={true}
-                onClose={jest.fn()}
-                onGoBack={jest.fn()}
-                ariaLabel='test'
-            >
-                {'test'}
-            </FullScreenModal>,
-        );
-        expect(wrapper).toMatchInlineSnapshot(`
+	});
+	test('with back icon', () => {
+		const wrapper = shallowWithIntl(
+			<FullScreenModal
+				show={true}
+				onClose={jest.fn()}
+				onGoBack={jest.fn()}
+				ariaLabel='test'
+			>
+				{'test'}
+			</FullScreenModal>,
+		);
+		expect(wrapper).toMatchInlineSnapshot(`
             <CSSTransition
               appear={true}
               classNames="FullScreenModal"
@@ -161,55 +161,55 @@ describe('components/widgets/modals/FullScreenModal', () => {
               />
             </CSSTransition>
         `);
-    });
+	});
 
-    test('close on close icon click', () => {
-        const close = jest.fn();
-        const wrapper = shallowWithIntl(
-            <FullScreenModal
-                show={true}
-                onClose={close}
-                ariaLabel='test'
-            >
-                {'test'}
-            </FullScreenModal>,
-        );
-        expect(close).not.toHaveBeenCalled();
-        wrapper.find('button.close-x').simulate('click');
-        expect(close).toHaveBeenCalled();
-    });
+	test('close on close icon click', () => {
+		const close = jest.fn();
+		const wrapper = shallowWithIntl(
+			<FullScreenModal
+				show={true}
+				onClose={close}
+				ariaLabel='test'
+			>
+				{'test'}
+			</FullScreenModal>,
+		);
+		expect(close).not.toHaveBeenCalled();
+		wrapper.find('button.close-x').simulate('click');
+		expect(close).toHaveBeenCalled();
+	});
 
-    test('go back on back icon click', () => {
-        const back = jest.fn();
-        const wrapper = shallowWithIntl(
-            <FullScreenModal
-                show={true}
-                onClose={jest.fn()}
-                onGoBack={back}
-                ariaLabel='test'
-            >
-                {'test'}
-            </FullScreenModal>,
-        );
-        expect(back).not.toHaveBeenCalled();
-        wrapper.find('button.back').simulate('click');
-        expect(back).toHaveBeenCalled();
-    });
+	test('go back on back icon click', () => {
+		const back = jest.fn();
+		const wrapper = shallowWithIntl(
+			<FullScreenModal
+				show={true}
+				onClose={jest.fn()}
+				onGoBack={back}
+				ariaLabel='test'
+			>
+				{'test'}
+			</FullScreenModal>,
+		);
+		expect(back).not.toHaveBeenCalled();
+		wrapper.find('button.back').simulate('click');
+		expect(back).toHaveBeenCalled();
+	});
 
-    test('close on esc keypress', () => {
-        const close = jest.fn();
-        shallowWithIntl(
-            <FullScreenModal
-                show={true}
-                onClose={close}
-                ariaLabel='test'
-            >
-                {'test'}
-            </FullScreenModal>,
-        );
-        expect(close).not.toHaveBeenCalled();
-        const event = new KeyboardEvent('keydown', {key: 'Escape'});
-        document.dispatchEvent(event);
-        expect(close).toHaveBeenCalled();
-    });
+	test('close on esc keypress', () => {
+		const close = jest.fn();
+		shallowWithIntl(
+			<FullScreenModal
+				show={true}
+				onClose={close}
+				ariaLabel='test'
+			>
+				{'test'}
+			</FullScreenModal>,
+		);
+		expect(close).not.toHaveBeenCalled();
+		const event = new KeyboardEvent('keydown', { key: 'Escape' });
+		document.dispatchEvent(event);
+		expect(close).toHaveBeenCalled();
+	});
 });

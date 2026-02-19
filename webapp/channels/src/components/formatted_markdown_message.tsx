@@ -1,49 +1,49 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import marked from 'marked';
 import React from 'react';
-import type {MessageDescriptor} from 'react-intl';
-import {useIntl} from 'react-intl';
+import type { MessageDescriptor } from 'react-intl';
+import { useIntl } from 'react-intl';
 
-import {shouldOpenInNewTab, getSiteURL} from 'utils/url';
+import { shouldOpenInNewTab, getSiteURL } from 'utils/url';
 
 const TARGET_BLANK_URL_PREFIX = '!';
 
 export class CustomRenderer extends marked.Renderer {
-    private disableLinks: boolean;
+	private disableLinks: boolean;
 
-    constructor(disableLinks = false) {
-        super();
-        this.disableLinks = disableLinks;
-    }
+	constructor(disableLinks = false) {
+		super();
+		this.disableLinks = disableLinks;
+	}
 
-    link(href: string, title: string, text: string) {
-        const siteURL = getSiteURL();
-        const openInNewTab = shouldOpenInNewTab(href, siteURL);
+	link(href: string, title: string, text: string) {
+		const siteURL = getSiteURL();
+		const openInNewTab = shouldOpenInNewTab(href, siteURL);
 
-        if (this.disableLinks) {
-            return text;
-        }
-        if (href[0] === TARGET_BLANK_URL_PREFIX) {
-            return `<a href="${href.substring(1, href.length)}" rel="noopener noreferrer" target="_blank">${text}</a>`;
-        }
-        if (openInNewTab) {
-            return `<a href="${href}" rel="noopener noreferrer" target="_blank">${text}</a>`;
-        }
-        return `<a href="${href}">${text}</a>`;
-    }
+		if (this.disableLinks) {
+			return text;
+		}
+		if (href[0] === TARGET_BLANK_URL_PREFIX) {
+			return `<a href="${href.substring(1, href.length)}" rel="noopener noreferrer" target="_blank">${text}</a>`;
+		}
+		if (openInNewTab) {
+			return `<a href="${href}" rel="noopener noreferrer" target="_blank">${text}</a>`;
+		}
+		return `<a href="${href}">${text}</a>`;
+	}
 
-    paragraph(text: string) {
-        return text;
-    }
+	paragraph(text: string) {
+		return text;
+	}
 }
 
 type Props = {
-    defaultMessage?: MessageDescriptor['defaultMessage'];
-    disableLinks?: boolean;
-    id?: string;
-    values?: Record<string, any>;
+	defaultMessage?: MessageDescriptor['defaultMessage'];
+	disableLinks?: boolean;
+	id?: string;
+	values?: Record<string, any>;
 }
 
 /**
@@ -55,20 +55,20 @@ type Props = {
  * of including Markdown in translation strings.
  */
 export default function FormattedMarkdownMessage({
-    id,
-    defaultMessage,
-    values,
-    disableLinks,
+	id,
+	defaultMessage,
+	values,
+	disableLinks,
 }: Props) {
-    const intl = useIntl();
+	const intl = useIntl();
 
-    const origMsg = intl.formatMessage({id, defaultMessage}, values);
+	const origMsg = intl.formatMessage({ id, defaultMessage }, values);
 
-    const markedUpMessage = marked(origMsg, {
-        breaks: true,
-        sanitize: true,
-        renderer: new CustomRenderer(disableLinks),
-    });
+	const markedUpMessage = marked(origMsg, {
+		breaks: true,
+		sanitize: true,
+		renderer: new CustomRenderer(disableLinks),
+	});
 
-    return (<span dangerouslySetInnerHTML={{__html: markedUpMessage}}/>);
+	return (<span dangerouslySetInnerHTML={{ __html: markedUpMessage }} />);
 }

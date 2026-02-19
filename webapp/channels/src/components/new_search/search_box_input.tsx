@@ -1,14 +1,14 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {forwardRef, useCallback} from 'react';
-import {FormattedMessage, useIntl} from 'react-intl';
-import {useDispatch} from 'react-redux';
+import React, { forwardRef, useCallback } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
+import { useDispatch } from 'react-redux';
 import styled from 'styled-components';
 
 import {
-    updateSearchTerms,
-    updateSearchType,
+	updateSearchTerms,
+	updateSearchType,
 } from 'actions/views/rhs';
 
 import QuickInput from 'components/quick_input';
@@ -68,71 +68,71 @@ const ClearButton = styled.button`
 `;
 
 type Props = React.AriaAttributes & {
-    searchTerms: string;
-    searchType: string;
-    setSearchTerms: (searchTerms: string) => void;
-    onKeyDown: (e: React.KeyboardEvent<Element>) => void;
-    focus: (newPosition: number) => void;
+	searchTerms: string;
+	searchType: string;
+	setSearchTerms: (searchTerms: string) => void;
+	onKeyDown: (e: React.KeyboardEvent<Element>) => void;
+	focus: (newPosition: number) => void;
 }
 
-const SearchInput = forwardRef<HTMLInputElement, Props>(({searchTerms, searchType, setSearchTerms, onKeyDown, focus, ...otherProps}, inputRef) => {
-    const intl = useIntl();
-    let searchPlaceholder = intl.formatMessage({id: 'search_bar.search', defaultMessage: 'Search'});
+const SearchInput = forwardRef<HTMLInputElement, Props>(({ searchTerms, searchType, setSearchTerms, onKeyDown, focus, ...otherProps }, inputRef) => {
+	const intl = useIntl();
+	let searchPlaceholder = intl.formatMessage({ id: 'search_bar.search', defaultMessage: 'Search' });
 
-    if (searchType === 'messages' || searchType === '') {
-        searchPlaceholder = intl.formatMessage({id: 'search_bar.search_messages', defaultMessage: 'Search messages'});
-    }
-    if (searchType === 'files') {
-        searchPlaceholder = intl.formatMessage({id: 'search_bar.search_files', defaultMessage: 'Search files'});
-    }
+	if (searchType === 'messages' || searchType === '') {
+		searchPlaceholder = intl.formatMessage({ id: 'search_bar.search_messages', defaultMessage: 'Search messages' });
+	}
+	if (searchType === 'files') {
+		searchPlaceholder = intl.formatMessage({ id: 'search_bar.search_files', defaultMessage: 'Search files' });
+	}
 
-    const dispatch = useDispatch();
+	const dispatch = useDispatch();
 
-    const inputChangeCallback = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchTerms(e.target.value);
-    }, [setSearchTerms]);
+	const inputChangeCallback = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+		setSearchTerms(e.target.value);
+	}, [setSearchTerms]);
 
-    const clearSearch = useCallback(() => {
-        setSearchTerms('');
-        dispatch(updateSearchTerms(''));
-        dispatch(updateSearchType(''));
-        focus(0);
-    }, [focus, setSearchTerms]);
+	const clearSearch = useCallback(() => {
+		setSearchTerms('');
+		dispatch(updateSearchTerms(''));
+		dispatch(updateSearchType(''));
+		focus(0);
+	}, [focus, setSearchTerms]);
 
-    return (
-        <SearchInputContainer>
-            <i className='icon icon-magnify'/>
-            <QuickInput
-                ref={inputRef}
-                className={'search-bar form-control'}
-                aria-autocomplete='list'
-                aria-describedby={'searchbar-help-popup'}
-                aria-label={searchPlaceholder}
-                {...otherProps}
-                placeholder={searchPlaceholder}
-                value={searchTerms}
-                onChange={inputChangeCallback}
-                type='search'
-                clearable={true}
-                autoFocus={true}
-                onKeyDown={onKeyDown}
-                tabIndex={0}
-                role='searchbox'
-            />
-            {searchTerms.length > 0 && (
-                <ClearButton
-                    className='btn btn-sm input-clear-x'
-                    onClick={clearSearch}
-                >
-                    <i className='icon icon-close-circle'/>
-                    <FormattedMessage
-                        id='search_bar.clear'
-                        defaultMessage='Clear'
-                    />
-                </ClearButton>
-            )}
-        </SearchInputContainer>
-    );
+	return (
+		<SearchInputContainer>
+			<i className='icon icon-magnify' />
+			<QuickInput
+				ref={inputRef}
+				className={'search-bar form-control'}
+				aria-autocomplete='list'
+				aria-describedby={'searchbar-help-popup'}
+				aria-label={searchPlaceholder}
+				{...otherProps}
+				placeholder={searchPlaceholder}
+				value={searchTerms}
+				onChange={inputChangeCallback}
+				type='search'
+				clearable={true}
+				autoFocus={true}
+				onKeyDown={onKeyDown}
+				tabIndex={0}
+				role='searchbox'
+			/>
+			{searchTerms.length > 0 && (
+				<ClearButton
+					className='btn btn-sm input-clear-x'
+					onClick={clearSearch}
+				>
+					<i className='icon icon-close-circle' />
+					<FormattedMessage
+						id='search_bar.clear'
+						defaultMessage='Clear'
+					/>
+				</ClearButton>
+			)}
+		</SearchInputContainer>
+	);
 });
 
 export default SearchInput;

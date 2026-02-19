@@ -1,9 +1,9 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {mount} from 'enzyme';
+import { mount } from 'enzyme';
 import React from 'react';
-import {Provider} from 'react-redux';
+import { Provider } from 'react-redux';
 
 import * as CustomStatusSelectors from 'selectors/views/custom_status';
 
@@ -15,42 +15,42 @@ jest.mock('mattermost-redux/selectors/entities/timezone');
 jest.mock('selectors/views/custom_status');
 
 describe('components/custom_status/custom_status_emoji', () => {
-    const store = mockStore({});
+	const store = mockStore({});
 
-    const getCustomStatus = () => {
-        return null;
-    };
-    (CustomStatusSelectors.makeGetCustomStatus as jest.Mock).mockReturnValue(getCustomStatus);
-    (CustomStatusSelectors.isCustomStatusEnabled as any as jest.Mock).mockReturnValue(true);
-    it('should match snapshot', () => {
-        const wrapper = mount(<CustomStatusEmoji/>, {wrappingComponent: Provider, wrappingComponentProps: {store}});
-        expect(wrapper).toMatchSnapshot();
-    });
+	const getCustomStatus = () => {
+		return null;
+	};
+	(CustomStatusSelectors.makeGetCustomStatus as jest.Mock).mockReturnValue(getCustomStatus);
+	(CustomStatusSelectors.isCustomStatusEnabled as any as jest.Mock).mockReturnValue(true);
+	it('should match snapshot', () => {
+		const wrapper = mount(<CustomStatusEmoji />, { wrappingComponent: Provider, wrappingComponentProps: { store } });
+		expect(wrapper).toMatchSnapshot();
+	});
 
-    it('should match snapshot with props', () => {
-        const wrapper = mount(
-            <CustomStatusEmoji
-                emojiSize={34}
-                showTooltip={true}
-            />,
-            {wrappingComponent: Provider, wrappingComponentProps: {store}},
-        );
+	it('should match snapshot with props', () => {
+		const wrapper = mount(
+			<CustomStatusEmoji
+				emojiSize={34}
+				showTooltip={true}
+			/>,
+			{ wrappingComponent: Provider, wrappingComponentProps: { store } },
+		);
 
-        expect(wrapper).toMatchSnapshot();
-    });
+		expect(wrapper).toMatchSnapshot();
+	});
 
-    it('should not render when EnableCustomStatus in config is false', () => {
-        (CustomStatusSelectors.isCustomStatusEnabled as any as jest.Mock).mockReturnValue(false);
-        const wrapper = mount(<CustomStatusEmoji/>, {wrappingComponent: Provider, wrappingComponentProps: {store}});
+	it('should not render when EnableCustomStatus in config is false', () => {
+		(CustomStatusSelectors.isCustomStatusEnabled as any as jest.Mock).mockReturnValue(false);
+		const wrapper = mount(<CustomStatusEmoji />, { wrappingComponent: Provider, wrappingComponentProps: { store } });
 
-        expect(wrapper.isEmptyRender()).toBeTruthy();
-    });
+		expect(wrapper.isEmptyRender()).toBeTruthy();
+	});
 
-    it('should not render when custom status is expired', () => {
-        (CustomStatusSelectors.isCustomStatusEnabled as any as jest.Mock).mockReturnValue(true);
-        (CustomStatusSelectors.isCustomStatusExpired as jest.Mock).mockReturnValue(true);
-        const wrapper = mount(<CustomStatusEmoji/>, {wrappingComponent: Provider, wrappingComponentProps: {store}});
+	it('should not render when custom status is expired', () => {
+		(CustomStatusSelectors.isCustomStatusEnabled as any as jest.Mock).mockReturnValue(true);
+		(CustomStatusSelectors.isCustomStatusExpired as jest.Mock).mockReturnValue(true);
+		const wrapper = mount(<CustomStatusEmoji />, { wrappingComponent: Provider, wrappingComponentProps: { store } });
 
-        expect(wrapper.isEmptyRender()).toBeTruthy();
-    });
+		expect(wrapper.isEmptyRender()).toBeTruthy();
+	});
 });

@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
@@ -154,7 +154,7 @@ const DesktopAuthToken: React.FC<Props> = ({href, onLogin}: Props) => {
         subMessage = (
             <FormattedMessage
                 id='desktop_auth_token.complete.openMattermost'
-                defaultMessage='Click on <b>Open Mattermost</b> in the browser prompt to <a>launch the desktop app</a>'
+                defaultMessage='Click on <b>Open Aura</b> in the browser prompt to <a>launch the desktop app</a>'
                 values={{
                     a: (chunks: React.ReactNode) => {
                         return (
@@ -171,7 +171,7 @@ const DesktopAuthToken: React.FC<Props> = ({href, onLogin}: Props) => {
         bottomMessage = (
             <FormattedMessage
                 id='desktop_auth_token.complete.havingTrouble'
-                defaultMessage='Having trouble logging in? <a>Open Mattermost in your browser</a>'
+                defaultMessage='Having trouble logging in? <a>Open Aura in your browser</a>'
                 values={{
                     a: (chunks: React.ReactNode) => {
                         return (

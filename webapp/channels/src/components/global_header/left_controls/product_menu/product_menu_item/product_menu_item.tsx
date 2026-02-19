@@ -1,22 +1,22 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {Link} from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 
-import glyphMap, {CheckIcon} from '@mattermost/compass-icons/components';
-import type {IconGlyphTypes} from '@mattermost/compass-icons/IconGlyphs';
+import glyphMap, { CheckIcon } from '@mattermost/compass-icons/components';
+import type { IconGlyphTypes } from '@mattermost/compass-icons/IconGlyphs';
 
 export interface ProductMenuItemProps {
-    destination: string;
-    icon: IconGlyphTypes;
-    text: React.ReactNode;
-    active: boolean;
-    onClick: () => void;
+	destination: string;
+	icon: IconGlyphTypes;
+	text: React.ReactNode;
+	active: boolean;
+	onClick: () => void;
 
-    tourTip?: React.ReactNode;
-    id?: string;
+	tourTip?: React.ReactNode;
+	id?: string;
 }
 
 const MenuItem = styled(Link)`
@@ -53,32 +53,32 @@ const MenuItemTextContainer = styled.div`
     line-height: 20px;
 `;
 
-const ProductMenuItem = ({icon, destination, text, active, onClick, tourTip, id}: ProductMenuItemProps): JSX.Element => {
-    const ProductIcon = glyphMap[icon];
+const ProductMenuItem = ({ icon, destination, text, active, onClick, tourTip, id }: ProductMenuItemProps): JSX.Element => {
+	const ProductIcon = glyphMap[icon];
 
-    return (
-        <MenuItem
-            to={destination}
-            onClick={onClick}
-            id={id}
-            role='menuitem'
-        >
-            <ProductIcon
-                size={24}
-                color={'var(--button-bg)'}
-            />
-            <MenuItemTextContainer>
-                {text}
-            </MenuItemTextContainer>
-            {active && (
-                <CheckIcon
-                    size={18}
-                    color={'var(--button-bg)'}
-                />
-            )}
-            {tourTip || null}
-        </MenuItem>
-    );
+	return (
+		<MenuItem
+			to={destination}
+			onClick={onClick}
+			id={id}
+			role='menuitem'
+		>
+			<ProductIcon
+				size={24}
+				color={'var(--button-bg)'}
+			/>
+			<MenuItemTextContainer>
+				{text}
+			</MenuItemTextContainer>
+			{active && (
+				<CheckIcon
+					size={18}
+					color={'var(--button-bg)'}
+				/>
+			)}
+			{tourTip || null}
+		</MenuItem>
+	);
 };
 
 export default ProductMenuItem;

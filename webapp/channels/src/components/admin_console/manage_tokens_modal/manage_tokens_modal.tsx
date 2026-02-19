@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -150,7 +150,7 @@ export default class ManageTokensModal extends React.PureComponent<Props, State>
                 <div className='pt-3'>
                     <FormattedMessage
                         id='admin.manage_tokens.userAccessTokensDescription'
-                        defaultMessage='Personal access tokens function similarly to session tokens and can be used by integrations to <linkAuthentication>interact with this Mattermost server</linkAuthentication>. Tokens are disabled if the user is deactivated. Learn more about <linkPersonalAccessTokens>personal access tokens</linkPersonalAccessTokens>.'
+                        defaultMessage='Personal access tokens function similarly to session tokens and can be used by integrations to <linkAuthentication>interact with this Aura server</linkAuthentication>. Tokens are disabled if the user is deactivated. Learn more about <linkPersonalAccessTokens>personal access tokens</linkPersonalAccessTokens>.'
                         values={{
                             linkAuthentication: (msg: React.ReactNode) => (
                                 <ExternalLink

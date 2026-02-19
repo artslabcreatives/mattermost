@@ -1,11 +1,11 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {defineMessage} from 'react-intl';
+import { defineMessage } from 'react-intl';
 
-import type {UserAutocomplete} from '@mattermost/types/autocomplete';
-import type {UserProfile} from '@mattermost/types/users';
+import type { UserAutocomplete } from '@mattermost/types/autocomplete';
+import type { UserProfile } from '@mattermost/types/users';
 
 import SharedUserIndicator from 'components/shared_user_indicator';
 import BotTag from 'components/widgets/tag/bot_tag';
@@ -14,111 +14,111 @@ import Avatar from 'components/widgets/users/avatar';
 import * as Utils from 'utils/utils';
 
 import Provider from './provider';
-import type {ResultsCallback} from './provider';
-import {SuggestionContainer} from './suggestion';
-import type {SuggestionProps} from './suggestion';
+import type { ResultsCallback } from './provider';
+import { SuggestionContainer } from './suggestion';
+import type { SuggestionProps } from './suggestion';
 
 export const SearchUserSuggestion = React.forwardRef<HTMLLIElement, SuggestionProps<UserProfile>>((props, ref) => {
-    const {item} = props;
+	const { item } = props;
 
-    const username = item.username;
-    let description = '';
+	const username = item.username;
+	let description = '';
 
-    if ((item.first_name || item.last_name) && item.nickname) {
-        description = `${Utils.getFullName(item)} (${item.nickname})`;
-    } else if (item.nickname) {
-        description = `(${item.nickname})`;
-    } else if (item.first_name || item.last_name) {
-        description = `${Utils.getFullName(item)}`;
-    }
+	if ((item.first_name || item.last_name) && item.nickname) {
+		description = `${Utils.getFullName(item)} (${item.nickname})`;
+	} else if (item.nickname) {
+		description = `(${item.nickname})`;
+	} else if (item.first_name || item.last_name) {
+		description = `${Utils.getFullName(item)}`;
+	}
 
-    let sharedIcon;
-    if (item.remote_id) {
-        sharedIcon = (
-            <SharedUserIndicator
-                className='mention__shared-user-icon'
-            />
-        );
-    }
+	let sharedIcon;
+	if (item.remote_id) {
+		sharedIcon = (
+			<SharedUserIndicator
+				className='mention__shared-user-icon'
+			/>
+		);
+	}
 
-    return (
-        <SuggestionContainer
-            ref={ref}
-            {...props}
-        >
-            <Avatar
-                size='sm'
-                username={username}
-                url={Utils.imageURLForUser(item.id, item.last_picture_update)}
-                alt=''
-            />
-            <div className='suggestion-list__ellipsis'>
-                <span className='suggestion-list__main'>
-                    {'@'}{username}
-                </span>
-                {item.is_bot && <BotTag/>}
-                {description}
-            </div>
-            {sharedIcon}
-        </SuggestionContainer>
-    );
+	return (
+		<SuggestionContainer
+			ref={ref}
+			{...props}
+		>
+			<Avatar
+				size='sm'
+				username={username}
+				url={Utils.imageURLForUser(item.id, item.last_picture_update)}
+				alt=''
+			/>
+			<div className='suggestion-list__ellipsis'>
+				<span className='suggestion-list__main'>
+					{'@'}{username}
+				</span>
+				{item.is_bot && <BotTag />}
+				{description}
+			</div>
+			{sharedIcon}
+		</SuggestionContainer>
+	);
 });
 SearchUserSuggestion.displayName = 'SearchUserSuggestion';
 
 export default class SearchUserProvider extends Provider {
-    private autocompleteUsersInTeam: (username: string, teamId: string) => Promise<UserAutocomplete>;
-    constructor(userSearchFunc: (username: string, teamId: string) => Promise<UserAutocomplete>) {
-        super();
-        this.autocompleteUsersInTeam = userSearchFunc;
-    }
+	private autocompleteUsersInTeam: (username: string, teamId: string) => Promise<UserAutocomplete>;
+	constructor(userSearchFunc: (username: string, teamId: string) => Promise<UserAutocomplete>) {
+		super();
+		this.autocompleteUsersInTeam = userSearchFunc;
+	}
 
-    handlePretextChanged(pretext: string, resultsCallback: ResultsCallback<UserProfile>, teamId: string) {
-        // no autocomplete on All teams
-        if (teamId === '') {
-            return false;
-        }
+	handlePretextChanged(pretext: string, resultsCallback: ResultsCallback<UserProfile>, teamId: string) {
+		// no autocomplete on All teams
+		if (teamId === '') {
+			return false;
+		}
 
-        const captured = (/\bfrom:\s*(\S*)$/i).exec(pretext.toLowerCase());
+		const captured = (/\bfrom:\s*(\S*)$/i).exec(pretext.toLowerCase());
 
-        this.doAutocomplete(captured, teamId, resultsCallback);
+		this.doAutocomplete(captured, teamId, resultsCallback);
 
-        return Boolean(captured);
-    }
+		return Boolean(captured);
+	}
 
-    async doAutocomplete(captured: RegExpExecArray | null, teamId: string, resultsCallback: ResultsCallback<UserProfile>) {
-        if (!captured) {
-            return;
-        }
+	async doAutocomplete(captured: RegExpExecArray | null, teamId: string, resultsCallback: ResultsCallback<UserProfile>) {
+		if (!captured) {
+			return;
+		}
 
-        const usernamePrefix = captured[1];
+		const usernamePrefix = captured[1];
 
-        this.startNewRequest(usernamePrefix);
+		this.startNewRequest(usernamePrefix);
 
-        const data = await this.autocompleteUsersInTeam(usernamePrefix, teamId);
+		const data = await this.autocompleteUsersInTeam(usernamePrefix, teamId);
 
-        if (this.shouldCancelDispatch(usernamePrefix)) {
-            return;
-        }
+		if (this.shouldCancelDispatch(usernamePrefix)) {
+			return;
+		}
 
-        const users = Object.assign([], data.users);
-        const mentions = users.map((user: UserProfile) => user.username);
+		const users = Object.assign([], data.users);
+		const mentions = users.map((user: UserProfile) => user.username);
 
-        resultsCallback({
-            matchedPretext: usernamePrefix,
-            groups: [{
-                key: 'users',
-                label: defineMessage({
-                    id: 'suggestion.users',
-                    defaultMessage: 'Users',
-                }),
-                terms: mentions,
-                items: users,
-                component: SearchUserSuggestion,
-            }],
-        });
-    }
+		resultsCallback({
+			matchedPretext: usernamePrefix,
+			groups: [{
+				key: 'users',
+				label: defineMessage({
+					id: 'suggestion.users',
+					defaultMessage: 'Users',
+				}),
+				terms: mentions,
+				items: users,
+				component: SearchUserSuggestion,
+			}],
+		});
+	}
 
-    allowDividers() {
-        return true;
-    }
+	allowDividers() {
+		return true;
+	}
 }

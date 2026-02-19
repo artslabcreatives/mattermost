@@ -1,50 +1,50 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
 
-import type {Channel, ChannelMembership} from '@mattermost/types/channels';
+import type { Channel, ChannelMembership } from '@mattermost/types/channels';
 
-import {usePluginVisibilityInSharedChannel} from 'components/common/hooks/usePluginVisibilityInSharedChannel';
+import { usePluginVisibilityInSharedChannel } from 'components/common/hooks/usePluginVisibilityInSharedChannel';
 
-import type {ChannelIntroButtonAction} from 'types/store/plugins';
+import type { ChannelIntroButtonAction } from 'types/store/plugins';
 
 type Props = {
-    channel: Channel;
-    channelMember?: ChannelMembership;
-    pluginButtons: ChannelIntroButtonAction[];
+	channel: Channel;
+	channelMember?: ChannelMembership;
+	pluginButtons: ChannelIntroButtonAction[];
 }
 
 const PluggableIntroButtons = React.memo(({
-    channel,
-    pluginButtons,
-    channelMember,
+	channel,
+	pluginButtons,
+	channelMember,
 }: Props) => {
-    const channelIsArchived = channel.delete_at !== 0;
-    const pluginItemsVisible = usePluginVisibilityInSharedChannel(channel.id);
+	const channelIsArchived = channel.delete_at !== 0;
+	const pluginItemsVisible = usePluginVisibilityInSharedChannel(channel.id);
 
-    if (!pluginItemsVisible) {
-        return null;
-    }
+	if (!pluginItemsVisible) {
+		return null;
+	}
 
-    if (channelIsArchived || pluginButtons.length === 0 || !channelMember) {
-        return null;
-    }
+	if (channelIsArchived || pluginButtons.length === 0 || !channelMember) {
+		return null;
+	}
 
-    const buttons = pluginButtons.map((buttonProps) => {
-        return (
-            <button
-                key={buttonProps.id}
-                className={'action-button'}
-                onClick={() => buttonProps.action?.(channel, channelMember)}
-            >
-                {buttonProps.icon}
-                {buttonProps.text}
-            </button>
-        );
-    });
+	const buttons = pluginButtons.map((buttonProps) => {
+		return (
+			<button
+				key={buttonProps.id}
+				className={'action-button'}
+				onClick={() => buttonProps.action?.(channel, channelMember)}
+			>
+				{buttonProps.icon}
+				{buttonProps.text}
+			</button>
+		);
+	});
 
-    return <>{buttons}</>;
+	return <>{buttons}</>;
 });
 PluggableIntroButtons.displayName = 'PluggableIntroButtons';
 

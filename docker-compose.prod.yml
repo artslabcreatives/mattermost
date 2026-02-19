@@ -1,100 +1,89 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: mattermost-postgres
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    pids_limit: 100
-    read_only: true
-    tmpfs:
-      - /tmp
-      - /var/run/postgresql
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: mmuser
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mmuser_password}
-      POSTGRES_DB: mattermost
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
-    networks:
-      - mattermost
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mmuser -d mattermost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
   mattermost:
     build:
       context: .
-      dockerfile: Dockerfile.source
+      dockerfile: Dockerfile.prebuilt
     container_name: mattermost-server
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-unless-stopped}
+    network_mode: "host"
     security_opt:
       - no-new-privileges:true
     pids_limit: 200
-    ports:
-      - "${MM_PORT:-8065}:8065"
-      - "${MM_PORT_CALLS:-8443}:8443/udp"
-    depends_on:
-      postgres:
-        condition: service_healthy
+    tmpfs:
+      - /tmp
     volumes:
-      - mattermost_config:/mattermost/config:rw
-      - mattermost_data:/mattermost/data:rw
-      - mattermost_logs:/mattermost/logs:rw
-      - mattermost_plugins:/mattermost/plugins:rw
-      - mattermost_client_plugins:/mattermost/client/plugins:rw
-      - mattermost_bleve_indexes:/mattermost/bleve-indexes:rw
+      - ${MATTERMOST_CONFIG_PATH:-./volumes/app/mattermost/config}:/mattermost/config:rw
+      - ${MATTERMOST_DATA_PATH:-./volumes/app/mattermost/data}:/mattermost/data:rw
+      - ${MATTERMOST_LOGS_PATH:-./volumes/app/mattermost/logs}:/mattermost/logs:rw
+      - ${MATTERMOST_PLUGINS_PATH:-./volumes/app/mattermost/plugins}:/mattermost/plugins:rw
+      - ${MATTERMOST_CLIENT_PLUGINS_PATH:-./volumes/app/mattermost/client/plugins}:/mattermost/client/plugins:rw
+      - ${MATTERMOST_BLEVE_INDEXES_PATH:-./volumes/app/mattermost/bleve-indexes}:/mattermost/bleve-indexes:rw
     environment:
-      # Database settings
-      MM_SQLSETTINGS_DRIVERNAME: postgres
-      MM_SQLSETTINGS_DATASOURCE: "postgres://mmuser:${POSTGRES_PASSWORD:-mmuser_password}@postgres:5432/mattermost?sslmode=disable&connect_timeout=10"
+      # Timezone
+      - TZ=${TZ:-UTC}
+      
+      # Database settings (connects to host PostgreSQL via localhost)
+      - MM_SQLSETTINGS_DRIVERNAME=${MM_SQLSETTINGS_DRIVERNAME:-postgres}
+      - MM_SQLSETTINGS_DATASOURCE=${MM_SQLSETTINGS_DATASOURCE}
       
       # Site configuration
-      MM_SERVICESETTINGS_SITEURL: ${MM_SITEURL:-http://localhost:8065}
-      MM_SERVICESETTINGS_LISTENADDRESS: ":8065"
-      MM_SERVICESETTINGS_ENABLEDEVELOPER: ${MM_ENABLE_DEVELOPER:-false}
+      - MM_SERVICESETTINGS_SITEURL=${MM_SERVICESETTINGS_SITEURL:-http://localhost:8065}
+      - MM_SERVICESETTINGS_LISTENADDRESS=:8065
+      - MM_SERVICESETTINGS_ENABLEDEVELOPER=${MM_ENABLE_DEVELOPER:-false}
       
-      # File storage
-      MM_FILESETTINGS_DRIVERNAME: local
-      MM_FILESETTINGS_DIRECTORY: /mattermost/data
+      # File storage (local or S3)
+      - MM_FILESETTINGS_DRIVERNAME=${MM_FILESETTINGS_DRIVERNAME:-local}
+      - MM_FILESETTINGS_DIRECTORY=/mattermost/data
+      - MM_FILESETTINGS_AMAZONS3ACCESSKEYID=${MM_FILESETTINGS_AMAZONS3ACCESSKEYID:-}
+      - MM_FILESETTINGS_AMAZONS3SECRETACCESSKEY=${MM_FILESETTINGS_AMAZONS3SECRETACCESSKEY:-}
+      - MM_FILESETTINGS_AMAZONS3BUCKET=${MM_FILESETTINGS_AMAZONS3BUCKET:-}
+      - MM_FILESETTINGS_AMAZONS3PATHPREFIX=${MM_FILESETTINGS_AMAZONS3PATHPREFIX:-}
+      - MM_FILESETTINGS_AMAZONS3REGION=${MM_FILESETTINGS_AMAZONS3REGION:-}
+      - MM_FILESETTINGS_AMAZONS3ENDPOINT=${MM_FILESETTINGS_AMAZONS3ENDPOINT:-}
+      - MM_FILESETTINGS_AMAZONS3SSL=${MM_FILESETTINGS_AMAZONS3SSL:-true}
+      - MM_FILESETTINGS_MAXFILESIZE=${MM_FILESETTINGS_MAXFILESIZE:-52428800}
       
       # Plugin settings
-      MM_PLUGINSETTINGS_ENABLE: true
-      MM_PLUGINSETTINGS_ENABLEUPLOADS: true
-      MM_PLUGINSETTINGS_DIRECTORY: /mattermost/plugins
-      MM_PLUGINSETTINGS_CLIENTDIRECTORY: /mattermost/client/plugins
+      - MM_PLUGINSETTINGS_ENABLE=true
+      - MM_PLUGINSETTINGS_ENABLEUPLOADS=true
+      - MM_PLUGINSETTINGS_DIRECTORY=/mattermost/plugins
+      - MM_PLUGINSETTINGS_CLIENTDIRECTORY=/mattermost/client/plugins
       
       # Email settings (configure for production)
-      MM_EMAILSETTINGS_ENABLESIGNUPWITHEMAIL: ${MM_EMAIL_SIGNUP:-true}
-      MM_EMAILSETTINGS_ENABLESIGNINWITHEMAIL: ${MM_EMAIL_SIGNIN:-true}
-      MM_EMAILSETTINGS_ENABLESIGNINWITHUSERNAME: ${MM_USERNAME_SIGNIN:-true}
-      MM_EMAILSETTINGS_SENDEMAILNOTIFICATIONS: ${MM_SEND_EMAIL:-false}
-      MM_EMAILSETTINGS_SMTPSERVER: ${MM_SMTP_SERVER:-}
-      MM_EMAILSETTINGS_SMTPPORT: ${MM_SMTP_PORT:-587}
-      MM_EMAILSETTINGS_SMTPUSERNAME: ${MM_SMTP_USERNAME:-}
-      MM_EMAILSETTINGS_SMTPPASSWORD: ${MM_SMTP_PASSWORD:-}
-      MM_EMAILSETTINGS_FEEDBACKEMAIL: ${MM_FEEDBACK_EMAIL:-}
-      MM_EMAILSETTINGS_REPLYTOADDRESS: ${MM_REPLYTO_EMAIL:-}
+      - MM_EMAILSETTINGS_ENABLESIGNUPWITHEMAIL=${MM_EMAIL_SIGNUP:-true}
+      - MM_EMAILSETTINGS_ENABLESIGNINWITHEMAIL=${MM_EMAIL_SIGNIN:-true}
+      - MM_EMAILSETTINGS_ENABLESIGNINWITHUSERNAME=${MM_USERNAME_SIGNIN:-true}
+      - MM_EMAILSETTINGS_SENDEMAILNOTIFICATIONS=${MM_SEND_EMAIL:-false}
+      - MM_EMAILSETTINGS_SMTPSERVER=${MM_SMTP_SERVER:-}
+      - MM_EMAILSETTINGS_SMTPPORT=${MM_SMTP_PORT:-587}
+      - MM_EMAILSETTINGS_SMTPUSERNAME=${MM_SMTP_USERNAME:-}
+      - MM_EMAILSETTINGS_SMTPPASSWORD=${MM_SMTP_PASSWORD:-}
+      - MM_EMAILSETTINGS_FEEDBACKEMAIL=${MM_FEEDBACK_EMAIL:-}
+      - MM_EMAILSETTINGS_REPLYTOADDRESS=${MM_REPLYTO_EMAIL:-}
       
       # Security settings
-      MM_SERVICESETTINGS_ENABLEMULTIFACTORAUTHENTICATION: ${MM_ENABLE_MFA:-false}
+      - MM_SERVICESETTINGS_ENABLEMULTIFACTORAUTHENTICATION=${MM_ENABLE_MFA:-false}
+      
+      # API Settings
+      - MM_SERVICESETTINGS_ENABLEAPICHANNELDELETION=${MM_SERVICESETTINGS_ENABLEAPICHANNELDELETION:-false}
+      - MM_SERVICESETTINGS_ENABLEAPITEAMDELETION=${MM_SERVICESETTINGS_ENABLEAPITEAMDELETION:-false}
+      - MM_SERVICESETTINGS_ENABLEAPITRIGGERADMINNOTIFICATIONS=${MM_SERVICESETTINGS_ENABLEAPITRIGGERADMINNOTIFICATIONS:-false}
+      - MM_SERVICESETTINGS_ENABLEAPIUSERDELETION=${MM_SERVICESETTINGS_ENABLEAPIUSERDELETION:-false}
+      - MM_SERVICESETTINGS_ENABLEAPIPOSTDELETION=${MM_SERVICESETTINGS_ENABLEAPIPOSTDELETION:-false}
+      - MM_SERVICESETTINGS_ALLOWCOOKIESFORSUBDOMAINS=${MM_SERVICESETTINGS_ALLOWCOOKIESFORSUBDOMAINS:-false}
       
       # Performance settings
-      MM_SQLSETTINGS_MAXIDLECONNS: 20
-      MM_SQLSETTINGS_MAXOPENCONNS: 300
-      MM_SERVICESETTINGS_GOROUTINEHEALTHTHRESHOLD: -1
+      - MM_SQLSETTINGS_MAXIDLECONNS=20
+      - MM_SQLSETTINGS_MAXOPENCONNS=300
+      - MM_SERVICESETTINGS_GOROUTINEHEALTHTHRESHOLD=-1
       
       # Bleve search
-      MM_BLEVESETTINGS_INDEXDIR: /mattermost/bleve-indexes
+      - MM_BLEVESETTINGS_INDEXDIR=${MM_BLEVESETTINGS_INDEXDIR:-/mattermost/bleve-indexes}
       
-      # Timezone
-      TZ: ${TZ:-UTC}
-    networks:
-      - mattermost
+      # Logging
+      - MM_LOGSETTINGS_CONSOLELEVEL=${MM_LOGSETTINGS_CONSOLELEVEL:-INFO}
+      - MM_LOGSETTINGS_ENABLECONSOLE=${MM_LOGSETTINGS_ENABLECONSOLE:-true}
+      - MM_LOGSETTINGS_ENABLEFILE=${MM_LOGSETTINGS_ENABLEFILE:-true}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8065/api/v4/system/ping"]
       interval: 30s
@@ -103,8 +92,6 @@ services:
       start_period: 90s
 
 volumes:
-  postgres_data:
-    driver: local
   mattermost_config:
     driver: local
   mattermost_data:

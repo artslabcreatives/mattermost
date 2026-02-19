@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {useEffect} from 'react';
@@ -111,7 +111,7 @@ const HeaderFooterNotLoggedIn = (props: Props) => {
                             id='company_name'
                             className='pull-right footer-site-name'
                         >
-                            {'Mattermost'}
+                            {'Aura'}
                         </span>
                     </div>
                     <div className='col-xs-12'>
@@ -119,7 +119,7 @@ const HeaderFooterNotLoggedIn = (props: Props) => {
                             id='copyright'
                             className='pull-right footer-link copyright'
                         >
-                            {`© 2015-${new Date().getFullYear()} Mattermost, Inc.`}
+                            {`© 2015-${new Date().getFullYear()} Aura, Inc.`}
                         </span>
                         <span className='pull-right'>
                             {content}

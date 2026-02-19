@@ -1,17 +1,17 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
-import React, {useCallback} from 'react';
-import type {MessageDescriptor} from 'react-intl';
-import {useIntl, defineMessages} from 'react-intl';
+import React, { useCallback } from 'react';
+import type { MessageDescriptor } from 'react-intl';
+import { useIntl, defineMessages } from 'react-intl';
 import styled from 'styled-components';
 
-import type {SuggestionProps} from 'components/suggestion/suggestion';
+import type { SuggestionProps } from 'components/suggestion/suggestion';
 
-import {getCompassIconClassName} from 'utils/utils';
+import { getCompassIconClassName } from 'utils/utils';
 
-import type {ExtensionItem} from './extension_suggestions_provider';
+import type { ExtensionItem } from './extension_suggestions_provider';
 
 const SearchFileExtensionSuggestionContainer = styled.div`
     display: flex;
@@ -53,97 +53,97 @@ const ExtensionText = styled.span`
 `;
 
 const messages: Record<string, MessageDescriptor> =
-    defineMessages({
-        pdf: {
-            id: 'file_type.pdf',
-            defaultMessage: 'Acrobat',
-        },
-        word: {
-            id: 'file_type.word',
-            defaultMessage: 'Word Document',
-        },
-        image: {
-            id: 'file_type.image',
-            defaultMessage: 'Image',
-        },
-        audio: {
-            id: 'file_type.audio',
-            defaultMessage: 'Audio',
-        },
-        video: {
-            id: 'file_type.video',
-            defaultMessage: 'Video',
-        },
-        presentation: {
-            id: 'file_type.presentation',
-            defaultMessage: 'Powerpoint Presentation',
-        },
-        spreadsheet: {
-            id: 'file_type.spreadsheet',
-            defaultMessage: 'Excel spreadsheet',
-        },
-        code: {
-            id: 'file_type.code',
-            defaultMessage: 'Code file',
-        },
-        patch: {
-            id: 'file_type.patch',
-            defaultMessage: 'Patch file',
-        },
-        svg: {
-            id: 'file_type.svg',
-            defaultMessage: 'Vector graphics',
-        },
-        text: {
-            id: 'file_type.text',
-            defaultMessage: 'Text file',
-        },
-    });
+	defineMessages({
+		pdf: {
+			id: 'file_type.pdf',
+			defaultMessage: 'Acrobat',
+		},
+		word: {
+			id: 'file_type.word',
+			defaultMessage: 'Word Document',
+		},
+		image: {
+			id: 'file_type.image',
+			defaultMessage: 'Image',
+		},
+		audio: {
+			id: 'file_type.audio',
+			defaultMessage: 'Audio',
+		},
+		video: {
+			id: 'file_type.video',
+			defaultMessage: 'Video',
+		},
+		presentation: {
+			id: 'file_type.presentation',
+			defaultMessage: 'Powerpoint Presentation',
+		},
+		spreadsheet: {
+			id: 'file_type.spreadsheet',
+			defaultMessage: 'Excel spreadsheet',
+		},
+		code: {
+			id: 'file_type.code',
+			defaultMessage: 'Code file',
+		},
+		patch: {
+			id: 'file_type.patch',
+			defaultMessage: 'Patch file',
+		},
+		svg: {
+			id: 'file_type.svg',
+			defaultMessage: 'Vector graphics',
+		},
+		text: {
+			id: 'file_type.text',
+			defaultMessage: 'Text file',
+		},
+	});
 
 const SearchFileExtensionSuggestion = React.forwardRef<
-HTMLDivElement,
-SuggestionProps<ExtensionItem>
->(({id, item, onClick, matchedPretext, isSelection}, ref) => {
-    const intl = useIntl();
+	HTMLDivElement,
+	SuggestionProps<ExtensionItem>
+>(({ id, item, onClick, matchedPretext, isSelection }, ref) => {
+	const intl = useIntl();
 
-    const optionClicked = useCallback(() => {
-        onClick(item.value, matchedPretext);
-    }, [onClick, item.value, matchedPretext]);
+	const optionClicked = useCallback(() => {
+		onClick(item.value, matchedPretext);
+	}, [onClick, item.value, matchedPretext]);
 
-    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            optionClicked();
-        }
-    }, [optionClicked]);
+	const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			optionClicked();
+		}
+	}, [optionClicked]);
 
-    const labelName = messages[item.type] ?
-        intl.formatMessage(messages[item.type]) :
-        item.type;
+	const labelName = messages[item.type] ?
+		intl.formatMessage(messages[item.type]) :
+		item.type;
 
-    const ariaLabel = intl.formatMessage({
-        id: 'search_file_extension_suggestion.aria_label',
-        defaultMessage: '{fileType} (.{extension})',
-    }, {
-        fileType: labelName,
-        extension: item.value,
-    });
+	const ariaLabel = intl.formatMessage({
+		id: 'search_file_extension_suggestion.aria_label',
+		defaultMessage: '{fileType} (.{extension})',
+	}, {
+		fileType: labelName,
+		extension: item.value,
+	});
 
-    return (
-        <SearchFileExtensionSuggestionContainer
-            ref={ref}
-            id={id}
-            className={classNames({selected: isSelection})}
-            onClick={optionClicked}
-            onKeyDown={handleKeyDown}
-            role='option'
-            aria-label={ariaLabel}
-        >
-            <div className={classNames('file-icon', getCompassIconClassName(item.type))}/>
-            {labelName}
-            <ExtensionText>{`(.${item.value})`}</ExtensionText>
-        </SearchFileExtensionSuggestionContainer>
-    );
+	return (
+		<SearchFileExtensionSuggestionContainer
+			ref={ref}
+			id={id}
+			className={classNames({ selected: isSelection })}
+			onClick={optionClicked}
+			onKeyDown={handleKeyDown}
+			role='option'
+			aria-label={ariaLabel}
+		>
+			<div className={classNames('file-icon', getCompassIconClassName(item.type))} />
+			{labelName}
+			<ExtensionText>{`(.${item.value})`}</ExtensionText>
+		</SearchFileExtensionSuggestionContainer>
+	);
 });
 SearchFileExtensionSuggestion.displayName = 'SearchFileExtensionSuggestion';
 

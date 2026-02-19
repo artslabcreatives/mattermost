@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -54,7 +54,7 @@ export const useAttributeLinkModal = (field: UserPropertyField, updateField: Pro
                 helpText: (
                     <FormattedMessage
                         id='admin.system_properties.user_properties.dotmenu.ad_ldap.modal.helpText'
-                        defaultMessage="The attribute in the AD/LDAP server used to sync as a custom attribute in user's profile in Mattermost."
+                        defaultMessage="The attribute in the AD/LDAP server used to sync as a custom attribute in user's profile in Aura."
                     />
                 ),
                 modalHeaderText: (
@@ -89,7 +89,7 @@ export const useAttributeLinkModal = (field: UserPropertyField, updateField: Pro
                 helpText: (
                     <FormattedMessage
                         id='admin.system_properties.user_properties.dotmenu.saml.modal.helpText'
-                        defaultMessage="The attribute in the SAML server used to sync as a custom attribute in user's profile in Mattermost."
+                        defaultMessage="The attribute in the SAML server used to sync as a custom attribute in user's profile in Aura."
                     />
                 ),
                 modalHeaderText: (

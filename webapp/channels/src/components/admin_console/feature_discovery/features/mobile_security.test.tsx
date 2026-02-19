@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -48,7 +48,7 @@ describe('components/admin_console/feature_discovery/features/MobileSecurityFeat
         expect(screen.getByTestId('minimum-sku')).toHaveTextContent(LicenseSkus.Enterprise);
 
         // Verify title
-        expect(screen.getByTestId('title')).toHaveTextContent('Enhance mobile app security with Mattermost Enterprise');
+        expect(screen.getByTestId('title')).toHaveTextContent('Enhance mobile app security with Aura Enterprise');
 
         // Verify copy text
         expect(screen.getByTestId('copy')).toHaveTextContent(

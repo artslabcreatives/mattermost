@@ -1,32 +1,32 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {shallow} from 'enzyme';
+import { shallow } from 'enzyme';
 import React from 'react';
 
-import {HintToast} from './hint_toast';
+import { HintToast } from './hint_toast';
 
 describe('components/HintToast', () => {
-    test('should match snapshot', () => {
-        const wrapper = shallow(
-            <HintToast
-                onDismiss={jest.fn()}
-            >{'A hint'}</HintToast>,
-        );
+	test('should match snapshot', () => {
+		const wrapper = shallow(
+			<HintToast
+				onDismiss={jest.fn()}
+			>{'A hint'}</HintToast>,
+		);
 
-        expect(wrapper).toMatchSnapshot();
-    });
+		expect(wrapper).toMatchSnapshot();
+	});
 
-    test('should fire onDismiss callback', () => {
-        const dismissHandler = jest.fn();
-        const wrapper = shallow(
-            <HintToast
-                onDismiss={dismissHandler}
-            >{'A hint'}</HintToast>,
-        );
+	test('should fire onDismiss callback', () => {
+		const dismissHandler = jest.fn();
+		const wrapper = shallow(
+			<HintToast
+				onDismiss={dismissHandler}
+			>{'A hint'}</HintToast>,
+		);
 
-        wrapper.find('.hint-toast__dismiss').simulate('click');
+		wrapper.find('.hint-toast__dismiss').simulate('click');
 
-        expect(dismissHandler).toHaveBeenCalled();
-    });
+		expect(dismissHandler).toHaveBeenCalled();
+	});
 });

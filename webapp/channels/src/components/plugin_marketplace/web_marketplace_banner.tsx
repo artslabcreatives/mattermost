@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -30,7 +30,7 @@ const WebMarketplaceBanner = () => {
                     <ArrowRightIcon size={24}/>
                 </Title>
                 <Description>
-                    {formatMessage({id: 'marketplace_modal.web_marketplace_link.desc', defaultMessage: 'Connect the tools you use most to Mattermost'})}
+                    {formatMessage({id: 'marketplace_modal.web_marketplace_link.desc', defaultMessage: 'Connect the tools you use most to Aura'})}
                 </Description>
                 <IconsContainer>
                     <PluginIcon src={pluginIconConfluence}/>

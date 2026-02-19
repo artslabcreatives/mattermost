@@ -1,107 +1,107 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import type {ComponentProps} from 'react';
-import {Link} from 'react-router-dom';
+import type { ComponentProps } from 'react';
+import { Link } from 'react-router-dom';
 
 import * as GlobalActions from 'actions/global_actions';
 
 import Timestamp from 'components/timestamp';
 import WithTooltip from 'components/with_tooltip';
 
-import {Locations} from 'utils/constants';
-import {isMobile} from 'utils/user_agent';
+import { Locations } from 'utils/constants';
+import { isMobile } from 'utils/user_agent';
 
-const getTimeFormat: ComponentProps<typeof Timestamp>['useTime'] = (_, {hour, minute, second}) => ({hour, minute, second});
-const getDateFormat: ComponentProps<typeof Timestamp>['useDate'] = {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'};
+const getTimeFormat: ComponentProps<typeof Timestamp>['useTime'] = (_, { hour, minute, second }) => ({ hour, minute, second });
+const getDateFormat: ComponentProps<typeof Timestamp>['useDate'] = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
 
 type Props = {
 
-    /*
-     * If true, time will be rendered as a permalink to the post
-     */
-    isPermalink: boolean;
+	/*
+	 * If true, time will be rendered as a permalink to the post
+	 */
+	isPermalink: boolean;
 
-    /*
-     * The time to display
-     */
-    eventTime: number;
+	/*
+	 * The time to display
+	 */
+	eventTime: number;
 
-    isMobileView: boolean;
-    location: string;
+	isMobileView: boolean;
+	location: string;
 
-    /*
-     * The post id of posting being rendered
-     */
-    postId: string;
-    teamUrl: string;
-    timestampProps?: ComponentProps<typeof Timestamp>;
+	/*
+	 * The post id of posting being rendered
+	 */
+	postId: string;
+	teamUrl: string;
+	timestampProps?: ComponentProps<typeof Timestamp>;
 }
 
 export default class PostTime extends React.PureComponent<Props> {
-    static defaultProps: Partial<Props> = {
-        eventTime: 0,
-        location: Locations.CENTER,
-    };
+	static defaultProps: Partial<Props> = {
+		eventTime: 0,
+		location: Locations.CENTER,
+	};
 
-    handleClick = () => {
-        if (this.props.isMobileView) {
-            GlobalActions.emitCloseRightHandSide();
-        }
-    };
+	handleClick = () => {
+		if (this.props.isMobileView) {
+			GlobalActions.emitCloseRightHandSide();
+		}
+	};
 
-    render() {
-        const {
-            eventTime,
-            isPermalink,
-            location,
-            postId,
-            teamUrl,
-            timestampProps = {},
-        } = this.props;
+	render() {
+		const {
+			eventTime,
+			isPermalink,
+			location,
+			postId,
+			teamUrl,
+			timestampProps = {},
+		} = this.props;
 
-        const postTime = (
-            <Timestamp
-                value={eventTime}
-                className='post__time'
-                useDate={false}
-                {...timestampProps}
-            />
-        );
+		const postTime = (
+			<Timestamp
+				value={eventTime}
+				className='post__time'
+				useDate={false}
+				{...timestampProps}
+			/>
+		);
 
-        const content = isMobile() || !isPermalink ? (
-            <div
-                role='presentation'
-                className='post__permalink post_permalink_mobile_view'
-            >
-                {postTime}
-            </div>
-        ) : (
-            <Link
-                id={`${location}_time_${postId}`}
-                to={`${teamUrl}/pl/${postId}`}
-                className='post__permalink'
-                onClick={this.handleClick}
-                aria-labelledby={eventTime.toString()}
-            >
-                {postTime}
-            </Link>
-        );
+		const content = isMobile() || !isPermalink ? (
+			<div
+				role='presentation'
+				className='post__permalink post_permalink_mobile_view'
+			>
+				{postTime}
+			</div>
+		) : (
+			<Link
+				id={`${location}_time_${postId}`}
+				to={`${teamUrl}/pl/${postId}`}
+				className='post__permalink'
+				onClick={this.handleClick}
+				aria-labelledby={eventTime.toString()}
+			>
+				{postTime}
+			</Link>
+		);
 
-        return (
-            <WithTooltip
-                title={
-                    <Timestamp
-                        value={eventTime}
-                        useSemanticOutput={false}
-                        useDate={getDateFormat}
-                        useTime={getTimeFormat}
-                    />
-                }
-            >
-                {content}
-            </WithTooltip>
-        );
-    }
+		return (
+			<WithTooltip
+				title={
+					<Timestamp
+						value={eventTime}
+						useSemanticOutput={false}
+						useDate={getDateFormat}
+						useTime={getTimeFormat}
+					/>
+				}
+			>
+				{content}
+			</WithTooltip>
+		);
+	}
 }

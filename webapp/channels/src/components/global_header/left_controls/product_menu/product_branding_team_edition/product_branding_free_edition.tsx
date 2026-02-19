@@ -1,15 +1,15 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {useSelector} from 'react-redux';
+import { useSelector } from 'react-redux';
 import styled from 'styled-components';
 
-import {getLicense} from 'mattermost-redux/selectors/entities/general';
+import { getLicense } from 'mattermost-redux/selectors/entities/general';
 
 import Logo from 'components/common/svg_images_components/logo_dark_blue_svg';
 
-import {LicenseSkus} from 'utils/constants';
+import { LicenseSkus } from 'utils/constants';
 
 const ProductBrandingFreeEditionContainer = styled.span`
     display: flex;
@@ -42,24 +42,24 @@ const Badge = styled.span`
 `;
 
 const ProductBrandingFreeEdition = (): JSX.Element => {
-    const license = useSelector(getLicense);
+	const license = useSelector(getLicense);
 
-    let badgeText = '';
-    if (license?.SkuShortName === LicenseSkus.Entry) {
-        badgeText = 'ENTRY EDITION';
-    } else if (license?.IsLicensed === 'false') {
-        badgeText = 'TEAM EDITION';
-    }
+	let badgeText = '';
+	if (license?.SkuShortName === LicenseSkus.Entry) {
+		badgeText = 'ENTRY EDITION';
+	} else if (license?.IsLicensed === 'false') {
+		badgeText = 'ARTSLAB EDITION';
+	}
 
-    return (
-        <ProductBrandingFreeEditionContainer tabIndex={-1}>
-            <StyledLogo
-                width={116}
-                height={20}
-            />
-            <Badge>{badgeText}</Badge>
-        </ProductBrandingFreeEditionContainer>
-    );
+	return (
+		<ProductBrandingFreeEditionContainer tabIndex={-1}>
+			<StyledLogo
+				width={116}
+				height={20}
+			/>
+			<Badge>{badgeText}</Badge>
+		</ProductBrandingFreeEditionContainer>
+	);
 };
 
 export default ProductBrandingFreeEdition;

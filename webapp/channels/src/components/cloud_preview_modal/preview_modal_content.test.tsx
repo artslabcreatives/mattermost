@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import {screen, fireEvent} from '@testing-library/react';
@@ -54,7 +54,7 @@ describe('PreviewModalContent', () => {
         expect(screen.getByText('ENTERPRISE')).toBeInTheDocument();
         const skuLabelContainer = screen.getByText('ENTERPRISE').closest('.preview-modal-content__sku-label');
         expect(skuLabelContainer).toBeInTheDocument();
-        expect(screen.getByLabelText('Mattermost Logo')).toBeInTheDocument();
+        expect(screen.getByLabelText('Aura Logo')).toBeInTheDocument();
     });
 
     it('should not render SKU label when not provided', () => {
@@ -183,7 +183,7 @@ describe('PreviewModalContent', () => {
         const images = screen.getAllByRole('img');
         const contentImages = images.filter((img) => {
             const ariaLabel = img.getAttribute('aria-label');
-            return !ariaLabel || !ariaLabel.includes('Mattermost Logo');
+            return !ariaLabel || !ariaLabel.includes('Aura Logo');
         });
         expect(contentImages).toHaveLength(0);
     });

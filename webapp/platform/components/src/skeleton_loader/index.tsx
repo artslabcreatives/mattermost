@@ -1,7 +1,7 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import styled, {keyframes} from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 
 const skeletonFade = keyframes`
     0% {
@@ -24,7 +24,7 @@ const BaseLoader = styled.div`
 `;
 
 export interface CircleSkeletonLoaderProps {
-    size: string | number;
+	size: string | number;
 }
 
 /**
@@ -35,7 +35,7 @@ export interface CircleSkeletonLoaderProps {
  * <CircleSkeletonLoader size={20}/>
  * <CircleSkeletonLoader size="50%"/>
  */
-export const CircleSkeletonLoader = styled(BaseLoader)<CircleSkeletonLoaderProps>`
+export const CircleSkeletonLoader = styled(BaseLoader) <CircleSkeletonLoaderProps>`
     display: block;
     border-radius: 50%;
     height: ${(props) => getCorrectSizeDimension(props.size)};
@@ -43,11 +43,11 @@ export const CircleSkeletonLoader = styled(BaseLoader)<CircleSkeletonLoaderProps
 `;
 
 export interface RectangleSkeletonLoaderProps {
-    height: string | number;
-    width?: string | number;
-    borderRadius?: number;
-    margin?: string;
-    flex?: string;
+	height: string | number;
+	width?: string | number;
+	borderRadius?: number;
+	margin?: string;
+	flex?: string;
 }
 
 /**
@@ -64,7 +64,7 @@ export interface RectangleSkeletonLoaderProps {
  * <RectangleSkeletonLoader height='100px' />
  * <RectangleSkeletonLoader height={40} width={100} borderRadius={4} margin='0 10px 0 0' flex='1' />
  */
-export const RectangleSkeletonLoader = styled(BaseLoader)<RectangleSkeletonLoaderProps>`
+export const RectangleSkeletonLoader = styled(BaseLoader) <RectangleSkeletonLoaderProps>`
     height: ${(props) => getCorrectSizeDimension(props.height)};
     width: ${(props) => getCorrectSizeDimension(props.width, '100%')};
     border-radius: ${(props) => props?.borderRadius ?? 8}px;
@@ -73,9 +73,9 @@ export const RectangleSkeletonLoader = styled(BaseLoader)<RectangleSkeletonLoade
 `;
 
 function getCorrectSizeDimension(size: number | string | undefined, fallback: string | null = null) {
-    if (size) {
-        return (typeof size === 'string') ? size : `${size}px`;
-    }
+	if (size) {
+		return (typeof size === 'string') ? size : `${size}px`;
+	}
 
-    return fallback;
+	return fallback;
 }

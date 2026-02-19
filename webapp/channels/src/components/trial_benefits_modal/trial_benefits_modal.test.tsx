@@ -1,216 +1,216 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {shallow} from 'enzyme';
+import { shallow } from 'enzyme';
 import React from 'react';
-import {Provider} from 'react-redux';
+import { Provider } from 'react-redux';
 
-import {GenericModal} from '@mattermost/components';
+import { GenericModal } from '@mattermost/components';
 
 import TrialBenefitsModal from 'components/trial_benefits_modal/trial_benefits_modal';
 
-import {mountWithIntl} from 'tests/helpers/intl-test-helper';
+import { mountWithIntl } from 'tests/helpers/intl-test-helper';
 import mockStore from 'tests/test_store';
 
-const mockLocation = {pathname: '', search: '', hash: ''};
+const mockLocation = { pathname: '', search: '', hash: '' };
 
 jest.mock('components/admin_console/blockable_link', () => {
-    return () => {
-        return <div/>;
-    };
+	return () => {
+		return <div />;
+	};
 });
 
 jest.mock('react-router-dom', () => ({
-    ...jest.requireActual('react-router-dom') as typeof import('react-router-dom'),
-    useLocation: () => mockLocation,
+	...jest.requireActual('react-router-dom') as typeof import('react-router-dom'),
+	useLocation: () => mockLocation,
 }));
 
 describe('components/trial_benefits_modal/trial_benefits_modal', () => {
-    // required state to mount using the provider
-    const state = {
-        entities: {
-            general: {
-                license: {
-                    IsLicensed: 'true',
-                    Cloud: 'false',
-                },
-            },
-        },
-        views: {
-            modals: {
-                modalState: {
-                    trial_benefits_modal: {
-                        open: true,
-                    },
-                },
-            },
-            admin: {
-                navigationBlock: {
-                    blocked: true,
-                },
-            },
-        },
-    };
+	// required state to mount using the provider
+	const state = {
+		entities: {
+			general: {
+				license: {
+					IsLicensed: 'true',
+					Cloud: 'false',
+				},
+			},
+		},
+		views: {
+			modals: {
+				modalState: {
+					trial_benefits_modal: {
+						open: true,
+					},
+				},
+			},
+			admin: {
+				navigationBlock: {
+					blocked: true,
+				},
+			},
+		},
+	};
 
-    const props = {
-        onExited: jest.fn(),
-        trialJustStarted: false,
-    };
+	const props = {
+		onExited: jest.fn(),
+		trialJustStarted: false,
+	};
 
-    const store = mockStore(state);
+	const store = mockStore(state);
 
-    test('should match snapshot', () => {
-        const wrapper = shallow(
-            <Provider store={store}>
-                <TrialBenefitsModal {...props}/>
-            </Provider>,
-        );
-        expect(wrapper).toMatchSnapshot();
-    });
+	test('should match snapshot', () => {
+		const wrapper = shallow(
+			<Provider store={store}>
+				<TrialBenefitsModal {...props} />
+			</Provider>,
+		);
+		expect(wrapper).toMatchSnapshot();
+	});
 
-    test('should match snapshot when trial has already started', () => {
-        const wrapper = shallow(
-            <Provider store={store}>
-                <TrialBenefitsModal
-                    {...props}
-                    trialJustStarted={true}
-                />
-            </Provider>,
-        );
-        expect(wrapper).toMatchSnapshot();
-    });
+	test('should match snapshot when trial has already started', () => {
+		const wrapper = shallow(
+			<Provider store={store}>
+				<TrialBenefitsModal
+					{...props}
+					trialJustStarted={true}
+				/>
+			</Provider>,
+		);
+		expect(wrapper).toMatchSnapshot();
+	});
 
-    test('should show the benefits modal', () => {
-        const wrapper = mountWithIntl(
-            <Provider store={store}>
-                <TrialBenefitsModal {...props}/>
-            </Provider>,
-        );
-        expect(wrapper.find('TrialBenefitsModal').find('Carousel')).toHaveLength(1);
-    });
+	test('should show the benefits modal', () => {
+		const wrapper = mountWithIntl(
+			<Provider store={store}>
+				<TrialBenefitsModal {...props} />
+			</Provider>,
+		);
+		expect(wrapper.find('TrialBenefitsModal').find('Carousel')).toHaveLength(1);
+	});
 
-    test('should hide the benefits modal', () => {
-        const trialBenefitsModalHidden = {
-            modals: {
-                modalState: {},
-            },
-        };
-        const localStore = {...state, views: trialBenefitsModalHidden};
-        const store = mockStore(localStore);
-        const wrapper = mountWithIntl(
-            <Provider store={store}>
-                <TrialBenefitsModal {...props}/>
-            </Provider>,
-        );
-        expect(wrapper.find('TrialBenefitsModal').find('Carousel')).toHaveLength(0);
-    });
+	test('should hide the benefits modal', () => {
+		const trialBenefitsModalHidden = {
+			modals: {
+				modalState: {},
+			},
+		};
+		const localStore = { ...state, views: trialBenefitsModalHidden };
+		const store = mockStore(localStore);
+		const wrapper = mountWithIntl(
+			<Provider store={store}>
+				<TrialBenefitsModal {...props} />
+			</Provider>,
+		);
+		expect(wrapper.find('TrialBenefitsModal').find('Carousel')).toHaveLength(0);
+	});
 
-    test('should call on close', () => {
-        const mockOnClose = jest.fn();
+	test('should call on close', () => {
+		const mockOnClose = jest.fn();
 
-        const wrapper = mountWithIntl(
-            <Provider store={store}>
-                <TrialBenefitsModal
-                    {...props}
-                    onClose={mockOnClose}
-                    trialJustStarted={true}
-                />
-            </Provider>,
-        );
+		const wrapper = mountWithIntl(
+			<Provider store={store}>
+				<TrialBenefitsModal
+					{...props}
+					onClose={mockOnClose}
+					trialJustStarted={true}
+				/>
+			</Provider>,
+		);
 
-        wrapper.find(GenericModal).props().onExited?.();
+		wrapper.find(GenericModal).props().onExited?.();
 
-        expect(mockOnClose).toHaveBeenCalled();
-    });
+		expect(mockOnClose).toHaveBeenCalled();
+	});
 
-    test('should call on exited', () => {
-        const mockOnExited = jest.fn();
+	test('should call on exited', () => {
+		const mockOnExited = jest.fn();
 
-        const wrapper = mountWithIntl(
-            <Provider store={store}>
-                <TrialBenefitsModal
-                    {...props}
-                    onExited={mockOnExited}
-                />
-            </Provider>,
-        );
+		const wrapper = mountWithIntl(
+			<Provider store={store}>
+				<TrialBenefitsModal
+					{...props}
+					onExited={mockOnExited}
+				/>
+			</Provider>,
+		);
 
-        wrapper.find(GenericModal).props().onExited?.();
+		wrapper.find(GenericModal).props().onExited?.();
 
-        expect(mockOnExited).toHaveBeenCalled();
-    });
+		expect(mockOnExited).toHaveBeenCalled();
+	});
 
-    test('should present the just started trial modal content', () => {
-        const wrapper = mountWithIntl(
-            <Provider store={store}>
-                <TrialBenefitsModal
-                    {...props}
-                    trialJustStarted={true}
-                />
-            </Provider>,
-        );
+	test('should present the just started trial modal content', () => {
+		const wrapper = mountWithIntl(
+			<Provider store={store}>
+				<TrialBenefitsModal
+					{...props}
+					trialJustStarted={true}
+				/>
+			</Provider>,
+		);
 
-        const title = wrapper.find('#trialBenefitsModalStarted-trialStart div.title').text();
+		const title = wrapper.find('#trialBenefitsModalStarted-trialStart div.title').text();
 
-        expect(title).toBe('Your trial has started! Explore the benefits of Enterprise');
-    });
+		expect(title).toBe('Your trial has started! Explore the benefits of Enterprise');
+	});
 
-    test('should have a shorter title and not include the cta button when in cloud env', () => {
-        const cloudState = {...state, entities: {...state.entities, general: {...state.entities.general, license: {Cloud: 'true'}}}};
-        const cloudStore = mockStore(cloudState);
-        const wrapper = mountWithIntl(
-            <Provider store={cloudStore}>
-                <TrialBenefitsModal
-                    {...props}
-                    trialJustStarted={true}
-                />
-            </Provider>,
-        );
+	test('should have a shorter title and not include the cta button when in cloud env', () => {
+		const cloudState = { ...state, entities: { ...state.entities, general: { ...state.entities.general, license: { Cloud: 'true' } } } };
+		const cloudStore = mockStore(cloudState);
+		const wrapper = mountWithIntl(
+			<Provider store={cloudStore}>
+				<TrialBenefitsModal
+					{...props}
+					trialJustStarted={true}
+				/>
+			</Provider>,
+		);
 
-        const title = wrapper.find('#trialBenefitsModalStarted-trialStart div.title').text();
-        expect(title).toBe('Your trial has started!');
+		const title = wrapper.find('#trialBenefitsModalStarted-trialStart div.title').text();
+		expect(title).toBe('Your trial has started!');
 
-        const ctaBtn = wrapper.find('#trialBenefitsModalStarted-trialStart button.btn-primary');
-        expect(ctaBtn).toHaveLength(0);
-    });
+		const ctaBtn = wrapper.find('#trialBenefitsModalStarted-trialStart button.btn-primary');
+		expect(ctaBtn).toHaveLength(0);
+	});
 
-    test('should show the invite people call to action when trial started from the team', () => {
-        const cloudState = {...state, entities: {...state.entities, general: {...state.entities.general, license: {Cloud: 'true'}}}};
-        const cloudStore = mockStore(cloudState);
-        const wrapper = mountWithIntl(
-            <Provider store={cloudStore}>
-                <TrialBenefitsModal
-                    {...props}
-                    trialJustStarted={true}
-                />
-            </Provider>,
-        );
+	test('should show the invite people call to action when trial started from the team', () => {
+		const cloudState = { ...state, entities: { ...state.entities, general: { ...state.entities.general, license: { Cloud: 'true' } } } };
+		const cloudStore = mockStore(cloudState);
+		const wrapper = mountWithIntl(
+			<Provider store={cloudStore}>
+				<TrialBenefitsModal
+					{...props}
+					trialJustStarted={true}
+				/>
+			</Provider>,
+		);
 
-        const title = wrapper.find('#trialBenefitsModalStarted-trialStart div.title').text();
-        expect(title).toBe('Your trial has started!');
+		const title = wrapper.find('#trialBenefitsModalStarted-trialStart div.title').text();
+		expect(title).toBe('Your trial has started!');
 
-        const ctaBtn = wrapper.find('.buttons-section-wrapper a span');
-        expect(ctaBtn.text()).toBe('Invite people');
-    });
+		const ctaBtn = wrapper.find('.buttons-section-wrapper a span');
+		expect(ctaBtn.text()).toBe('Invite people');
+	});
 
-    test('should show hide the invite people call to action when trial started from system console', () => {
-        const cloudState = {...state, entities: {...state.entities, general: {...state.entities.general, license: {Cloud: 'true'}}}};
-        const cloudStore = mockStore(cloudState);
+	test('should show hide the invite people call to action when trial started from system console', () => {
+		const cloudState = { ...state, entities: { ...state.entities, general: { ...state.entities.general, license: { Cloud: 'true' } } } };
+		const cloudStore = mockStore(cloudState);
 
-        mockLocation.pathname = '/admin_console';
-        const wrapper = mountWithIntl(
-            <Provider store={cloudStore}>
-                <TrialBenefitsModal
-                    {...props}
-                    trialJustStarted={true}
-                />
-            </Provider>,
-        );
+		mockLocation.pathname = '/admin_console';
+		const wrapper = mountWithIntl(
+			<Provider store={cloudStore}>
+				<TrialBenefitsModal
+					{...props}
+					trialJustStarted={true}
+				/>
+			</Provider>,
+		);
 
-        const title = wrapper.find('#trialBenefitsModalStarted-trialStart div.title').text();
-        expect(title).toBe('Your trial has started!');
+		const title = wrapper.find('#trialBenefitsModalStarted-trialStart div.title').text();
+		expect(title).toBe('Your trial has started!');
 
-        const ctaBtn = wrapper.find('.buttons-section-wrapper a span');
-        expect(ctaBtn.text()).toBe('Close');
-    });
+		const ctaBtn = wrapper.find('.buttons-section-wrapper a span');
+		expect(ctaBtn.text()).toBe('Close');
+	});
 });

@@ -1,9 +1,9 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useCallback} from 'react';
-import type {MessageDescriptor} from 'react-intl';
-import {FormattedMessage} from 'react-intl';
+import React, { useCallback } from 'react';
+import type { MessageDescriptor } from 'react-intl';
+import { FormattedMessage } from 'react-intl';
 import styled from 'styled-components';
 
 import RenderEmoji from 'components/emoji/render_emoji';
@@ -11,15 +11,15 @@ import RenderEmoji from 'components/emoji/render_emoji';
 // This component is a temporary placeholder for use until the authoritative `compass-components` Chip is implemented.
 
 type Props = {
-    onClick?: () => void;
-    display?: MessageDescriptor;
-    values?: Record<string, any>;
-    className?: string;
+	onClick?: () => void;
+	display?: MessageDescriptor;
+	values?: Record<string, any>;
+	className?: string;
 
-    // for the "other" option unlike the others, e.g. free-form response
-    otherOption?: boolean;
-    leadingIcon?: string;
-    additionalMarkup?: React.ReactNode | React.ReactNodeArray;
+	// for the "other" option unlike the others, e.g. free-form response
+	otherOption?: boolean;
+	leadingIcon?: string;
+	additionalMarkup?: React.ReactNode | React.ReactNodeArray;
 }
 
 const StyledChip = styled.button<{ otherOption?: boolean }>`
@@ -52,43 +52,43 @@ const StyledChip = styled.button<{ otherOption?: boolean }>`
     }
 `;
 
-const emojiStyles = {marginRight: '11px'};
+const emojiStyles = { marginRight: '11px' };
 
 const Chip = ({
-    onClick,
-    otherOption,
-    className,
-    leadingIcon,
-    display,
-    values,
-    additionalMarkup,
+	onClick,
+	otherOption,
+	className,
+	leadingIcon,
+	display,
+	values,
+	additionalMarkup,
 }: Props) => {
-    const handleClick = useCallback((e: React.MouseEvent) => {
-        e.preventDefault();
-        onClick?.();
-    }, [onClick]);
+	const handleClick = useCallback((e: React.MouseEvent) => {
+		e.preventDefault();
+		onClick?.();
+	}, [onClick]);
 
-    return (
-        <StyledChip
-            onClick={handleClick}
-            otherOption={otherOption}
-            className={className || ''}
-        >
-            {leadingIcon && (
-                <RenderEmoji
-                    emojiName={leadingIcon}
-                    emojiStyle={emojiStyles}
-                />
-            )}
-            {(display && values) && (
-                <FormattedMessage
-                    {...display}
-                    values={values}
-                />
-            )}
-            {additionalMarkup}
-        </StyledChip>
-    );
+	return (
+		<StyledChip
+			onClick={handleClick}
+			otherOption={otherOption}
+			className={className || ''}
+		>
+			{leadingIcon && (
+				<RenderEmoji
+					emojiName={leadingIcon}
+					emojiStyle={emojiStyles}
+				/>
+			)}
+			{(display && values) && (
+				<FormattedMessage
+					{...display}
+					values={values}
+				/>
+			)}
+			{additionalMarkup}
+		</StyledChip>
+	);
 };
 
 export default Chip;

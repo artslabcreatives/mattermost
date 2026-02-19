@@ -1,108 +1,108 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {shallow} from 'enzyme';
-import type {History} from 'history';
+import { shallow } from 'enzyme';
+import type { History } from 'history';
 import React from 'react';
 
-import {getHistory} from 'utils/browser_history';
+import { getHistory } from 'utils/browser_history';
 
 import ChannelIdentifierRouter from './channel_identifier_router';
 
-jest.useFakeTimers({legacyFakeTimers: true});
+jest.useFakeTimers({ legacyFakeTimers: true });
 
 describe('components/channel_layout/CenterChannel', () => {
-    const baseProps = {
+	const baseProps = {
 
-        match: {
-            isExact: false,
-            params: {
-                identifier: 'identifier',
-                team: 'team',
-                path: '/path',
-            },
-            path: '/team/channel/identifier',
-            url: '/team/channel/identifier',
-        },
+		match: {
+			isExact: false,
+			params: {
+				identifier: 'identifier',
+				team: 'team',
+				path: '/path',
+			},
+			path: '/team/channel/identifier',
+			url: '/team/channel/identifier',
+		},
 
-        actions: {
-            onChannelByIdentifierEnter: jest.fn(),
-        },
-        history: [] as unknown as History,
-    };
+		actions: {
+			onChannelByIdentifierEnter: jest.fn(),
+		},
+		history: [] as unknown as History,
+	};
 
-    test('should call onChannelByIdentifierEnter on props change', () => {
-        const wrapper = shallow(<ChannelIdentifierRouter {...baseProps}/>);
-        const instance = wrapper.instance();
-        expect(baseProps.actions.onChannelByIdentifierEnter).toHaveBeenCalledTimes(1);
-        expect(baseProps.actions.onChannelByIdentifierEnter).toHaveBeenLastCalledWith(baseProps);
+	test('should call onChannelByIdentifierEnter on props change', () => {
+		const wrapper = shallow(<ChannelIdentifierRouter {...baseProps} />);
+		const instance = wrapper.instance();
+		expect(baseProps.actions.onChannelByIdentifierEnter).toHaveBeenCalledTimes(1);
+		expect(baseProps.actions.onChannelByIdentifierEnter).toHaveBeenLastCalledWith(baseProps);
 
-        const props2 = {
-            match: {
-                isExact: false,
-                params: {
-                    identifier: 'identifier2',
-                    team: 'team2',
-                    path: '/path2',
-                },
-                path: '/team2/channel/identifier2',
-                url: '/team2/channel/identifier2',
-            },
-        };
-        wrapper.setProps(props2);
+		const props2 = {
+			match: {
+				isExact: false,
+				params: {
+					identifier: 'identifier2',
+					team: 'team2',
+					path: '/path2',
+				},
+				path: '/team2/channel/identifier2',
+				url: '/team2/channel/identifier2',
+			},
+		};
+		wrapper.setProps(props2);
 
-        // expect(propsTest.match).toEqual(props2.match);
+		// expect(propsTest.match).toEqual(props2.match);
 
-        //Should clear the timeout if url is changed
-        expect(clearTimeout).toHaveBeenCalledWith((instance as any).replaceUrlTimeout);
-        expect(baseProps.actions.onChannelByIdentifierEnter).toHaveBeenCalledTimes(2);
-        expect(baseProps.actions.onChannelByIdentifierEnter).toHaveBeenLastCalledWith({
-            ...baseProps,
-            match: props2.match,
-            actions: baseProps.actions,
-        });
-    });
+		//Should clear the timeout if url is changed
+		expect(clearTimeout).toHaveBeenCalledWith((instance as any).replaceUrlTimeout);
+		expect(baseProps.actions.onChannelByIdentifierEnter).toHaveBeenCalledTimes(2);
+		expect(baseProps.actions.onChannelByIdentifierEnter).toHaveBeenLastCalledWith({
+			...baseProps,
+			match: props2.match,
+			actions: baseProps.actions,
+		});
+	});
 
-    test('should call browserHistory.replace if it is permalink after timer', () => {
-        const props = {
-            ...baseProps,
-            match: {
-                isExact: false,
-                params: {
-                    identifier: 'identifier',
-                    team: 'team',
-                    path: '/path',
-                    postid: 'abcd',
-                },
-                path: '/team/channel/identifier/abcd',
-                url: '/team/channel/identifier/abcd',
-            },
-        };
-        shallow(<ChannelIdentifierRouter {...props}/>);
-        jest.runOnlyPendingTimers();
-        expect(getHistory().replace).toHaveBeenLastCalledWith('/team/channel/identifier');
-    });
+	test('should call browserHistory.replace if it is permalink after timer', () => {
+		const props = {
+			...baseProps,
+			match: {
+				isExact: false,
+				params: {
+					identifier: 'identifier',
+					team: 'team',
+					path: '/path',
+					postid: 'abcd',
+				},
+				path: '/team/channel/identifier/abcd',
+				url: '/team/channel/identifier/abcd',
+			},
+		};
+		shallow(<ChannelIdentifierRouter {...props} />);
+		jest.runOnlyPendingTimers();
+		expect(getHistory().replace).toHaveBeenLastCalledWith('/team/channel/identifier');
+	});
 
-    test('should call browserHistory.replace on props change to permalink', () => {
-        const props = {
-            ...baseProps,
-            match: {
-                isExact: false,
-                params: {
-                    identifier: 'identifier1',
-                    team: 'team1',
-                    path: '/path1',
-                    postid: 'abcd',
-                },
-                path: '/team1/channel/identifier1/abcd',
-                url: '/team1/channel/identifier1/abcd',
-            },
-        };
+	test('should call browserHistory.replace on props change to permalink', () => {
+		const props = {
+			...baseProps,
+			match: {
+				isExact: false,
+				params: {
+					identifier: 'identifier1',
+					team: 'team1',
+					path: '/path1',
+					postid: 'abcd',
+				},
+				path: '/team1/channel/identifier1/abcd',
+				url: '/team1/channel/identifier1/abcd',
+			},
+		};
 
-        const wrapper = shallow(<ChannelIdentifierRouter {...baseProps}/>);
-        wrapper.setProps(props);
+		const wrapper = shallow(<ChannelIdentifierRouter {...baseProps} />);
+		wrapper.setProps(props);
 
-        jest.runOnlyPendingTimers();
-        expect(getHistory().replace).toHaveBeenLastCalledWith('/team1/channel/identifier1');
-    });
+		jest.runOnlyPendingTimers();
+		expect(getHistory().replace).toHaveBeenLastCalledWith('/team1/channel/identifier1');
+	});
 });

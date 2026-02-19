@@ -1,21 +1,21 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {shallow} from 'enzyme';
+import { shallow } from 'enzyme';
 import React from 'react';
 
-import {MenuItemExternalLinkImpl} from './menu_item_external_link';
+import { MenuItemExternalLinkImpl } from './menu_item_external_link';
 
 describe('components/MenuItemExternalLink', () => {
-    test('should match snapshot', () => {
-        const wrapper = shallow(
-            <MenuItemExternalLinkImpl
-                url='http://test.com'
-                text='Whatever'
-            />,
-        );
+	test('should match snapshot', () => {
+		const wrapper = shallow(
+			<MenuItemExternalLinkImpl
+				url='http://test.com'
+				text='Whatever'
+			/>,
+		);
 
-        expect(wrapper).toMatchInlineSnapshot(`
+		expect(wrapper).toMatchInlineSnapshot(`
             <ForwardRef
               href="http://test.com"
               location="menu_item_external_link"
@@ -27,5 +27,5 @@ describe('components/MenuItemExternalLink', () => {
               </span>
             </ForwardRef>
         `);
-    });
+	});
 });

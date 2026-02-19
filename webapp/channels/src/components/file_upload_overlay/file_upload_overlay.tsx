@@ -1,9 +1,9 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
 import React from 'react';
-import {FormattedMessage} from 'react-intl';
+import { FormattedMessage } from 'react-intl';
 
 import fileOverlayImage from 'images/fileOverlay.svg';
 
@@ -17,45 +17,45 @@ export const DropOverlayIdCenterChannel = 'centerChannelFileDropOverlay';
 export const DropOverlayIdRHS = 'rhsFileDropOverlay';
 
 type Props = {
-    overlayType: string;
-    id: string;
-    isInEditMode?: boolean;
-    direction?: 'horizontal' | 'vertical';
+	overlayType: string;
+	id: string;
+	isInEditMode?: boolean;
+	direction?: 'horizontal' | 'vertical';
 }
 
 export const FileUploadOverlay = (props: Props) => {
-    let overlayClass = 'file-overlay hidden';
-    if (props.overlayType === 'right') {
-        overlayClass += ' right-file-overlay';
-    } else if (props.overlayType === 'center') {
-        overlayClass += ' center-file-overlay';
-    }
+	let overlayClass = 'file-overlay hidden';
+	if (props.overlayType === 'right') {
+		overlayClass += ' right-file-overlay';
+	} else if (props.overlayType === 'center') {
+		overlayClass += ' center-file-overlay';
+	}
 
-    if (props.isInEditMode) {
-        overlayClass += ' post_edit_mode';
-    }
+	if (props.isInEditMode) {
+		overlayClass += ' post_edit_mode';
+	}
 
-    const mode = props.direction || 'vertical';
+	const mode = props.direction || 'vertical';
 
-    return (
-        <div
-            id={props.id}
-            className={overlayClass}
-        >
-            <div className='overlay__indent'>
-                <div className={classNames('overlay__circle', mode)}>
-                    <img
-                        className='overlay__files'
-                        src={fileOverlayImage}
-                        alt=''
-                        loading='lazy'
-                    />
-                    <FormattedMessage
-                        id='upload_overlay.info'
-                        defaultMessage='Drop a file to upload it.'
-                    />
-                </div>
-            </div>
-        </div>
-    );
+	return (
+		<div
+			id={props.id}
+			className={overlayClass}
+		>
+			<div className='overlay__indent'>
+				<div className={classNames('overlay__circle', mode)}>
+					<img
+						className='overlay__files'
+						src={fileOverlayImage}
+						alt=''
+						loading='lazy'
+					/>
+					<FormattedMessage
+						id='upload_overlay.info'
+						defaultMessage='Drop a file to upload it.'
+					/>
+				</div>
+			</div>
+		</div>
+	);
 };

@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -50,7 +50,7 @@ describe('components/admin_console/license_settings/enterprise_edition/enterpris
         ExpiresAt: '1620335443650',
         SkuShortName: LicenseSkus.Starter,
         Name: 'LicenseName',
-        Company: 'Mattermost Inc.',
+        Company: 'Aura Inc.',
         Users: '1000000',
     };
 

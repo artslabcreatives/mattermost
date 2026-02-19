@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -7,20 +7,20 @@ import IntlProvider from 'components/intl_provider';
 import ThemeProvider from 'components/theme_provider';
 
 import WebSocketClient from 'client/web_websocket_client';
-import {WebSocketContext} from 'utils/use_websocket';
+import { WebSocketContext } from 'utils/use_websocket';
 
 type Props = {
-    children: React.ReactNode;
+	children: React.ReactNode;
 }
 
 export default function RootProvider(props: Props) {
-    return (
-        <IntlProvider>
-            <WebSocketContext.Provider value={WebSocketClient}>
-                <ThemeProvider>
-                    {props.children}
-                </ThemeProvider>
-            </WebSocketContext.Provider>
-        </IntlProvider>
-    );
+	return (
+		<IntlProvider>
+			<WebSocketContext.Provider value={WebSocketClient}>
+				<ThemeProvider>
+					{props.children}
+				</ThemeProvider>
+			</WebSocketContext.Provider>
+		</IntlProvider>
+	);
 }

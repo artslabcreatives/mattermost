@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -206,7 +206,7 @@ class PushSettings extends OLDAdminSettings<Props, State> {
             pushServerHelpText = (
                 <FormattedMessage
                     id='admin.email.mhpnsHelp'
-                    defaultMessage='Download <linkIOS>Mattermost iOS app</linkIOS> from iTunes. Download <linkAndroid>Mattermost Android app</linkAndroid> from Google Play. Learn more about the <linkHPNS>Mattermost Hosted Push Notification Service</linkHPNS>.'
+                    defaultMessage='Download <linkIOS>Aura iOS app</linkIOS> from iTunes. Download <linkAndroid>Aura Android app</linkAndroid> from Google Play. Learn more about the <linkHPNS>Aura Hosted Push Notification Service</linkHPNS>.'
                     values={{
                         linkIOS: (msg) => (
                             <ExternalLink
@@ -239,7 +239,7 @@ class PushSettings extends OLDAdminSettings<Props, State> {
             pushServerHelpText = (
                 <FormattedMessage
                     id='admin.email.mtpnsHelp'
-                    defaultMessage='Download <linkIOS>Mattermost iOS app</linkIOS> from iTunes. Download <linkAndroid>Mattermost Android app</linkAndroid> from Google Play. Learn more about the <linkHPNS>Mattermost Hosted Push Notification Service</linkHPNS>.'
+                    defaultMessage='Download <linkIOS>Aura iOS app</linkIOS> from iTunes. Download <linkAndroid>Aura Android app</linkAndroid> from Google Play. Learn more about the <linkHPNS>Aura Hosted Push Notification Service</linkHPNS>.'
                     values={{
                         linkIOS: (msg) => (
                             <ExternalLink
@@ -301,7 +301,7 @@ class PushSettings extends OLDAdminSettings<Props, State> {
                         />
                         <FormattedMessage
                             id='admin.email.agreeHPNS'
-                            defaultMessage=' I understand and accept the Mattermost Hosted Push Notification Service <linkTerms>Terms of Service</linkTerms> and <linkPrivacy>Privacy Policy</linkPrivacy>.'
+                            defaultMessage=' I understand and accept the Aura Hosted Push Notification Service <linkTerms>Terms of Service</linkTerms> and <linkPrivacy>Privacy Policy</linkPrivacy>.'
                             values={{
                                 linkTerms: (msg) => (
                                     <ExternalLink

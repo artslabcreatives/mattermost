@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -77,7 +77,7 @@ const MenuStartTrial = (props: Props): JSX.Element | null => {
                     formatMessage(
                         {
                             id: 'navbar_dropdown.versionText',
-                            defaultMessage: 'This is the free <link>unsupported</link> edition of Mattermost.',
+                            defaultMessage: 'This is the free <link>unsupported</link> edition of Aura.',
                         },
                         {
                             link: (msg: React.ReactNode) => (

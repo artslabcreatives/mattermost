@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -269,7 +269,7 @@ export default class UserAccessTokenSection extends React.PureComponent<Props, S
                     <p>
                         <FormattedMessage
                             id='user.settings.tokens.confirmDelete.description'
-                            defaultMessage={'Any integrations using this token will no longer be able to access the Mattermost API. You cannot undo this action.'}
+                            defaultMessage={'Any integrations using this token will no longer be able to access the Aura API. You cannot undo this action.'}
                         />
                     </p>
                     <p>

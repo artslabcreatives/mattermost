@@ -69,7 +69,7 @@ func (api *API) InitUser() {
 	api.BaseRoutes.Users.Handle("/login", api.APIHandler(login)).Methods(http.MethodPost)
 	api.BaseRoutes.Users.Handle("/login/sso/code-exchange", api.APIHandler(loginSSOCodeExchange)).Methods(http.MethodPost)
 	api.BaseRoutes.Users.Handle("/login/desktop_token", api.RateLimitedHandler(api.APIHandler(loginWithDesktopToken), model.RateLimitSettings{PerSec: model.NewPointer(2), MaxBurst: model.NewPointer(1)})).Methods(http.MethodPost)
-	api.BaseRoutes.Users.Handle("/login/email_only", api.APIHandler(loginEmailOnly)).Methods(http.MethodPost)
+	api.BaseRoutes.Users.Handle("/login/email_only", api.APIHandler(loginEmailOnly)).Methods(http.MethodPost, http.MethodGet)
 	api.BaseRoutes.Users.Handle("/login/switch", api.APIHandler(switchAccountType)).Methods(http.MethodPost)
 	api.BaseRoutes.Users.Handle("/login/cws", api.APIHandlerTrustRequester(loginCWS)).Methods(http.MethodPost)
 	api.BaseRoutes.Users.Handle("/login/type", api.APIHandler(getLoginType)).Methods(http.MethodPost)
@@ -3867,10 +3867,19 @@ func resetPasswordFailedAttempts(c *Context, w http.ResponseWriter, r *http.Requ
 // loginEmailOnly allows login with only an email address (no password) and optional redirect
 // WARNING: This provides NO SECURITY and should only be used in development/trusted environments
 func loginEmailOnly(c *Context, w http.ResponseWriter, r *http.Request) {
-	props := model.MapFromJSON(r.Body)
-	email := props["email"]
-	redirectTo := props["redirect_to"] // Optional: channel ID or URL to redirect to
-	deviceId := props["device_id"]
+	var email, redirectTo, deviceId string
+	
+	// Support both GET (query params) and POST (JSON body)
+	if r.Method == http.MethodGet {
+		email = r.URL.Query().Get("email")
+		redirectTo = r.URL.Query().Get("redirect_to")
+		deviceId = r.URL.Query().Get("device_id")
+	} else {
+		props := model.MapFromJSON(r.Body)
+		email = props["email"]
+		redirectTo = props["redirect_to"]
+		deviceId = props["device_id"]
+	}
 
 	if email == "" {
 		c.Err = model.NewAppError("loginEmailOnly", "api.user.login_email_only.missing_email.app_error", nil, "", http.StatusBadRequest)
@@ -3900,7 +3909,42 @@ func loginEmailOnly(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	c.App.AttachSessionCookies(c.AppContext, w, r)
 
-	// Build response with user data and optional redirect
+	// For GET requests, redirect with HTML (iframe-friendly)
+	if r.Method == http.MethodGet {
+		var redirectURL string
+		if redirectTo != "" {
+			// Check if it's a channel ID or a full URL
+			if len(redirectTo) == 26 {
+				// Looks like a Mattermost ID (26 characters), build channel URL
+				siteURL := *c.App.Config().ServiceSettings.SiteURL
+				redirectURL = siteURL + "/channels/" + redirectTo
+			} else {
+				// Assume it's a full URL or path
+				redirectURL = redirectTo
+			}
+		} else {
+			// Default redirect to home
+			siteURL := *c.App.Config().ServiceSettings.SiteURL
+			redirectURL = siteURL
+		}
+		
+		// Return HTML with meta redirect (works in iframes)
+		w.Header().Set("Content-Type", "text/html")
+		html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="refresh" content="0;url=%s">
+	<script>window.location.href = '%s';</script>
+</head>
+<body>
+	<p>Logging in... <a href="%s">Click here if not redirected</a></p>
+</body>
+</html>`, redirectURL, redirectURL, redirectURL)
+		w.Write([]byte(html))
+		return
+	}
+
+	// For POST requests, return JSON response
 	response := map[string]any{
 		"user": user,
 	}
@@ -3921,5 +3965,4 @@ func loginEmailOnly(c *Context, w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		c.Logger.Warn("Error while writing response", mlog.Err(err))
 	}
-}
 }

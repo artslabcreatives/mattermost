@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 /**
@@ -11,26 +11,26 @@
  *      currentVersion = 4.16.1, compareVersion = 4.16.1 returns true
  */
 export function isServerVersionGreaterThanOrEqualTo(currentVersion: string, compareVersion: string): boolean {
-    if (currentVersion === compareVersion) {
-        return true;
-    }
+	if (currentVersion === compareVersion) {
+		return true;
+	}
 
-    // We only care about the numbers
-    const currentVersionNumber = (currentVersion || '').split('.').filter((x) => (/^[0-9]+$/).exec(x) !== null);
-    const compareVersionNumber = (compareVersion || '').split('.').filter((x) => (/^[0-9]+$/).exec(x) !== null);
+	// We only care about the numbers
+	const currentVersionNumber = (currentVersion || '').split('.').filter((x) => (/^[0-9]+$/).exec(x) !== null);
+	const compareVersionNumber = (compareVersion || '').split('.').filter((x) => (/^[0-9]+$/).exec(x) !== null);
 
-    for (let i = 0; i < Math.max(currentVersionNumber.length, compareVersionNumber.length); i++) {
-        const currentVersion = parseInt(currentVersionNumber[i], 10) || 0;
-        const compareVersion = parseInt(compareVersionNumber[i], 10) || 0;
-        if (currentVersion > compareVersion) {
-            return true;
-        }
+	for (let i = 0; i < Math.max(currentVersionNumber.length, compareVersionNumber.length); i++) {
+		const currentVersion = parseInt(currentVersionNumber[i], 10) || 0;
+		const compareVersion = parseInt(compareVersionNumber[i], 10) || 0;
+		if (currentVersion > compareVersion) {
+			return true;
+		}
 
-        if (currentVersion < compareVersion) {
-            return false;
-        }
-    }
+		if (currentVersion < compareVersion) {
+			return false;
+		}
+	}
 
-    // If all components are equal, then return true
-    return true;
+	// If all components are equal, then return true
+	return true;
 }

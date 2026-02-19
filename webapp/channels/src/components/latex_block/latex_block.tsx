@@ -1,72 +1,72 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {KatexOptions} from 'katex';
-import React, {useEffect, useState} from 'react';
-import {FormattedMessage} from 'react-intl';
+import type { KatexOptions } from 'katex';
+import React, { useEffect, useState } from 'react';
+import { FormattedMessage } from 'react-intl';
 
 import CodeBlock from 'components/code_block/code_block';
 
 type Katex = typeof import('katex');
 
 type Props = {
-    content: string;
-    enableLatex?: boolean;
+	content: string;
+	enableLatex?: boolean;
 };
 
 const LatexBlock = ({
-    content,
-    enableLatex,
+	content,
+	enableLatex,
 }: Props) => {
-    const [katex, setKatex] = useState<Katex | undefined>();
+	const [katex, setKatex] = useState<Katex | undefined>();
 
-    useEffect(() => {
-        import('katex').then((katex) => {
-            setKatex(katex.default);
-        });
-    }, []);
+	useEffect(() => {
+		import('katex').then((katex) => {
+			setKatex(katex.default);
+		});
+	}, []);
 
-    if (!enableLatex || katex === undefined) {
-        return (
-            <CodeBlock
-                code={content}
-                language='latex'
-            />
-        );
-    }
+	if (!enableLatex || katex === undefined) {
+		return (
+			<CodeBlock
+				code={content}
+				language='latex'
+			/>
+		);
+	}
 
-    try {
-        const katexOptions: KatexOptions = {
-            throwOnError: false,
-            displayMode: true,
-            maxSize: 200,
-            maxExpand: 100,
-            fleqn: true,
-        };
+	try {
+		const katexOptions: KatexOptions = {
+			throwOnError: false,
+			displayMode: true,
+			maxSize: 200,
+			maxExpand: 100,
+			fleqn: true,
+		};
 
-        const html = katex.renderToString(content, katexOptions);
+		const html = katex.renderToString(content, katexOptions);
 
-        return (
-            <div
-                className='post-body--code tex'
-                dangerouslySetInnerHTML={{__html: html}}
-                data-testid='latex-enabled'
-            />
-        );
-    } catch (e) {
-        // This is never run because throwOnError is false
-        return (
-            <div
-                className='post-body--code tex'
-                data-testid='latex-error'
-            >
-                <FormattedMessage
-                    id='katex.error'
-                    defaultMessage="Couldn't compile your Latex code. Please review the syntax and try again."
-                />
-            </div>
-        );
-    }
+		return (
+			<div
+				className='post-body--code tex'
+				dangerouslySetInnerHTML={{ __html: html }}
+				data-testid='latex-enabled'
+			/>
+		);
+	} catch (e) {
+		// This is never run because throwOnError is false
+		return (
+			<div
+				className='post-body--code tex'
+				data-testid='latex-error'
+			>
+				<FormattedMessage
+					id='katex.error'
+					defaultMessage="Couldn't compile your Latex code. Please review the syntax and try again."
+				/>
+			</div>
+		);
+	}
 };
 
 export default React.memo(LatexBlock);

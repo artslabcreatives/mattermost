@@ -1,17 +1,17 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {FormattedMessage} from 'react-intl';
+import { FormattedMessage } from 'react-intl';
 import styled from 'styled-components';
 
 type Props = {
-    children: React.ReactNode;
-    pluginId?: string;
+	children: React.ReactNode;
+	pluginId?: string;
 }
 
 type State = {
-    hasError: boolean;
+	hasError: boolean;
 }
 
 const WrapperDiv = styled.div`
@@ -34,48 +34,48 @@ const WrapperDiv = styled.div`
 `;
 
 export default class PluggableErrorBoundary extends React.PureComponent<Props, State> {
-    state = {
-        hasError: false,
-    };
+	state = {
+		hasError: false,
+	};
 
-    static getDerivedStateFromError() {
-        return {
-            hasError: true,
-        };
-    }
+	static getDerivedStateFromError() {
+		return {
+			hasError: true,
+		};
+	}
 
-    clearErrorState = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+	clearErrorState = (e: React.MouseEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
 
-        this.setState({hasError: false});
-    };
+		this.setState({ hasError: false });
+	};
 
-    render() {
-        if (this.state.hasError) {
-            return (
-                <WrapperDiv>
-                    <FormattedMessage
-                        id='pluggable.errorOccurred'
-                        defaultMessage='An error occurred in the {pluginId} plugin.'
-                        values={{
-                            pluginId: this.props.pluginId,
-                        }}
-                    />
-                    <br/>
-                    <a
-                        href='#'
-                        onClick={this.clearErrorState}
-                    >
-                        <FormattedMessage
-                            id='pluggable.errorRefresh'
-                            defaultMessage='Refresh?'
-                        />
-                    </a>
-                </WrapperDiv>
-            );
-        }
+	render() {
+		if (this.state.hasError) {
+			return (
+				<WrapperDiv>
+					<FormattedMessage
+						id='pluggable.errorOccurred'
+						defaultMessage='An error occurred in the {pluginId} plugin.'
+						values={{
+							pluginId: this.props.pluginId,
+						}}
+					/>
+					<br />
+					<a
+						href='#'
+						onClick={this.clearErrorState}
+					>
+						<FormattedMessage
+							id='pluggable.errorRefresh'
+							defaultMessage='Refresh?'
+						/>
+					</a>
+				</WrapperDiv>
+			);
+		}
 
-        return this.props.children;
-    }
+		return this.props.children;
+	}
 }

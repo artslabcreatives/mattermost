@@ -1,13 +1,13 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
 import styled from 'styled-components';
 
-import {useCurrentProductId} from 'utils/products';
+import { useCurrentProductId } from 'utils/products';
 
 import CenterControls from './center_controls/center_controls';
-import {useIsLoggedIn} from './hooks';
+import { useIsLoggedIn } from './hooks';
 import LeftControls from './left_controls/left_controls';
 import RightControls from './right_controls/right_controls';
 
@@ -32,20 +32,20 @@ const GlobalHeaderContainer = styled.header`
 `;
 
 const GlobalHeader = (): JSX.Element | null => {
-    const isLoggedIn = useIsLoggedIn();
-    const currentProductID = useCurrentProductId();
+	const isLoggedIn = useIsLoggedIn();
+	const currentProductID = useCurrentProductId();
 
-    if (!isLoggedIn) {
-        return null;
-    }
+	if (!isLoggedIn) {
+		return null;
+	}
 
-    return (
-        <GlobalHeaderContainer id='global-header'>
-            <LeftControls/>
-            <CenterControls productId={currentProductID}/>
-            <RightControls productId={currentProductID}/>
-        </GlobalHeaderContainer>
-    );
+	return (
+		<GlobalHeaderContainer id='global-header'>
+			<LeftControls />
+			<CenterControls productId={currentProductID} />
+			<RightControls productId={currentProductID} />
+		</GlobalHeaderContainer>
+	);
 };
 
 export default GlobalHeader;

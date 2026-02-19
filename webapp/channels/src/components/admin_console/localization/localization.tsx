@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {useCallback, useMemo, useState} from 'react';
@@ -62,7 +62,7 @@ const messages = defineMessages({
     },
     availableLocalesDescription: {
         id: 'admin.general.localization.availableLocalesDescription',
-        defaultMessage: "Set which languages are available for users in <strong>Settings > Display > Language</strong> (leave this field blank to have all supported languages available). If you're manually adding new languages, the <strong>Default Client Language</strong> must be added before saving this setting.\n \nWould like to help with translations? Join the <link>Mattermost Translation Server</link> to contribute.",
+        defaultMessage: "Set which languages are available for users in <strong>Settings > Display > Language</strong> (leave this field blank to have all supported languages available). If you're manually adding new languages, the <strong>Default Client Language</strong> must be added before saving this setting.\n \nWould like to help with translations? Join the <link>Aura Translation Server</link> to contribute.",
     },
     availableLocalesNoResults: {
         id: 'admin.general.localization.availableLocalesNoResults',

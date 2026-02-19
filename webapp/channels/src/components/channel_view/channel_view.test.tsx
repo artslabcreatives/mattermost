@@ -1,81 +1,81 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {shallow} from 'enzyme';
+import { shallow } from 'enzyme';
 import React from 'react';
 
 import ChannelView from './channel_view';
-import type {Props} from './channel_view';
+import type { Props } from './channel_view';
 
 describe('components/channel_view', () => {
-    const baseProps: Props = {
-        channelId: 'channelId',
-        deactivatedChannel: false,
-        history: {} as Props['history'],
-        location: {} as Props['location'],
-        match: {
-            url: '/team/channel/channelId',
-            params: {},
-        } as Props['match'],
-        enableOnboardingFlow: true,
-        teamUrl: '/team',
-        channelIsArchived: false,
-        isCloud: false,
-        goToLastViewedChannel: jest.fn(),
-        isFirstAdmin: false,
-        enableWebSocketEventScope: false,
-        isChannelBookmarksEnabled: false,
-        missingChannelRole: false,
-        fetchIsRestrictedDM: jest.fn(),
-        canRestrictDirectMessage: false,
-        restrictDirectMessage: false,
-    };
+	const baseProps: Props = {
+		channelId: 'channelId',
+		deactivatedChannel: false,
+		history: {} as Props['history'],
+		location: {} as Props['location'],
+		match: {
+			url: '/team/channel/channelId',
+			params: {},
+		} as Props['match'],
+		enableOnboardingFlow: true,
+		teamUrl: '/team',
+		channelIsArchived: false,
+		isCloud: false,
+		goToLastViewedChannel: jest.fn(),
+		isFirstAdmin: false,
+		enableWebSocketEventScope: false,
+		isChannelBookmarksEnabled: false,
+		missingChannelRole: false,
+		fetchIsRestrictedDM: jest.fn(),
+		canRestrictDirectMessage: false,
+		restrictDirectMessage: false,
+	};
 
-    it('Should match snapshot with base props', () => {
-        const wrapper = shallow(<ChannelView {...baseProps}/>);
-        expect(wrapper).toMatchSnapshot();
-    });
+	it('Should match snapshot with base props', () => {
+		const wrapper = shallow(<ChannelView {...baseProps} />);
+		expect(wrapper).toMatchSnapshot();
+	});
 
-    it('Should match snapshot if channel is archived', () => {
-        const wrapper = shallow(
-            <ChannelView
-                {...baseProps}
-                channelIsArchived={true}
-            />,
-        );
-        expect(wrapper).toMatchSnapshot();
-    });
+	it('Should match snapshot if channel is archived', () => {
+		const wrapper = shallow(
+			<ChannelView
+				{...baseProps}
+				channelIsArchived={true}
+			/>,
+		);
+		expect(wrapper).toMatchSnapshot();
+	});
 
-    it('Should match snapshot if channel is deactivated', () => {
-        const wrapper = shallow(
-            <ChannelView
-                {...baseProps}
-                deactivatedChannel={true}
-            />,
-        );
-        expect(wrapper).toMatchSnapshot();
-    });
+	it('Should match snapshot if channel is deactivated', () => {
+		const wrapper = shallow(
+			<ChannelView
+				{...baseProps}
+				deactivatedChannel={true}
+			/>,
+		);
+		expect(wrapper).toMatchSnapshot();
+	});
 
-    it('Should have focusedPostId state based on props', () => {
-        const wrapper = shallow(<ChannelView {...baseProps}/>);
-        expect(wrapper.state('focusedPostId')).toEqual(undefined);
+	it('Should have focusedPostId state based on props', () => {
+		const wrapper = shallow(<ChannelView {...baseProps} />);
+		expect(wrapper.state('focusedPostId')).toEqual(undefined);
 
-        wrapper.setProps({channelId: 'newChannelId', match: {url: '/team/channel/channelId/postId', params: {postid: 'postid'}}});
-        expect(wrapper.state('focusedPostId')).toEqual('postid');
-        wrapper.setProps({channelId: 'newChannelId', match: {url: '/team/channel/channelId/postId1', params: {postid: 'postid1'}}});
-        expect(wrapper.state('focusedPostId')).toEqual('postid1');
-    });
+		wrapper.setProps({ channelId: 'newChannelId', match: { url: '/team/channel/channelId/postId', params: { postid: 'postid' } } });
+		expect(wrapper.state('focusedPostId')).toEqual('postid');
+		wrapper.setProps({ channelId: 'newChannelId', match: { url: '/team/channel/channelId/postId1', params: { postid: 'postid1' } } });
+		expect(wrapper.state('focusedPostId')).toEqual('postid1');
+	});
 
-    it('should call fetchRecentMentions on componentDidUpdate', () => {
-        const wrapper = shallow(
-            <ChannelView
-                {...baseProps}
-                canRestrictDirectMessage={true}
-                restrictDirectMessage={undefined as any}
-            />,
-        );
-        const instance = wrapper.instance() as ChannelView;
-        wrapper.setProps({channelId: 'newChannelId'});
-        expect(instance.props.fetchIsRestrictedDM).toHaveBeenCalledTimes(1);
-    });
+	it('should call fetchRecentMentions on componentDidUpdate', () => {
+		const wrapper = shallow(
+			<ChannelView
+				{...baseProps}
+				canRestrictDirectMessage={true}
+				restrictDirectMessage={undefined as any}
+			/>,
+		);
+		const instance = wrapper.instance() as ChannelView;
+		wrapper.setProps({ channelId: 'newChannelId' });
+		expect(instance.props.fetchIsRestrictedDM).toHaveBeenCalledTimes(1);
+	});
 });

@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -102,7 +102,7 @@ const TeamEditionRightPanel: React.FC<TeamEditionRightPanelProps> = ({
                 <p className='upgrade-legal-terms'>
                     <FormattedMessage
                         id='admin.licenseSettings.teamEdition.teamEditionRightPanel.acceptTermsInitial'
-                        defaultMessage='By clicking <b>Upgrade</b>, I agree to the terms of the Mattermost '
+                        defaultMessage='By clicking <b>Upgrade</b>, I agree to the terms of the Aura '
                         values={{
                             b: (chunks) => <b>{chunks}</b>,
                         }}

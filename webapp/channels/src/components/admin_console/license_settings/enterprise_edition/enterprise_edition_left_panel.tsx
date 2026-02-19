@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
@@ -42,8 +42,8 @@ export interface EnterpriseEditionProps {
 }
 
 export const messages = defineMessages({
-    keyRemove: {id: 'admin.license.keyRemove', defaultMessage: 'Remove license and downgrade to Mattermost Free'},
-    keyRemoveEntry: {id: 'admin.license.keyRemoveEntry', defaultMessage: 'Remove license and downgrade to Mattermost Entry'},
+    keyRemove: {id: 'admin.license.keyRemove', defaultMessage: 'Remove license and downgrade to Aura Free'},
+    keyRemoveEntry: {id: 'admin.license.keyRemoveEntry', defaultMessage: 'Remove license and downgrade to Aura Entry'},
 });
 
 const EnterpriseEditionLeftPanel = ({
@@ -104,7 +104,7 @@ const EnterpriseEditionLeftPanel = ({
                 <div className='EnterpriseEditionLeftPanel__Header'>
                     <div>
                         <div className='EnterpriseEditionLeftPanel__Title'>
-                            {`Mattermost ${getSkuDisplayName(unsanitizedLicense.SkuShortName, unsanitizedLicense.IsGovSku === 'true')}`}
+                            {`Aura ${getSkuDisplayName(unsanitizedLicense.SkuShortName, unsanitizedLicense.IsGovSku === 'true')}`}
                         </div>
                     </div>
                     {viewPlansButton}
@@ -188,7 +188,7 @@ const EnterpriseEditionLeftPanel = ({
             <div className='EnterpriseEditionLeftPanel__Header'>
                 <div>
                     <div className='EnterpriseEditionLeftPanel__Title'>
-                        {`Mattermost ${skuName}`}
+                        {`Aura ${skuName}`}
                         {isTrialLicense && (
                             <Tag
                                 text={formatMessage({
@@ -238,7 +238,7 @@ const EnterpriseEditionLeftPanel = ({
                 {/* This notice should not be translated */}
                 {upgradedFromTE ? <>
                     <p>
-                        {'When using Mattermost Enterprise Edition, the software is offered under a commercial license. See '}
+                        {'When using Aura Enterprise Edition, the software is offered under a commercial license. See '}
                         <a
                             role='button'
                             onClick={openEELicenseModal}
@@ -333,7 +333,7 @@ const renderLicenseContent = (
 ) => {
     // Note: DO NOT LOCALISE THESE STRINGS. Legally we can not since the license is in English.
 
-    const sku = license.SkuShortName ? <>{`Mattermost ${toTitleCase(skuName)}${isTrialLicense ? ' License Trial' : ''}`}</> : null;
+    const sku = license.SkuShortName ? <>{`Aura ${toTitleCase(skuName)}${isTrialLicense ? ' License Trial' : ''}`}</> : null;
 
     const users = <FormattedNumber value={parseInt(license.Users, 10)}/>;
     const activeUsers = <FormattedNumber value={statsActiveUsers}/>;

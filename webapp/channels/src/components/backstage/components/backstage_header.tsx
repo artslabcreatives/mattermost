@@ -1,43 +1,43 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import type {ReactNode} from 'react';
-import {useIntl} from 'react-intl';
+import type { ReactNode } from 'react';
+import { useIntl } from 'react-intl';
 
 type Props = {
-    children?: ReactNode;
+	children?: ReactNode;
 }
 
-const BackstageHeader = ({children}: Props) => {
-    const {formatMessage} = useIntl();
-    const childrenElements: ReactNode[] = [];
+const BackstageHeader = ({ children }: Props) => {
+	const { formatMessage } = useIntl();
+	const childrenElements: ReactNode[] = [];
 
-    React.Children.forEach(children, (child, index) => {
-        if (index !== 0) {
-            childrenElements.push(
-                <span
-                    key={'divider' + index}
-                    className='backstage-header__divider'
-                >
-                    <i
-                        className='fa fa-angle-right'
-                        title={formatMessage({id: 'generic_icons.breadcrumb', defaultMessage: 'Breadcrumb Icon'})}
-                    />
-                </span>,
-            );
-        }
+	React.Children.forEach(children, (child, index) => {
+		if (index !== 0) {
+			childrenElements.push(
+				<span
+					key={'divider' + index}
+					className='backstage-header__divider'
+				>
+					<i
+						className='fa fa-angle-right'
+						title={formatMessage({ id: 'generic_icons.breadcrumb', defaultMessage: 'Breadcrumb Icon' })}
+					/>
+				</span>,
+			);
+		}
 
-        childrenElements.push(child);
-    });
+		childrenElements.push(child);
+	});
 
-    return (
-        <div className='backstage-header'>
-            <h1>
-                {childrenElements}
-            </h1>
-        </div>
-    );
+	return (
+		<div className='backstage-header'>
+			<h1>
+				{childrenElements}
+			</h1>
+		</div>
+	);
 };
 
 export default BackstageHeader;

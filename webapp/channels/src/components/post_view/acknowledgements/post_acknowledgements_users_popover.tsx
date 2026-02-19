@@ -1,26 +1,26 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useMemo} from 'react';
-import {FormattedMessage} from 'react-intl';
-import {useSelector} from 'react-redux';
+import React, { useMemo } from 'react';
+import { FormattedMessage } from 'react-intl';
+import { useSelector } from 'react-redux';
 import styled from 'styled-components';
 
-import type {PostAcknowledgement} from '@mattermost/types/posts';
-import type {UserProfile} from '@mattermost/types/users';
+import type { PostAcknowledgement } from '@mattermost/types/posts';
+import type { UserProfile } from '@mattermost/types/users';
 
-import {Client4} from 'mattermost-redux/client';
-import {makeGetDisplayName} from 'mattermost-redux/selectors/entities/users';
+import { Client4 } from 'mattermost-redux/client';
+import { makeGetDisplayName } from 'mattermost-redux/selectors/entities/users';
 
 import Nbsp from 'components/html_entities/nbsp';
 import Timestamp from 'components/timestamp';
 import Avatar from 'components/widgets/users/avatar';
 
-import type {GlobalState} from 'types/store';
+import type { GlobalState } from 'types/store';
 
 type Props = {
-    currentUserId: UserProfile['id'];
-    list: Array<{user: UserProfile; acknowledgedAt: PostAcknowledgement['acknowledged_at']}>;
+	currentUserId: UserProfile['id'];
+	list: Array<{ user: UserProfile; acknowledgedAt: PostAcknowledgement['acknowledged_at'] }>;
 };
 
 const Item = styled.div`
@@ -65,68 +65,68 @@ const Popover = styled.div`
 `;
 
 function Row({
-    acknowledgedAt,
-    id,
-    isMe,
-    lastPictureUpdate,
-    username,
+	acknowledgedAt,
+	id,
+	isMe,
+	lastPictureUpdate,
+	username,
 }: {
-    acknowledgedAt: number;
-    id: UserProfile['id'];
-    isMe: boolean;
-    lastPictureUpdate: UserProfile['last_picture_update'];
-    username: UserProfile['username'];
+	acknowledgedAt: number;
+	id: UserProfile['id'];
+	isMe: boolean;
+	lastPictureUpdate: UserProfile['last_picture_update'];
+	username: UserProfile['username'];
 }) {
-    const getDisplayName = useMemo(makeGetDisplayName, []);
-    const displayName = useSelector((state: GlobalState) => getDisplayName(state, id));
+	const getDisplayName = useMemo(makeGetDisplayName, []);
+	const displayName = useSelector((state: GlobalState) => getDisplayName(state, id));
 
-    return (
-        <Item>
-            <Avatar
-                size='sm'
-                url={Client4.getProfilePictureUrl(id, lastPictureUpdate)}
-                username={username}
-            />
-            <Info>
-                <div>
-                    {displayName}
-                    {isMe && (
-                        <>
-                            <Nbsp/>
-                            <FormattedMessage
-                                id={'post_priority.you.acknowledge'}
-                                defaultMessage={'(you)'}
-                            />
-                        </>
-                    )}
-                </div>
-                <Span>
-                    <Timestamp value={acknowledgedAt}/>
-                </Span>
-            </Info>
-        </Item>
-    );
+	return (
+		<Item>
+			<Avatar
+				size='sm'
+				url={Client4.getProfilePictureUrl(id, lastPictureUpdate)}
+				username={username}
+			/>
+			<Info>
+				<div>
+					{displayName}
+					{isMe && (
+						<>
+							<Nbsp />
+							<FormattedMessage
+								id={'post_priority.you.acknowledge'}
+								defaultMessage={'(you)'}
+							/>
+						</>
+					)}
+				</div>
+				<Span>
+					<Timestamp value={acknowledgedAt} />
+				</Span>
+			</Info>
+		</Item>
+	);
 }
 
-export default function PostAcknowledgementsUserPopover({list, currentUserId}: Props) {
-    return (
-        <Popover>
-            <Title>
-                <FormattedMessage
-                    id={'post_priority.acknowledgements.title'}
-                    defaultMessage={'Acknowledgements'}
-                />
-            </Title>
-            {list.map((item) => (
-                <Row
-                    key={item.user.id}
-                    acknowledgedAt={item.acknowledgedAt}
-                    isMe={currentUserId === item.user.id}
-                    id={item.user.id}
-                    lastPictureUpdate={item.user.last_picture_update}
-                    username={item.user.username}
-                />
-            ))}
-        </Popover>
-    );
+export default function PostAcknowledgementsUserPopover({ list, currentUserId }: Props) {
+	return (
+		<Popover>
+			<Title>
+				<FormattedMessage
+					id={'post_priority.acknowledgements.title'}
+					defaultMessage={'Acknowledgements'}
+				/>
+			</Title>
+			{list.map((item) => (
+				<Row
+					key={item.user.id}
+					acknowledgedAt={item.acknowledgedAt}
+					isMe={currentUserId === item.user.id}
+					id={item.user.id}
+					lastPictureUpdate={item.user.last_picture_update}
+					username={item.user.username}
+				/>
+			))}
+		</Popover>
+	);
 }

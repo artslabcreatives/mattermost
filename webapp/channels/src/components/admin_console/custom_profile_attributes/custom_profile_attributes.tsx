@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {useEffect, useState, memo} from 'react';
@@ -28,7 +28,7 @@ const AttributeHelpText = memo(({attributeKey, attributeName, attributeType}: At
         {attributeKey === 'ldap' && (
             <FormattedMessage
                 id='admin.customProfileAttribDesc.ldap'
-                defaultMessage='(Optional) The attribute in the AD/LDAP server used to populate the {name} of users in Mattermost. When set, users cannot edit their {name}, since it is synchronized with the LDAP server. When left blank, users can set their {name} in <strong>Account Menu > Account Settings > Profile</strong>.'
+                defaultMessage='(Optional) The attribute in the AD/LDAP server used to populate the {name} of users in Aura. When set, users cannot edit their {name}, since it is synchronized with the LDAP server. When left blank, users can set their {name} in <strong>Account Menu > Account Settings > Profile</strong>.'
                 values={{
                     name: attributeName,
                     strong: (msg) => <strong>{msg}</strong>,
@@ -38,7 +38,7 @@ const AttributeHelpText = memo(({attributeKey, attributeName, attributeType}: At
         {attributeKey === 'saml' && (
             <FormattedMessage
                 id='admin.customProfileAttribDesc.saml'
-                defaultMessage='(Optional) The attribute in the SAML Assertion that will be used to populate the {name} of users in Mattermost.'
+                defaultMessage='(Optional) The attribute in the SAML Assertion that will be used to populate the {name} of users in Aura.'
                 values={{
                     name: attributeName,
                 }}

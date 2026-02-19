@@ -1,239 +1,239 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {Provider} from 'react-redux';
+import { Provider } from 'react-redux';
 
-import type {Team} from '@mattermost/types/teams';
+import type { Team } from '@mattermost/types/teams';
 
 import deepFreeze from 'mattermost-redux/utils/deep_freeze';
 
-import {mountWithIntl} from 'tests/helpers/intl-test-helper';
+import { mountWithIntl } from 'tests/helpers/intl-test-helper';
 import mockStore from 'tests/test_store';
-import {SelfHostedProducts} from 'utils/constants';
-import {TestHelper as TH} from 'utils/test_helper';
-import {generateId} from 'utils/utils';
+import { SelfHostedProducts } from 'utils/constants';
+import { TestHelper as TH } from 'utils/test_helper';
+import { generateId } from 'utils/utils';
 
-import InviteAs, {InviteType} from './invite_as';
+import InviteAs, { InviteType } from './invite_as';
 import InviteView from './invite_view';
-import type {Props} from './invite_view';
+import type { Props } from './invite_view';
 
 const defaultProps: Props = deepFreeze({
-    setInviteAs: jest.fn(),
-    inviteType: InviteType.MEMBER,
-    titleClass: 'title',
+	setInviteAs: jest.fn(),
+	inviteType: InviteType.MEMBER,
+	titleClass: 'title',
 
-    invite: jest.fn(),
-    onChannelsChange: jest.fn(),
-    onChannelsInputChange: jest.fn(),
-    onClose: jest.fn(),
-    currentTeam: {} as Team,
-    currentChannel: {
-        display_name: 'some_channel',
-    },
-    setCustomMessage: jest.fn(),
-    toggleCustomMessage: jest.fn(),
-    channelsLoader: jest.fn(),
-    regenerateTeamInviteId: jest.fn(),
-    isAdmin: false,
-    usersLoader: jest.fn(),
-    onChangeUsersEmails: jest.fn(),
-    isCloud: false,
-    emailInvitationsEnabled: true,
-    onUsersInputChange: jest.fn(),
-    headerClass: '',
-    footerClass: '',
-    canInviteGuests: true,
-    canAddUsers: true,
+	invite: jest.fn(),
+	onChannelsChange: jest.fn(),
+	onChannelsInputChange: jest.fn(),
+	onClose: jest.fn(),
+	currentTeam: {} as Team,
+	currentChannel: {
+		display_name: 'some_channel',
+	},
+	setCustomMessage: jest.fn(),
+	toggleCustomMessage: jest.fn(),
+	channelsLoader: jest.fn(),
+	regenerateTeamInviteId: jest.fn(),
+	isAdmin: false,
+	usersLoader: jest.fn(),
+	onChangeUsersEmails: jest.fn(),
+	isCloud: false,
+	emailInvitationsEnabled: true,
+	onUsersInputChange: jest.fn(),
+	headerClass: '',
+	footerClass: '',
+	canInviteGuests: true,
+	canAddUsers: true,
 
-    customMessage: {
-        message: '',
-        open: false,
-    },
-    sending: false,
-    inviteChannels: {
-        channels: [],
-        search: '',
-    },
-    usersEmails: [],
-    usersEmailsSearch: '',
-    townSquareDisplayName: '',
-    canInviteGuestsWithMagicLink: false,
-    useGuestMagicLink: false,
-    toggleGuestMagicLink: jest.fn(),
+	customMessage: {
+		message: '',
+		open: false,
+	},
+	sending: false,
+	inviteChannels: {
+		channels: [],
+		search: '',
+	},
+	usersEmails: [],
+	usersEmailsSearch: '',
+	townSquareDisplayName: '',
+	canInviteGuestsWithMagicLink: false,
+	useGuestMagicLink: false,
+	toggleGuestMagicLink: jest.fn(),
 });
 
 let props = defaultProps;
 
 describe('InviteView', () => {
-    const state = {
-        entities: {
-            admin: {
-                prevTrialLicense: {
-                    IsLicensed: 'true',
-                },
-            },
-            general: {
-                config: {
-                    BuildEnterpriseReady: 'true',
-                },
-                license: {
-                    IsLicensed: 'true',
-                    Cloud: 'true',
-                    Id: generateId(),
-                },
-            },
-            cloud: {
-                subscription: {
-                    is_free_trial: 'false',
-                    trial_end_at: 0,
-                },
-            },
-            users: {
-                currentUserId: 'current_user_id',
-                profiles: {
-                    current_user_id: {roles: 'system_user'},
-                },
-            },
-            roles: {
-                roles: {
-                    system_user: {
-                        permissions: [],
-                    },
-                },
-            },
-            preferences: {
-                myPreferences: {},
-            },
-            hostedCustomer: {
-                products: {
-                    productsLoaded: true,
-                    products: {
-                        prod_professional: TH.getProductMock({
-                            id: 'prod_professional',
-                            name: 'Professional',
-                            sku: SelfHostedProducts.PROFESSIONAL,
-                            price_per_seat: 7.5,
-                        }),
-                    },
-                },
-            },
-        },
-    };
+	const state = {
+		entities: {
+			admin: {
+				prevTrialLicense: {
+					IsLicensed: 'true',
+				},
+			},
+			general: {
+				config: {
+					BuildEnterpriseReady: 'true',
+				},
+				license: {
+					IsLicensed: 'true',
+					Cloud: 'true',
+					Id: generateId(),
+				},
+			},
+			cloud: {
+				subscription: {
+					is_free_trial: 'false',
+					trial_end_at: 0,
+				},
+			},
+			users: {
+				currentUserId: 'current_user_id',
+				profiles: {
+					current_user_id: { roles: 'system_user' },
+				},
+			},
+			roles: {
+				roles: {
+					system_user: {
+						permissions: [],
+					},
+				},
+			},
+			preferences: {
+				myPreferences: {},
+			},
+			hostedCustomer: {
+				products: {
+					productsLoaded: true,
+					products: {
+						prod_professional: TH.getProductMock({
+							id: 'prod_professional',
+							name: 'Professional',
+							sku: SelfHostedProducts.PROFESSIONAL,
+							price_per_seat: 7.5,
+						}),
+					},
+				},
+			},
+		},
+	};
 
-    const store = mockStore(state);
+	const store = mockStore(state);
 
-    beforeEach(() => {
-        props = defaultProps;
-    });
+	beforeEach(() => {
+		props = defaultProps;
+	});
 
-    it('shows InviteAs component when user can choose to invite guests or users', async () => {
-        const wrapper = mountWithIntl(
-            <Provider store={store}>
-                <InviteView {...props}/>
-            </Provider>,
-        );
-        expect(wrapper.find(InviteAs).length).toBe(1);
-    });
+	it('shows InviteAs component when user can choose to invite guests or users', async () => {
+		const wrapper = mountWithIntl(
+			<Provider store={store}>
+				<InviteView {...props} />
+			</Provider>,
+		);
+		expect(wrapper.find(InviteAs).length).toBe(1);
+	});
 
-    it('hides InviteAs component when user can not choose members option', async () => {
-        props = {
-            ...defaultProps,
-            canAddUsers: false,
-        };
+	it('hides InviteAs component when user can not choose members option', async () => {
+		props = {
+			...defaultProps,
+			canAddUsers: false,
+		};
 
-        const wrapper = mountWithIntl(
-            <Provider store={store}>
-                <InviteView {...props}/>
-            </Provider>,
-        );
+		const wrapper = mountWithIntl(
+			<Provider store={store}>
+				<InviteView {...props} />
+			</Provider>,
+		);
 
-        expect(wrapper.find(InviteAs).length).toBe(0);
-    });
+		expect(wrapper.find(InviteAs).length).toBe(0);
+	});
 
-    it('hides InviteAs component when user can not choose guests option', async () => {
-        props = {
-            ...defaultProps,
-            canInviteGuests: false,
-        };
+	it('hides InviteAs component when user can not choose guests option', async () => {
+		props = {
+			...defaultProps,
+			canInviteGuests: false,
+		};
 
-        const wrapper = mountWithIntl(
-            <Provider store={store}>
-                <InviteView {...props}/>
-            </Provider>,
-        );
-        expect(wrapper.find(InviteAs).length).toBe(0);
-    });
+		const wrapper = mountWithIntl(
+			<Provider store={store}>
+				<InviteView {...props} />
+			</Provider>,
+		);
+		expect(wrapper.find(InviteAs).length).toBe(0);
+	});
 
-    it('shows guest magic link checkbox when inviting guests and guest magic link is enabled', async () => {
-        props = {
-            ...defaultProps,
-            inviteType: InviteType.GUEST,
-            canInviteGuestsWithMagicLink: true,
-        };
+	it('shows guest magic link checkbox when inviting guests and guest magic link is enabled', async () => {
+		props = {
+			...defaultProps,
+			inviteType: InviteType.GUEST,
+			canInviteGuestsWithMagicLink: true,
+		};
 
-        const wrapper = mountWithIntl(
-            <Provider store={store}>
-                <InviteView {...props}/>
-            </Provider>,
-        );
+		const wrapper = mountWithIntl(
+			<Provider store={store}>
+				<InviteView {...props} />
+			</Provider>,
+		);
 
-        const checkbox = wrapper.find('[data-testid="InviteView__guestMagicLinkCheckbox"]');
-        expect(checkbox.length).toBe(1);
-    });
+		const checkbox = wrapper.find('[data-testid="InviteView__guestMagicLinkCheckbox"]');
+		expect(checkbox.length).toBe(1);
+	});
 
-    it('hides guest magic link checkbox when inviting members', async () => {
-        props = {
-            ...defaultProps,
-            inviteType: InviteType.MEMBER,
-            canInviteGuestsWithMagicLink: true,
-        };
+	it('hides guest magic link checkbox when inviting members', async () => {
+		props = {
+			...defaultProps,
+			inviteType: InviteType.MEMBER,
+			canInviteGuestsWithMagicLink: true,
+		};
 
-        const wrapper = mountWithIntl(
-            <Provider store={store}>
-                <InviteView {...props}/>
-            </Provider>,
-        );
+		const wrapper = mountWithIntl(
+			<Provider store={store}>
+				<InviteView {...props} />
+			</Provider>,
+		);
 
-        const checkbox = wrapper.find('[data-testid="InviteView__guestMagicLinkCheckbox"]');
-        expect(checkbox.length).toBe(0);
-    });
+		const checkbox = wrapper.find('[data-testid="InviteView__guestMagicLinkCheckbox"]');
+		expect(checkbox.length).toBe(0);
+	});
 
-    it('hides guest magic link checkbox when guest magic link is not enabled', async () => {
-        props = {
-            ...defaultProps,
-            inviteType: InviteType.GUEST,
-            canInviteGuestsWithMagicLink: false,
-        };
+	it('hides guest magic link checkbox when guest magic link is not enabled', async () => {
+		props = {
+			...defaultProps,
+			inviteType: InviteType.GUEST,
+			canInviteGuestsWithMagicLink: false,
+		};
 
-        const wrapper = mountWithIntl(
-            <Provider store={store}>
-                <InviteView {...props}/>
-            </Provider>,
-        );
+		const wrapper = mountWithIntl(
+			<Provider store={store}>
+				<InviteView {...props} />
+			</Provider>,
+		);
 
-        const checkbox = wrapper.find('[data-testid="InviteView__guestMagicLinkCheckbox"]');
-        expect(checkbox.length).toBe(0);
-    });
+		const checkbox = wrapper.find('[data-testid="InviteView__guestMagicLinkCheckbox"]');
+		expect(checkbox.length).toBe(0);
+	});
 
-    it('calls toggleGuestMagicLink when checkbox is clicked', async () => {
-        const toggleGuestMagicLink = jest.fn();
-        props = {
-            ...defaultProps,
-            inviteType: InviteType.GUEST,
-            canInviteGuestsWithMagicLink: true,
-            toggleGuestMagicLink,
-        };
+	it('calls toggleGuestMagicLink when checkbox is clicked', async () => {
+		const toggleGuestMagicLink = jest.fn();
+		props = {
+			...defaultProps,
+			inviteType: InviteType.GUEST,
+			canInviteGuestsWithMagicLink: true,
+			toggleGuestMagicLink,
+		};
 
-        const wrapper = mountWithIntl(
-            <Provider store={store}>
-                <InviteView {...props}/>
-            </Provider>,
-        );
+		const wrapper = mountWithIntl(
+			<Provider store={store}>
+				<InviteView {...props} />
+			</Provider>,
+		);
 
-        const checkbox = wrapper.find('[data-testid="InviteView__guestMagicLinkCheckbox"]');
-        checkbox.simulate('change');
+		const checkbox = wrapper.find('[data-testid="InviteView__guestMagicLinkCheckbox"]');
+		checkbox.simulate('change');
 
-        expect(toggleGuestMagicLink).toHaveBeenCalledTimes(1);
-    });
+		expect(toggleGuestMagicLink).toHaveBeenCalledTimes(1);
+	});
 });

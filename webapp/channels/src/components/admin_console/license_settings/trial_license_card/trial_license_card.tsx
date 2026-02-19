@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import moment from 'moment';
@@ -76,7 +76,7 @@ const TrialLicenseCard: React.FC<Props> = ({license}: Props) => {
     const cardTitle = (
         <FormattedMessage
             id='admin.license.trialCard.licenseExpiring'
-            defaultMessage='You’re currently on a free trial of our Mattermost {licenseType}.'
+            defaultMessage='You’re currently on a free trial of our Aura {licenseType}.'
             values={{
                 licenseType: getSkuDisplayName(license.SkuShortName, license.IsGovSku === 'true'),
             }}

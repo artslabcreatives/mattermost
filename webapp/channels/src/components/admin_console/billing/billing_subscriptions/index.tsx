@@ -1,17 +1,17 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useEffect} from 'react';
-import {FormattedMessage, defineMessages} from 'react-intl';
-import {useDispatch, useSelector} from 'react-redux';
+import React, { useEffect } from 'react';
+import { FormattedMessage, defineMessages } from 'react-intl';
+import { useDispatch, useSelector } from 'react-redux';
 
-import type {GlobalState} from '@mattermost/types/store';
+import type { GlobalState } from '@mattermost/types/store';
 
-import {getCloudSubscription, getCloudProducts, getCloudCustomer} from 'mattermost-redux/actions/cloud';
+import { getCloudSubscription, getCloudProducts, getCloudCustomer } from 'mattermost-redux/actions/cloud';
 import {
-    getSubscriptionProduct,
-    getCloudSubscription as selectCloudSubscription,
-    getCloudErrors,
+	getSubscriptionProduct,
+	getCloudSubscription as selectCloudSubscription,
+	getCloudErrors,
 } from 'mattermost-redux/selectors/entities/cloud';
 
 import CloudTrialBanner from 'components/admin_console/billing/billing_subscriptions/cloud_trial_banner';
@@ -20,10 +20,10 @@ import useOpenPricingModal from 'components/common/hooks/useOpenPricingModal';
 import AdminHeader from 'components/widgets/admin_console/admin_header';
 
 import {
-    TrialPeriodDays,
+	TrialPeriodDays,
 } from 'utils/constants';
-import {useQuery} from 'utils/http_utils';
-import {getRemainingDaysFromFutureTimestamp} from 'utils/utils';
+import { useQuery } from 'utils/http_utils';
+import { getRemainingDaysFromFutureTimestamp } from 'utils/utils';
 
 import ContactSalesCard from './contact_sales_card';
 
@@ -33,84 +33,84 @@ import PlanDetails from '../plan_details';
 import './billing_subscriptions.scss';
 
 const messages = defineMessages({
-    title: {id: 'admin.billing.subscription.title', defaultMessage: 'Subscription'},
+	title: { id: 'admin.billing.subscription.title', defaultMessage: 'Subscription' },
 });
 
 export const searchableStrings = [
-    messages.title,
+	messages.title,
 ];
 
 const BillingSubscriptions = () => {
-    const dispatch = useDispatch();
-    const subscription = useSelector(selectCloudSubscription);
-    const errorLoadingData = useSelector((state: GlobalState) => {
-        const errors = getCloudErrors(state);
-        return Boolean(errors.limits || errors.subscription || errors.customer || errors.products);
-    });
-    const trialEndDate = subscription?.trial_end_at || 0;
-    const query = useQuery();
-    const actionQueryParam = query.get('action');
+	const dispatch = useDispatch();
+	const subscription = useSelector(selectCloudSubscription);
+	const errorLoadingData = useSelector((state: GlobalState) => {
+		const errors = getCloudErrors(state);
+		return Boolean(errors.limits || errors.subscription || errors.customer || errors.products);
+	});
+	const trialEndDate = subscription?.trial_end_at || 0;
+	const query = useQuery();
+	const actionQueryParam = query.get('action');
 
-    const product = useSelector(getSubscriptionProduct);
+	const product = useSelector(getSubscriptionProduct);
 
-    const {openPricingModal, isAirGapped} = useOpenPricingModal();
+	const { openPricingModal, isAirGapped } = useOpenPricingModal();
 
-    let isFreeTrial = false;
-    let daysLeftOnTrial = 0;
-    if (subscription?.is_free_trial === 'true') {
-        isFreeTrial = true;
-        daysLeftOnTrial = Math.min(
-            getRemainingDaysFromFutureTimestamp(subscription.trial_end_at),
-            TrialPeriodDays.TRIAL_30_DAYS,
-        );
-    }
+	let isFreeTrial = false;
+	let daysLeftOnTrial = 0;
+	if (subscription?.is_free_trial === 'true') {
+		isFreeTrial = true;
+		daysLeftOnTrial = Math.min(
+			getRemainingDaysFromFutureTimestamp(subscription.trial_end_at),
+			TrialPeriodDays.TRIAL_30_DAYS,
+		);
+	}
 
-    useEffect(() => {
-        dispatch(getCloudSubscription());
-        const includeLegacyProducts = true;
-        dispatch(getCloudProducts(includeLegacyProducts));
-        dispatch(getCloudCustomer());
+	useEffect(() => {
+		dispatch(getCloudSubscription());
+		const includeLegacyProducts = true;
+		dispatch(getCloudProducts(includeLegacyProducts));
+		dispatch(getCloudCustomer());
 
-        if (actionQueryParam === 'show_pricing_modal' && !isAirGapped) {
-            openPricingModal();
-        }
-    }, []);
+		if (actionQueryParam === 'show_pricing_modal' && !isAirGapped) {
+			openPricingModal();
+		}
+	}, []);
 
-    // handle not loaded yet here, failed to load handled below
-    if ((!subscription || !product) && !errorLoadingData) {
-        return null;
-    }
+	// handle not loaded yet here, failed to load handled below
+	if ((!subscription || !product) && !errorLoadingData) {
+		return null;
+	}
 
-    return (
-        <div className='wrapper--fixed BillingSubscriptions'>
-            <AdminHeader>
-                <FormattedMessage {...messages.title}/>
-            </AdminHeader>
-            <div className='admin-console__wrapper'>
-                <div className='admin-console__content'>
-                    {errorLoadingData && <CloudFetchError/>}
-                    {!errorLoadingData && <>
-                        {isFreeTrial && <CloudTrialBanner trialEndDate={trialEndDate}/>}
-                        <div className='BillingSubscriptions__topWrapper'>
-                            <PlanDetails
-                                isFreeTrial={isFreeTrial}
-                                subscriptionPlan={product?.sku}
-                            />
-                            <BillingSummary
-                                isFreeTrial={isFreeTrial}
-                                daysLeftOnTrial={daysLeftOnTrial}
-                            />
-                        </div>
-                        <ContactSalesCard
-                            isFreeTrial={isFreeTrial}
-                            subscriptionPlan={product?.sku}
-                            onUpgradeMattermostCloud={openPricingModal}
-                        />
-                    </>}
-                </div>
-            </div>
-        </div>
-    );
+	return (
+		<div className='wrapper--fixed BillingSubscriptions'>
+			<AdminHeader>
+				<FormattedMessage {...messages.title} />
+			</AdminHeader>
+			<div className='admin-console__wrapper'>
+				<div className='admin-console__content'>
+					{errorLoadingData && <CloudFetchError />}
+					{!errorLoadingData && <>
+						{isFreeTrial && <CloudTrialBanner trialEndDate={trialEndDate} />}
+						<div className='BillingSubscriptions__topWrapper'>
+							<PlanDetails
+								isFreeTrial={isFreeTrial}
+								subscriptionPlan={product?.sku}
+							/>
+							<BillingSummary
+								isFreeTrial={isFreeTrial}
+								daysLeftOnTrial={daysLeftOnTrial}
+							/>
+						</div>
+						<ContactSalesCard
+							isFreeTrial={isFreeTrial}
+							subscriptionPlan={product?.sku}
+							onUpgradeMattermostCloud={openPricingModal}
+						/>
+					</>}
+				</div>
+			</div>
+		</div>
+	);
 };
 
 export default BillingSubscriptions;

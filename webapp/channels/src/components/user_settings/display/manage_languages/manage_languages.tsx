@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -245,12 +245,12 @@ export class ManageLanguage extends React.PureComponent<Props, State> {
                     <br/>
                     <FormattedMessage
                         id='user.settings.languages.promote1'
-                        defaultMessage='Select which language Mattermost displays in the user interface.'
+                        defaultMessage='Select which language Aura displays in the user interface.'
                     />
                     <p/>
                     <FormattedMessage
                         id='user.settings.languages.promote2'
-                        defaultMessage='Would you like to help with translations? Join the <link>Mattermost Translation Server</link> to contribute.'
+                        defaultMessage='Would you like to help with translations? Join the <link>Aura Translation Server</link> to contribute.'
                         values={{
                             link: (msg: React.ReactNode) => (
                                 <ExternalLink

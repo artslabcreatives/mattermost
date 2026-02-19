@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import type {ShallowWrapper} from 'enzyme';
@@ -83,7 +83,7 @@ describe('components/UnreadsStatusHandler', () => {
             currentChannel: {} as Props['currentChannel'],
             currentTeammate: {} as Props['currentTeammate']});
         instance.updateTitle();
-        expect(document.title).toBe('Mattermost - Join a team');
+        expect(document.title).toBe('Aura - Join a team');
 
         wrapper.setProps({
             inDrafts: false,

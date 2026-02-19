@@ -1,66 +1,66 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {ProviderResults} from './suggestion_results';
+import type { ProviderResults } from './suggestion_results';
 
 export type ResultsCallback<Item> = (result: ProviderResults<Item>) => void;
 
 export default abstract class Provider {
-    latestPrefix: string;
-    latestComplete: boolean;
-    disableDispatches: boolean;
-    requestStarted: boolean;
-    forceDispatch: boolean;
+	latestPrefix: string;
+	latestComplete: boolean;
+	disableDispatches: boolean;
+	requestStarted: boolean;
+	forceDispatch: boolean;
 
-    triggerCharacter?: string;
+	triggerCharacter?: string;
 
-    constructor() {
-        this.latestPrefix = '';
-        this.latestComplete = true;
-        this.disableDispatches = false;
-        this.requestStarted = false;
-        this.forceDispatch = false;
-    }
+	constructor() {
+		this.latestPrefix = '';
+		this.latestComplete = true;
+		this.disableDispatches = false;
+		this.requestStarted = false;
+		this.forceDispatch = false;
+	}
 
-    abstract handlePretextChanged(pretext: string, callback: (res: ProviderResults<unknown>) => void, teamId?: string): boolean;
+	abstract handlePretextChanged(pretext: string, callback: (res: ProviderResults<unknown>) => void, teamId?: string): boolean;
 
-    resetRequest() {
-        this.requestStarted = false;
-    }
+	resetRequest() {
+		this.requestStarted = false;
+	}
 
-    startNewRequest(prefix: string) {
-        this.latestPrefix = prefix;
-        this.latestComplete = false;
-        this.requestStarted = true;
-    }
+	startNewRequest(prefix: string) {
+		this.latestPrefix = prefix;
+		this.latestComplete = false;
+		this.requestStarted = true;
+	}
 
-    shouldCancelDispatch(prefix: string) {
-        if (this.forceDispatch) {
-            return false;
-        }
+	shouldCancelDispatch(prefix: string) {
+		if (this.forceDispatch) {
+			return false;
+		}
 
-        if (this.disableDispatches) {
-            return true;
-        }
+		if (this.disableDispatches) {
+			return true;
+		}
 
-        if (!this.requestStarted) {
-            return true;
-        }
+		if (!this.requestStarted) {
+			return true;
+		}
 
-        if (prefix === this.latestPrefix) {
-            this.latestComplete = true;
-        } else if (this.latestComplete) {
-            return true;
-        }
+		if (prefix === this.latestPrefix) {
+			this.latestComplete = true;
+		} else if (this.latestComplete) {
+			return true;
+		}
 
-        return false;
-    }
+		return false;
+	}
 
-    allowDividers() {
-        return true;
-    }
+	allowDividers() {
+		return true;
+	}
 
-    presentationType() {
-        return 'text';
-    }
+	presentationType() {
+		return 'text';
+	}
 }

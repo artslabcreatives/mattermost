@@ -1,190 +1,190 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import debounce from 'lodash/debounce';
-import type {ChangeEvent} from 'react';
-import React, {useEffect, useCallback, useState, useRef} from 'react';
-import {FormattedMessage, useIntl} from 'react-intl';
-import {useDispatch, useSelector} from 'react-redux';
+import type { ChangeEvent } from 'react';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
+import { useDispatch, useSelector } from 'react-redux';
 import styled from 'styled-components';
 
-import {MagnifyIcon} from '@mattermost/compass-icons/components';
-import type {Group} from '@mattermost/types/groups';
+import { MagnifyIcon } from '@mattermost/compass-icons/components';
+import type { Group } from '@mattermost/types/groups';
 
-import {searchProfiles} from 'mattermost-redux/actions/users';
+import { searchProfiles } from 'mattermost-redux/actions/users';
 
-import {openModal} from 'actions/views/modals';
-import {setPopoverSearchTerm} from 'actions/views/search';
+import { openModal } from 'actions/views/modals';
+import { setPopoverSearchTerm } from 'actions/views/search';
 
-import {QuickInput} from 'components/quick_input/quick_input';
+import { QuickInput } from 'components/quick_input/quick_input';
 import GroupMemberList from 'components/user_group_popover/group_member_list';
 import UserGroupsModal from 'components/user_groups_modal';
 import ViewUserGroupModal from 'components/view_user_group_modal';
 
-import Constants, {A11yCustomEventTypes, ModalIdentifiers} from 'utils/constants';
-import type {A11yFocusEventDetail} from 'utils/constants';
+import Constants, { A11yCustomEventTypes, ModalIdentifiers } from 'utils/constants';
+import type { A11yFocusEventDetail } from 'utils/constants';
 
-import type {GlobalState} from 'types/store';
+import type { GlobalState } from 'types/store';
 
-import {Load} from './constants';
+import { Load } from './constants';
 
 import './user_group_popover.scss';
 
 export type Props = {
-    group: Group;
-    hide: () => void;
-    returnFocus: () => void;
+	group: Group;
+	hide: () => void;
+	returnFocus: () => void;
 }
 
 const UserGroupPopover = ({
-    group,
-    hide,
-    returnFocus,
+	group,
+	hide,
+	returnFocus,
 }: Props) => {
-    const {formatMessage} = useIntl();
-    const closeRef = useRef<HTMLButtonElement>(null);
+	const { formatMessage } = useIntl();
+	const closeRef = useRef<HTMLButtonElement>(null);
 
-    const dispatch = useDispatch();
+	const dispatch = useDispatch();
 
-    const searchTerm = useSelector((state: GlobalState) => state.views.search.popoverSearch);
+	const searchTerm = useSelector((state: GlobalState) => state.views.search.popoverSearch);
 
-    const [searchState, setSearchState] = useState(Load.DONE);
+	const [searchState, setSearchState] = useState(Load.DONE);
 
-    const doSearch = useCallback(debounce(async (term) => {
-        const res = await dispatch(searchProfiles(term, {in_group_id: group.id}));
-        if (res.data) {
-            setSearchState(Load.DONE);
-        } else {
-            setSearchState(Load.FAILED);
-        }
-    }, Constants.SEARCH_TIMEOUT_MILLISECONDS), []);
+	const doSearch = useCallback(debounce(async (term) => {
+		const res = await dispatch(searchProfiles(term, { in_group_id: group.id }));
+		if (res.data) {
+			setSearchState(Load.DONE);
+		} else {
+			setSearchState(Load.FAILED);
+		}
+	}, Constants.SEARCH_TIMEOUT_MILLISECONDS), []);
 
-    useEffect(() => {
-        // Focus the close button when the popover first opens
-        document.dispatchEvent(new CustomEvent<A11yFocusEventDetail>(
-            A11yCustomEventTypes.FOCUS, {
-                detail: {
-                    target: closeRef.current,
-                    keyboardOnly: true,
-                },
-            },
-        ));
+	useEffect(() => {
+		// Focus the close button when the popover first opens
+		document.dispatchEvent(new CustomEvent<A11yFocusEventDetail>(
+			A11yCustomEventTypes.FOCUS, {
+			detail: {
+				target: closeRef.current,
+				keyboardOnly: true,
+			},
+		},
+		));
 
-        // Unset the popover search term on mount and unmount
-        // This is to prevent some odd rendering issues when quickly opening and closing popovers
-        dispatch(setPopoverSearchTerm(''));
-        return () => {
-            dispatch(setPopoverSearchTerm(''));
-        };
-    }, []);
+		// Unset the popover search term on mount and unmount
+		// This is to prevent some odd rendering issues when quickly opening and closing popovers
+		dispatch(setPopoverSearchTerm(''));
+		return () => {
+			dispatch(setPopoverSearchTerm(''));
+		};
+	}, []);
 
-    useEffect(() => {
-        if (searchTerm) {
-            setSearchState(Load.LOADING);
-            doSearch(searchTerm);
-        } else {
-            setSearchState(Load.DONE);
-            doSearch.cancel();
-        }
-    }, [searchTerm, doSearch]);
+	useEffect(() => {
+		if (searchTerm) {
+			setSearchState(Load.LOADING);
+			doSearch(searchTerm);
+		} else {
+			setSearchState(Load.DONE);
+			doSearch.cancel();
+		}
+	}, [searchTerm, doSearch]);
 
-    const openGroupsModal = () => {
-        dispatch(openModal({
-            modalId: ModalIdentifiers.USER_GROUPS,
-            dialogType: UserGroupsModal,
-            dialogProps: {
-                backButtonAction: openGroupsModal,
-                onExited: returnFocus,
-            },
-        }));
-    };
+	const openGroupsModal = () => {
+		dispatch(openModal({
+			modalId: ModalIdentifiers.USER_GROUPS,
+			dialogType: UserGroupsModal,
+			dialogProps: {
+				backButtonAction: openGroupsModal,
+				onExited: returnFocus,
+			},
+		}));
+	};
 
-    const openViewGroupModal = () => {
-        hide();
-        dispatch(openModal({
-            modalId: ModalIdentifiers.VIEW_USER_GROUP,
-            dialogType: ViewUserGroupModal,
-            dialogProps: {
-                groupId: group.id,
-                backButtonCallback: openGroupsModal,
-                backButtonAction: openViewGroupModal,
-                onExited: returnFocus,
-            },
-        }));
-    };
+	const openViewGroupModal = () => {
+		hide();
+		dispatch(openModal({
+			modalId: ModalIdentifiers.VIEW_USER_GROUP,
+			dialogType: ViewUserGroupModal,
+			dialogProps: {
+				groupId: group.id,
+				backButtonCallback: openGroupsModal,
+				backButtonAction: openViewGroupModal,
+				onExited: returnFocus,
+			},
+		}));
+	};
 
-    const handleClose = () => {
-        hide();
-        returnFocus();
-    };
+	const handleClose = () => {
+		hide();
+		returnFocus();
+	};
 
-    const handleSearch = (event: ChangeEvent<HTMLInputElement>) => {
-        dispatch(setPopoverSearchTerm(event.target.value));
-    };
+	const handleSearch = (event: ChangeEvent<HTMLInputElement>) => {
+		dispatch(setPopoverSearchTerm(event.target.value));
+	};
 
-    const handleClear = () => {
-        dispatch(setPopoverSearchTerm(''));
-    };
+	const handleClear = () => {
+		dispatch(setPopoverSearchTerm(''));
+	};
 
-    return (
-        <Body>
-            <Header>
-                <Heading>
-                    <Title
-                        className='overflow--ellipsis text-nowrap'
-                    >
-                        {group.display_name}
-                    </Title>
-                    <CloseButton
-                        className='btn btn-sm btn-compact btn-icon'
-                        aria-label={formatMessage({id: 'user_group_popover.close', defaultMessage: 'Close user group popover'})}
-                        onClick={handleClose}
-                        ref={closeRef}
-                    >
-                        <i
-                            className='icon icon-close'
-                        />
-                    </CloseButton>
-                </Heading>
-                <Subtitle>
-                    <span className='overflow--ellipsis text-nowrap'>{'@'}{group.name}</span>
-                    <Dot>{'•'}</Dot>
-                    <FormattedMessage
-                        id='user_group_popover.memberCount'
-                        defaultMessage='{member_count} {member_count, plural, one {Member} other {Members}}'
-                        values={{
-                            member_count: group.member_count,
-                        }}
-                        tagName={NoShrink}
-                    />
-                </Subtitle>
-                <HeaderButton
-                    aria-label={`${group.display_name} @${group.name} ${formatMessage({id: 'user_group_popover.memberCount', defaultMessage: '{member_count} {member_count, plural, one {Member} other {Members}}'}, {member_count: group.member_count})} ${formatMessage({id: 'user_group_popover.openGroupModal', defaultMessage: 'View full group info'})}`}
-                    onClick={openViewGroupModal}
-                    className='user-group-popover_header-button'
-                />
-            </Header>
-            {group.member_count > 10 ? (
-                <SearchBar>
-                    <MagnifyIcon/>
-                    <QuickInput
-                        type='text'
-                        className='user-group-popover_search-bar'
-                        placeholder={formatMessage({id: 'user_group_popover.searchGroupMembers', defaultMessage: 'Search members'})}
-                        value={searchTerm}
-                        onChange={handleSearch}
-                        clearable={true}
-                        onClear={handleClear}
-                    />
-                </SearchBar>
-            ) : null}
-            <GroupMemberList
-                group={group}
-                hide={hide}
-                searchState={searchState}
-            />
-        </Body>
-    );
+	return (
+		<Body>
+			<Header>
+				<Heading>
+					<Title
+						className='overflow--ellipsis text-nowrap'
+					>
+						{group.display_name}
+					</Title>
+					<CloseButton
+						className='btn btn-sm btn-compact btn-icon'
+						aria-label={formatMessage({ id: 'user_group_popover.close', defaultMessage: 'Close user group popover' })}
+						onClick={handleClose}
+						ref={closeRef}
+					>
+						<i
+							className='icon icon-close'
+						/>
+					</CloseButton>
+				</Heading>
+				<Subtitle>
+					<span className='overflow--ellipsis text-nowrap'>{'@'}{group.name}</span>
+					<Dot>{'•'}</Dot>
+					<FormattedMessage
+						id='user_group_popover.memberCount'
+						defaultMessage='{member_count} {member_count, plural, one {Member} other {Members}}'
+						values={{
+							member_count: group.member_count,
+						}}
+						tagName={NoShrink}
+					/>
+				</Subtitle>
+				<HeaderButton
+					aria-label={`${group.display_name} @${group.name} ${formatMessage({ id: 'user_group_popover.memberCount', defaultMessage: '{member_count} {member_count, plural, one {Member} other {Members}}' }, { member_count: group.member_count })} ${formatMessage({ id: 'user_group_popover.openGroupModal', defaultMessage: 'View full group info' })}`}
+					onClick={openViewGroupModal}
+					className='user-group-popover_header-button'
+				/>
+			</Header>
+			{group.member_count > 10 ? (
+				<SearchBar>
+					<MagnifyIcon />
+					<QuickInput
+						type='text'
+						className='user-group-popover_search-bar'
+						placeholder={formatMessage({ id: 'user_group_popover.searchGroupMembers', defaultMessage: 'Search members' })}
+						value={searchTerm}
+						onChange={handleSearch}
+						clearable={true}
+						onClear={handleClear}
+					/>
+				</SearchBar>
+			) : null}
+			<GroupMemberList
+				group={group}
+				hide={hide}
+				searchState={searchState}
+			/>
+		</Body>
+	);
 };
 
 const Body = styled.div`

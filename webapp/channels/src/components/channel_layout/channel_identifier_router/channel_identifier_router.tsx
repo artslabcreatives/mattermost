@@ -1,70 +1,70 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {History} from 'history';
+import type { History } from 'history';
 import React from 'react';
-import type {match} from 'react-router-dom';
+import type { match } from 'react-router-dom';
 
 import ChannelView from 'components/channel_view/index';
 
-import {getHistory} from 'utils/browser_history';
+import { getHistory } from 'utils/browser_history';
 import Constants from 'utils/constants';
 
 export type Match = match<{
-    identifier: string;
-    team: string;
-    postid?: string;
-    path: string;
+	identifier: string;
+	team: string;
+	postid?: string;
+	path: string;
 }>;
 
 export type MatchAndHistory = Pick<Props, 'match' | 'history'>
 
 type Props = {
-    match: Match;
-    actions: {
-        onChannelByIdentifierEnter: (props: MatchAndHistory) => void;
-    };
-    history: History;
+	match: Match;
+	actions: {
+		onChannelByIdentifierEnter: (props: MatchAndHistory) => void;
+	};
+	history: History;
 };
 
 export default class ChannelIdentifierRouter extends React.PureComponent<Props> {
-    constructor(props: Props) {
-        super(props);
+	constructor(props: Props) {
+		super(props);
 
-        this.state = {
-            prevProps: props,
-        };
-    }
+		this.state = {
+			prevProps: props,
+		};
+	}
 
-    private replaceUrlTimeout!: NodeJS.Timeout;
+	private replaceUrlTimeout!: NodeJS.Timeout;
 
-    componentDidUpdate(prevProps: Props) {
-        if (this.props.match.params.team !== prevProps.match.params.team ||
-            this.props.match.params.identifier !== prevProps.match.params.identifier) {
-            clearTimeout(this.replaceUrlTimeout);
-            this.props.actions.onChannelByIdentifierEnter(this.props);
-            this.replaceUrlIfPermalink();
-        }
-    }
-    componentDidMount() {
-        this.props.actions.onChannelByIdentifierEnter(this.props);
-        this.replaceUrlIfPermalink();
-    }
+	componentDidUpdate(prevProps: Props) {
+		if (this.props.match.params.team !== prevProps.match.params.team ||
+			this.props.match.params.identifier !== prevProps.match.params.identifier) {
+			clearTimeout(this.replaceUrlTimeout);
+			this.props.actions.onChannelByIdentifierEnter(this.props);
+			this.replaceUrlIfPermalink();
+		}
+	}
+	componentDidMount() {
+		this.props.actions.onChannelByIdentifierEnter(this.props);
+		this.replaceUrlIfPermalink();
+	}
 
-    componentWillUnmount() {
-        clearTimeout(this.replaceUrlTimeout);
-    }
+	componentWillUnmount() {
+		clearTimeout(this.replaceUrlTimeout);
+	}
 
-    replaceUrlIfPermalink = () => {
-        if (this.props.match.params.postid) {
-            this.replaceUrlTimeout = setTimeout(() => {
-                const channelUrl = this.props.match.url.split('/').slice(0, -1).join('/');
-                getHistory().replace(channelUrl);
-            }, Constants.PERMALINK_FADEOUT);
-        }
-    };
+	replaceUrlIfPermalink = () => {
+		if (this.props.match.params.postid) {
+			this.replaceUrlTimeout = setTimeout(() => {
+				const channelUrl = this.props.match.url.split('/').slice(0, -1).join('/');
+				getHistory().replace(channelUrl);
+			}, Constants.PERMALINK_FADEOUT);
+		}
+	};
 
-    render() {
-        return <ChannelView/>;
-    }
+	render() {
+		return <ChannelView />;
+	}
 }

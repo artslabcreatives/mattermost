@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import moment from 'moment';
@@ -57,7 +57,7 @@ function ADLDAPUpsellBanner() {
             <div className='upsell-confirm-backdrop'/>
             <div className='upsell-confirm-foreground'>
                 <p className='title'>{formatMessage({id: 'adldap_upsell_banner.confirm.title', defaultMessage: 'Your trial has started!'})}</p>
-                <p className='subtitle'>{formatMessage({id: 'adldap_upsell_banner.confirm.license_trial', defaultMessage: 'Welcome to your Mattermost Enterprise trial! It expires on {endDate}. You now have access to high-security Enterprise features, for free.'}, {endDate: moment(currentLicenseEndDate).tz(getBrowserTimezone()).format('MMMM Do YYYY')})}</p>
+                <p className='subtitle'>{formatMessage({id: 'adldap_upsell_banner.confirm.license_trial', defaultMessage: 'Welcome to your Aura Enterprise trial! It expires on {endDate}. You now have access to high-security Enterprise features, for free.'}, {endDate: moment(currentLicenseEndDate).tz(getBrowserTimezone()).format('MMMM Do YYYY')})}</p>
                 <div className='btns-container'>
                     <button
                         className='confrim-btn learn-more'

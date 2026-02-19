@@ -1,96 +1,96 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {ComponentProps} from 'react';
+import type { ComponentProps } from 'react';
 import React from 'react';
-import {DragDropContext, Draggable, Droppable} from 'react-beautiful-dnd';
+import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 import styled from 'styled-components';
 
-import type {ChannelBookmark} from '@mattermost/types/channel_bookmarks';
-import type {IDMappedObjects} from '@mattermost/types/utilities';
+import type { ChannelBookmark } from '@mattermost/types/channel_bookmarks';
+import type { IDMappedObjects } from '@mattermost/types/utilities';
 
 import BookmarkItem from './bookmark_item';
 import BookmarksMenu from './channel_bookmarks_menu';
-import {useChannelBookmarks, MAX_BOOKMARKS_PER_CHANNEL, useCanUploadFiles, useChannelBookmarkPermission} from './utils';
+import { useChannelBookmarks, MAX_BOOKMARKS_PER_CHANNEL, useCanUploadFiles, useChannelBookmarkPermission } from './utils';
 
 import './channel_bookmarks.scss';
 
 type Props = {
-    channelId: string;
+	channelId: string;
 };
 
 function ChannelBookmarks({
-    channelId,
+	channelId,
 }: Props) {
-    const {order, bookmarks, reorder} = useChannelBookmarks(channelId);
-    const canReorder = useChannelBookmarkPermission(channelId, 'order');
-    const canUploadFiles = useCanUploadFiles();
-    const hasBookmarks = Boolean(order?.length);
-    const limitReached = order.length >= MAX_BOOKMARKS_PER_CHANNEL;
+	const { order, bookmarks, reorder } = useChannelBookmarks(channelId);
+	const canReorder = useChannelBookmarkPermission(channelId, 'order');
+	const canUploadFiles = useCanUploadFiles();
+	const hasBookmarks = Boolean(order?.length);
+	const limitReached = order.length >= MAX_BOOKMARKS_PER_CHANNEL;
 
-    if (!hasBookmarks) {
-        return null;
-    }
+	if (!hasBookmarks) {
+		return null;
+	}
 
-    const handleOnDragEnd: ComponentProps<typeof DragDropContext>['onDragEnd'] = ({source, destination, draggableId}) => {
-        if (destination) {
-            reorder(draggableId, source.index, destination.index);
-        }
-    };
+	const handleOnDragEnd: ComponentProps<typeof DragDropContext>['onDragEnd'] = ({ source, destination, draggableId }) => {
+		if (destination) {
+			reorder(draggableId, source.index, destination.index);
+		}
+	};
 
-    return (
-        <DragDropContext
-            onDragEnd={handleOnDragEnd}
-        >
-            <Droppable
-                droppableId='channel-bookmarks'
-                direction='horizontal'
-            >
-                {(drop, snap) => {
-                    return (
-                        <Container
-                            ref={drop.innerRef}
-                            data-testid='channel-bookmarks-container'
-                            className='channel-bookmarks-container'
-                            {...drop.droppableProps}
-                        >
-                            {order.map(makeItemRenderer(bookmarks, snap.isDraggingOver, !canReorder))}
-                            {drop.placeholder}
-                            <BookmarksMenu
-                                channelId={channelId}
-                                hasBookmarks={hasBookmarks}
-                                limitReached={limitReached}
-                                canUploadFiles={canUploadFiles}
-                            />
-                        </Container>
-                    );
-                }}
-            </Droppable>
-        </DragDropContext>
-    );
+	return (
+		<DragDropContext
+			onDragEnd={handleOnDragEnd}
+		>
+			<Droppable
+				droppableId='channel-bookmarks'
+				direction='horizontal'
+			>
+				{(drop, snap) => {
+					return (
+						<Container
+							ref={drop.innerRef}
+							data-testid='channel-bookmarks-container'
+							className='channel-bookmarks-container'
+							{...drop.droppableProps}
+						>
+							{order.map(makeItemRenderer(bookmarks, snap.isDraggingOver, !canReorder))}
+							{drop.placeholder}
+							<BookmarksMenu
+								channelId={channelId}
+								hasBookmarks={hasBookmarks}
+								limitReached={limitReached}
+								canUploadFiles={canUploadFiles}
+							/>
+						</Container>
+					);
+				}}
+			</Droppable>
+		</DragDropContext>
+	);
 }
 
 const makeItemRenderer = (bookmarks: IDMappedObjects<ChannelBookmark>, disableInteractions: boolean, disableDrag: boolean) => (id: string, index: number) => {
-    return (
-        <Draggable
-            key={id}
-            draggableId={id}
-            index={index}
-            isDragDisabled={disableDrag}
-        >
-            {(drag, snap) => {
-                return (
-                    <BookmarkItem
-                        key={id}
-                        drag={drag}
-                        isDragging={snap.isDragging}
-                        disableInteractions={snap.isDragging || disableInteractions}
-                        bookmark={bookmarks[id]}
-                    />
-                );
-            }}
-        </Draggable>
-    );
+	return (
+		<Draggable
+			key={id}
+			draggableId={id}
+			index={index}
+			isDragDisabled={disableDrag}
+		>
+			{(drag, snap) => {
+				return (
+					<BookmarkItem
+						key={id}
+						drag={drag}
+						isDragging={snap.isDragging}
+						disableInteractions={snap.isDragging || disableInteractions}
+						bookmark={bookmarks[id]}
+					/>
+				);
+			}}
+		</Draggable>
+	);
 };
 
 export default ChannelBookmarks;

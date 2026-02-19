@@ -1,17 +1,17 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useCallback, useMemo} from 'react';
-import {FormattedMessage} from 'react-intl';
+import React, { useCallback, useMemo } from 'react';
+import { FormattedMessage } from 'react-intl';
 import styled from 'styled-components';
 
 import * as Utils from 'utils/utils';
 
 import SettingSet from './setting_set';
 
-export const Label = styled.label<{isDisabled: boolean}>`
+export const Label = styled.label<{ isDisabled: boolean }>`
     display: inline-flex;
-    opacity: ${({isDisabled}) => (isDisabled ? 0.5 : 1)};
+    opacity: ${({ isDisabled }) => (isDisabled ? 0.5 : 1)};
     margin-top: 8px;
     margin-right: 24px;
     width: fit-content;
@@ -68,93 +68,93 @@ export const Label = styled.label<{isDisabled: boolean}>`
 `;
 
 type Props = {
-    id: string;
-    label: React.ReactNode;
-    value: boolean;
-    onChange: (id: string, value: boolean) => void;
-    trueText?: React.ReactNode;
-    falseText?: React.ReactNode;
-    disabled?: boolean;
-    setByEnv: boolean;
-    disabledText?: React.ReactNode;
-    helpText: React.ReactNode;
+	id: string;
+	label: React.ReactNode;
+	value: boolean;
+	onChange: (id: string, value: boolean) => void;
+	trueText?: React.ReactNode;
+	falseText?: React.ReactNode;
+	disabled?: boolean;
+	setByEnv: boolean;
+	disabledText?: React.ReactNode;
+	helpText: React.ReactNode;
 }
 
 const BooleanSetting = ({
-    id,
-    label,
-    value,
-    onChange,
-    trueText = (
-        <FormattedMessage
-            id='admin.true'
-            defaultMessage='True'
-        />
-    ),
-    falseText = (
-        <FormattedMessage
-            id='admin.false'
-            defaultMessage='False'
-        />
-    ),
-    disabled = false,
-    setByEnv,
-    disabledText,
-    helpText,
+	id,
+	label,
+	value,
+	onChange,
+	trueText = (
+		<FormattedMessage
+			id='admin.true'
+			defaultMessage='True'
+		/>
+	),
+	falseText = (
+		<FormattedMessage
+			id='admin.false'
+			defaultMessage='False'
+		/>
+	),
+	disabled = false,
+	setByEnv,
+	disabledText,
+	helpText,
 }: Props) => {
-    const helptext = useMemo(() => {
-        if (disabled && disabledText) {
-            return (
-                <div>
-                    <span className='admin-console__disabled-text'>
-                        {disabledText}
-                    </span>
-                    {helpText}
-                </div>
-            );
-        }
-        return helpText;
-    }, [helpText, disabled, disabledText]);
+	const helptext = useMemo(() => {
+		if (disabled && disabledText) {
+			return (
+				<div>
+					<span className='admin-console__disabled-text'>
+						{disabledText}
+					</span>
+					{helpText}
+				</div>
+			);
+		}
+		return helpText;
+	}, [helpText, disabled, disabledText]);
 
-    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        onChange(id, e.target.value === 'true');
-    }, [id, onChange]);
+	const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+		onChange(id, e.target.value === 'true');
+	}, [id, onChange]);
 
-    return (
-        <SettingSet
-            helpText={helptext}
-            inputId={id}
-            label={label}
-            setByEnv={setByEnv}
-        >
-            <Label isDisabled={disabled || setByEnv}>
-                <input
-                    data-testid={id + 'true'}
-                    type='radio'
-                    value='true'
-                    id={Utils.createSafeId(id) + 'true'}
-                    name={id}
-                    checked={value}
-                    onChange={handleChange}
-                    disabled={disabled || setByEnv}
-                />
-                {trueText}
-            </Label>
-            <Label isDisabled={disabled || setByEnv}>
-                <input
-                    data-testid={id + 'false'}
-                    type='radio'
-                    value='false'
-                    id={Utils.createSafeId(id) + 'false'}
-                    name={id}
-                    checked={!value}
-                    onChange={handleChange}
-                    disabled={disabled || setByEnv}
-                />
-                {falseText}
-            </Label>
-        </SettingSet>
-    );
+	return (
+		<SettingSet
+			helpText={helptext}
+			inputId={id}
+			label={label}
+			setByEnv={setByEnv}
+		>
+			<Label isDisabled={disabled || setByEnv}>
+				<input
+					data-testid={id + 'true'}
+					type='radio'
+					value='true'
+					id={Utils.createSafeId(id) + 'true'}
+					name={id}
+					checked={value}
+					onChange={handleChange}
+					disabled={disabled || setByEnv}
+				/>
+				{trueText}
+			</Label>
+			<Label isDisabled={disabled || setByEnv}>
+				<input
+					data-testid={id + 'false'}
+					type='radio'
+					value='false'
+					id={Utils.createSafeId(id) + 'false'}
+					name={id}
+					checked={!value}
+					onChange={handleChange}
+					disabled={disabled || setByEnv}
+				/>
+				{falseText}
+			</Label>
+		</SettingSet>
+	);
 };
 
 export default React.memo(BooleanSetting);

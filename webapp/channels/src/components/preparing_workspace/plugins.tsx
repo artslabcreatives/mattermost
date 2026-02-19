@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -119,7 +119,7 @@ const Plugins = (props: Props) => {
                                     checked: props.options.jira,
                                     tooltip: formatMessage({
                                         id: 'onboarding_wizard.plugins.jira.tooltip',
-                                        defaultMessage: 'Create Jira tickets from messages in Mattermost, get notified of important updates in Jira',
+                                        defaultMessage: 'Create Jira tickets from messages in Aura, get notified of important updates in Jira',
                                     }),
                                 },
                                 {
@@ -133,7 +133,7 @@ const Plugins = (props: Props) => {
                                     checked: props.options.zoom,
                                     tooltip: formatMessage({
                                         id: 'onboarding_wizard.plugins.zoom.tooltip',
-                                        defaultMessage: 'Start Zoom audio and video conferencing calls in Mattermost with a single click',
+                                        defaultMessage: 'Start Zoom audio and video conferencing calls in Aura with a single click',
                                     }),
                                 },
                                 {
@@ -147,7 +147,7 @@ const Plugins = (props: Props) => {
                                     checked: props.options.servicenow,
                                     tooltip: formatMessage({
                                         id: 'onboarding_wizard.plugins.servicenow.tooltip',
-                                        defaultMessage: 'This plugin serves as an integration between Mattermost and ServiceNow.',
+                                        defaultMessage: 'This plugin serves as an integration between Aura and ServiceNow.',
                                     }),
                                 },
                             ]}

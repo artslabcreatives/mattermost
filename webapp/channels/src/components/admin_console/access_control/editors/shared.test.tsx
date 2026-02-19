@@ -1,345 +1,345 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
 
-import type {UserPropertyField} from '@mattermost/types/properties';
+import type { UserPropertyField } from '@mattermost/types/properties';
 
-import {renderWithContext, screen} from 'tests/react_testing_utils';
+import { renderWithContext, screen } from 'tests/react_testing_utils';
 
-import {TestButton, hasUsableAttributes} from './shared';
+import { TestButton, hasUsableAttributes } from './shared';
 
 describe('TestButton', () => {
-    const baseProps = {
-        onClick: jest.fn(),
-        disabled: false,
-    };
+	const baseProps = {
+		onClick: jest.fn(),
+		disabled: false,
+	};
 
-    beforeEach(() => {
-        baseProps.onClick.mockClear();
-    });
+	beforeEach(() => {
+		baseProps.onClick.mockClear();
+	});
 
-    test('should render test button with correct text and icon', () => {
-        renderWithContext(<TestButton {...baseProps}/>, {});
+	test('should render test button with correct text and icon', () => {
+		renderWithContext(<TestButton {...baseProps} />, {});
 
-        const button = screen.getByRole('button', {name: /test access rule/i});
-        expect(button).toBeInTheDocument();
-        expect(button).toHaveClass('btn', 'btn-sm', 'btn-tertiary');
+		const button = screen.getByRole('button', { name: /test access rule/i });
+		expect(button).toBeInTheDocument();
+		expect(button).toHaveClass('btn', 'btn-sm', 'btn-tertiary');
 
-        // Check for icon
-        const icon = button.querySelector('i.icon.icon-lock-outline');
-        expect(icon).toBeInTheDocument();
-    });
+		// Check for icon
+		const icon = button.querySelector('i.icon.icon-lock-outline');
+		expect(icon).toBeInTheDocument();
+	});
 
-    test('should be enabled and clickable when disabled is false', () => {
-        renderWithContext(<TestButton {...baseProps}/>, {});
+	test('should be enabled and clickable when disabled is false', () => {
+		renderWithContext(<TestButton {...baseProps} />, {});
 
-        const button = screen.getByRole('button', {name: /test access rule/i});
-        expect(button).not.toBeDisabled();
-        expect(button).toBeEnabled();
-    });
+		const button = screen.getByRole('button', { name: /test access rule/i });
+		expect(button).not.toBeDisabled();
+		expect(button).toBeEnabled();
+	});
 
-    test('should be disabled when disabled is true', () => {
-        const props = {
-            ...baseProps,
-            disabled: true,
-        };
+	test('should be disabled when disabled is true', () => {
+		const props = {
+			...baseProps,
+			disabled: true,
+		};
 
-        renderWithContext(<TestButton {...props}/>, {});
+		renderWithContext(<TestButton {...props} />, {});
 
-        const button = screen.getByRole('button', {name: /test access rule/i});
-        expect(button).toBeDisabled();
-    });
+		const button = screen.getByRole('button', { name: /test access rule/i });
+		expect(button).toBeDisabled();
+	});
 
-    test('should call onClick when clicked and not disabled', () => {
-        renderWithContext(<TestButton {...baseProps}/>, {});
+	test('should call onClick when clicked and not disabled', () => {
+		renderWithContext(<TestButton {...baseProps} />, {});
 
-        const button = screen.getByRole('button', {name: /test access rule/i});
-        button.click();
+		const button = screen.getByRole('button', { name: /test access rule/i });
+		button.click();
 
-        expect(baseProps.onClick).toHaveBeenCalledTimes(1);
-    });
+		expect(baseProps.onClick).toHaveBeenCalledTimes(1);
+	});
 
-    test('should not call onClick when clicked and disabled', () => {
-        const props = {
-            ...baseProps,
-            disabled: true,
-        };
+	test('should not call onClick when clicked and disabled', () => {
+		const props = {
+			...baseProps,
+			disabled: true,
+		};
 
-        renderWithContext(<TestButton {...props}/>, {});
+		renderWithContext(<TestButton {...props} />, {});
 
-        const button = screen.getByRole('button', {name: /test access rule/i});
-        button.click();
+		const button = screen.getByRole('button', { name: /test access rule/i });
+		button.click();
 
-        expect(baseProps.onClick).not.toHaveBeenCalled();
-    });
+		expect(baseProps.onClick).not.toHaveBeenCalled();
+	});
 
-    test('should not show tooltip when not disabled', () => {
-        renderWithContext(<TestButton {...baseProps}/>, {});
+	test('should not show tooltip when not disabled', () => {
+		renderWithContext(<TestButton {...baseProps} />, {});
 
-        const button = screen.getByRole('button', {name: /test access rule/i});
+		const button = screen.getByRole('button', { name: /test access rule/i });
 
-        // Should not be wrapped with WithTooltip when enabled
-        expect(button.parentElement).not.toHaveAttribute('data-testid', 'tooltip-wrapper');
-        expect(button).not.toHaveAttribute('title');
-    });
+		// Should not be wrapped with WithTooltip when enabled
+		expect(button.parentElement).not.toHaveAttribute('data-testid', 'tooltip-wrapper');
+		expect(button).not.toHaveAttribute('title');
+	});
 
-    test('should not show tooltip when disabled but no disabledTooltip provided', () => {
-        const props = {
-            ...baseProps,
-            disabled: true,
-        };
+	test('should not show tooltip when disabled but no disabledTooltip provided', () => {
+		const props = {
+			...baseProps,
+			disabled: true,
+		};
 
-        renderWithContext(<TestButton {...props}/>, {});
+		renderWithContext(<TestButton {...props} />, {});
 
-        const button = screen.getByRole('button', {name: /test access rule/i});
+		const button = screen.getByRole('button', { name: /test access rule/i });
 
-        // Should not be wrapped with WithTooltip when no tooltip text provided
-        expect(button.parentElement).not.toHaveAttribute('data-testid', 'tooltip-wrapper');
-        expect(button).not.toHaveAttribute('title');
-    });
+		// Should not be wrapped with WithTooltip when no tooltip text provided
+		expect(button.parentElement).not.toHaveAttribute('data-testid', 'tooltip-wrapper');
+		expect(button).not.toHaveAttribute('title');
+	});
 
-    test('should show tooltip when disabled and disabledTooltip is provided', () => {
-        const tooltipMessage = 'You cannot test access rules that would exclude you from the channel';
-        const props = {
-            ...baseProps,
-            disabled: true,
-            disabledTooltip: tooltipMessage,
-        };
+	test('should show tooltip when disabled and disabledTooltip is provided', () => {
+		const tooltipMessage = 'You cannot test access rules that would exclude you from the channel';
+		const props = {
+			...baseProps,
+			disabled: true,
+			disabledTooltip: tooltipMessage,
+		};
 
-        renderWithContext(<TestButton {...props}/>, {});
+		renderWithContext(<TestButton {...props} />, {});
 
-        const button = screen.getByRole('button', {name: /test access rule/i});
-        expect(button).toBeDisabled();
+		const button = screen.getByRole('button', { name: /test access rule/i });
+		expect(button).toBeDisabled();
 
-        // The main test is that the button is disabled when it should be
-        // The tooltip implementation is complex with floating-ui, so we focus on the behavior
-        // In actual usage, hovering over the button would show the tooltip
-    });
+		// The main test is that the button is disabled when it should be
+		// The tooltip implementation is complex with floating-ui, so we focus on the behavior
+		// In actual usage, hovering over the button would show the tooltip
+	});
 
-    test('should show correct tooltip message when disabled and disabledTooltip is provided', () => {
-        const tooltipMessage = 'Custom tooltip message';
-        const props = {
-            ...baseProps,
-            disabled: true,
-            disabledTooltip: tooltipMessage,
-        };
+	test('should show correct tooltip message when disabled and disabledTooltip is provided', () => {
+		const tooltipMessage = 'Custom tooltip message';
+		const props = {
+			...baseProps,
+			disabled: true,
+			disabledTooltip: tooltipMessage,
+		};
 
-        renderWithContext(<TestButton {...props}/>, {});
+		renderWithContext(<TestButton {...props} />, {});
 
-        // Since WithTooltip is complex and uses floating-ui, we mainly test that
-        // the tooltip wrapper is present when needed
-        const button = screen.getByRole('button', {name: /test access rule/i});
-        expect(button).toBeDisabled();
+		// Since WithTooltip is complex and uses floating-ui, we mainly test that
+		// the tooltip wrapper is present when needed
+		const button = screen.getByRole('button', { name: /test access rule/i });
+		expect(button).toBeDisabled();
 
-        // The presence of tooltip is implied by the wrapper structure change
-        // In a real test environment, you could hover over the button and check for tooltip
-    });
+		// The presence of tooltip is implied by the wrapper structure change
+		// In a real test environment, you could hover over the button and check for tooltip
+	});
 
-    test('should handle empty string tooltip', () => {
-        const props = {
-            ...baseProps,
-            disabled: true,
-            disabledTooltip: '',
-        };
+	test('should handle empty string tooltip', () => {
+		const props = {
+			...baseProps,
+			disabled: true,
+			disabledTooltip: '',
+		};
 
-        renderWithContext(<TestButton {...props}/>, {});
+		renderWithContext(<TestButton {...props} />, {});
 
-        const button = screen.getByRole('button', {name: /test access rule/i});
-        expect(button).toBeDisabled();
+		const button = screen.getByRole('button', { name: /test access rule/i });
+		expect(button).toBeDisabled();
 
-        // Empty string tooltip should still not show tooltip
-        expect(button.parentElement).not.toHaveAttribute('data-testid', 'tooltip-wrapper');
-    });
+		// Empty string tooltip should still not show tooltip
+		expect(button.parentElement).not.toHaveAttribute('data-testid', 'tooltip-wrapper');
+	});
 
-    test('should handle undefined disabledTooltip same as no tooltip', () => {
-        const props = {
-            ...baseProps,
-            disabled: true,
-            disabledTooltip: undefined,
-        };
+	test('should handle undefined disabledTooltip same as no tooltip', () => {
+		const props = {
+			...baseProps,
+			disabled: true,
+			disabledTooltip: undefined,
+		};
 
-        renderWithContext(<TestButton {...props}/>, {});
+		renderWithContext(<TestButton {...props} />, {});
 
-        const button = screen.getByRole('button', {name: /test access rule/i});
-        expect(button).toBeDisabled();
+		const button = screen.getByRole('button', { name: /test access rule/i });
+		expect(button).toBeDisabled();
 
-        // Undefined tooltip should not show tooltip
-        expect(button.parentElement).not.toHaveAttribute('data-testid', 'tooltip-wrapper');
-    });
+		// Undefined tooltip should not show tooltip
+		expect(button.parentElement).not.toHaveAttribute('data-testid', 'tooltip-wrapper');
+	});
 });
 
 describe('hasUsableAttributes', () => {
-    test('should return true when EnableUserManagedAttributes is true and attributes exist', () => {
-        const userAttributes: UserPropertyField[] = [
-            {
-                id: 'attr1',
-                name: 'department',
-                type: 'text',
-                group_id: 'custom_profile_attributes',
-                attrs: {
-                    sort_order: 0,
-                    visibility: 'always',
-                    value_type: '',
-                },
-                create_at: 0,
-                update_at: 0,
-                delete_at: 0,
-            },
-        ];
+	test('should return true when EnableUserManagedAttributes is true and attributes exist', () => {
+		const userAttributes: UserPropertyField[] = [
+			{
+				id: 'attr1',
+				name: 'department',
+				type: 'text',
+				group_id: 'custom_profile_attributes',
+				attrs: {
+					sort_order: 0,
+					visibility: 'always',
+					value_type: '',
+				},
+				create_at: 0,
+				update_at: 0,
+				delete_at: 0,
+			},
+		];
 
-        expect(hasUsableAttributes(userAttributes, true)).toBe(true);
-    });
+		expect(hasUsableAttributes(userAttributes, true)).toBe(true);
+	});
 
-    test('should return true when attributes are LDAP synced', () => {
-        const userAttributes: UserPropertyField[] = [
-            {
-                id: 'attr1',
-                name: 'department',
-                type: 'text',
-                group_id: 'custom_profile_attributes',
-                attrs: {
-                    sort_order: 0,
-                    visibility: 'always',
-                    value_type: '',
-                    ldap: 'ldap_department',
-                },
-                create_at: 0,
-                update_at: 0,
-                delete_at: 0,
-            },
-        ];
+	test('should return true when attributes are LDAP synced', () => {
+		const userAttributes: UserPropertyField[] = [
+			{
+				id: 'attr1',
+				name: 'department',
+				type: 'text',
+				group_id: 'custom_profile_attributes',
+				attrs: {
+					sort_order: 0,
+					visibility: 'always',
+					value_type: '',
+					ldap: 'ldap_department',
+				},
+				create_at: 0,
+				update_at: 0,
+				delete_at: 0,
+			},
+		];
 
-        expect(hasUsableAttributes(userAttributes, false)).toBe(true);
-    });
+		expect(hasUsableAttributes(userAttributes, false)).toBe(true);
+	});
 
-    test('should return true when attributes are SAML synced', () => {
-        const userAttributes: UserPropertyField[] = [
-            {
-                id: 'attr1',
-                name: 'department',
-                type: 'text',
-                group_id: 'custom_profile_attributes',
-                attrs: {
-                    sort_order: 0,
-                    visibility: 'always',
-                    value_type: '',
-                    saml: 'saml_department',
-                },
-                create_at: 0,
-                update_at: 0,
-                delete_at: 0,
-            },
-        ];
+	test('should return true when attributes are SAML synced', () => {
+		const userAttributes: UserPropertyField[] = [
+			{
+				id: 'attr1',
+				name: 'department',
+				type: 'text',
+				group_id: 'custom_profile_attributes',
+				attrs: {
+					sort_order: 0,
+					visibility: 'always',
+					value_type: '',
+					saml: 'saml_department',
+				},
+				create_at: 0,
+				update_at: 0,
+				delete_at: 0,
+			},
+		];
 
-        expect(hasUsableAttributes(userAttributes, false)).toBe(true);
-    });
+		expect(hasUsableAttributes(userAttributes, false)).toBe(true);
+	});
 
-    test('should return true when attributes are admin-managed', () => {
-        const userAttributes: UserPropertyField[] = [
-            {
-                id: 'attr1',
-                name: 'department',
-                type: 'text',
-                group_id: 'custom_profile_attributes',
-                attrs: {
-                    sort_order: 0,
-                    visibility: 'always',
-                    value_type: '',
-                    managed: 'admin',
-                },
-                create_at: 0,
-                update_at: 0,
-                delete_at: 0,
-            },
-        ];
+	test('should return true when attributes are admin-managed', () => {
+		const userAttributes: UserPropertyField[] = [
+			{
+				id: 'attr1',
+				name: 'department',
+				type: 'text',
+				group_id: 'custom_profile_attributes',
+				attrs: {
+					sort_order: 0,
+					visibility: 'always',
+					value_type: '',
+					managed: 'admin',
+				},
+				create_at: 0,
+				update_at: 0,
+				delete_at: 0,
+			},
+		];
 
-        expect(hasUsableAttributes(userAttributes, false)).toBe(true);
-    });
+		expect(hasUsableAttributes(userAttributes, false)).toBe(true);
+	});
 
-    test('should return false when attributes exist but are not usable (not LDAP/SAML/admin and EnableUserManagedAttributes is false)', () => {
-        const userAttributes: UserPropertyField[] = [
-            {
-                id: 'attr1',
-                name: 'department',
-                type: 'text',
-                group_id: 'custom_profile_attributes',
-                attrs: {
-                    sort_order: 0,
-                    visibility: 'always',
-                    value_type: '',
-                },
-                create_at: 0,
-                update_at: 0,
-                delete_at: 0,
-            },
-        ];
+	test('should return false when attributes exist but are not usable (not LDAP/SAML/admin and EnableUserManagedAttributes is false)', () => {
+		const userAttributes: UserPropertyField[] = [
+			{
+				id: 'attr1',
+				name: 'department',
+				type: 'text',
+				group_id: 'custom_profile_attributes',
+				attrs: {
+					sort_order: 0,
+					visibility: 'always',
+					value_type: '',
+				},
+				create_at: 0,
+				update_at: 0,
+				delete_at: 0,
+			},
+		];
 
-        expect(hasUsableAttributes(userAttributes, false)).toBe(false);
-    });
+		expect(hasUsableAttributes(userAttributes, false)).toBe(false);
+	});
 
-    test('should return false when no attributes exist', () => {
-        const userAttributes: UserPropertyField[] = [];
+	test('should return false when no attributes exist', () => {
+		const userAttributes: UserPropertyField[] = [];
 
-        expect(hasUsableAttributes(userAttributes, false)).toBe(false);
-        expect(hasUsableAttributes(userAttributes, true)).toBe(false);
-    });
+		expect(hasUsableAttributes(userAttributes, false)).toBe(false);
+		expect(hasUsableAttributes(userAttributes, true)).toBe(false);
+	});
 
-    test('should return false when attributes have spaces in their names', () => {
-        const userAttributes: UserPropertyField[] = [
-            {
-                id: 'attr1',
-                name: 'department name',
-                type: 'text',
-                group_id: 'custom_profile_attributes',
-                attrs: {
-                    sort_order: 0,
-                    visibility: 'always',
-                    value_type: '',
-                    ldap: 'ldap_department',
-                },
-                create_at: 0,
-                update_at: 0,
-                delete_at: 0,
-            },
-        ];
+	test('should return false when attributes have spaces in their names', () => {
+		const userAttributes: UserPropertyField[] = [
+			{
+				id: 'attr1',
+				name: 'department name',
+				type: 'text',
+				group_id: 'custom_profile_attributes',
+				attrs: {
+					sort_order: 0,
+					visibility: 'always',
+					value_type: '',
+					ldap: 'ldap_department',
+				},
+				create_at: 0,
+				update_at: 0,
+				delete_at: 0,
+			},
+		];
 
-        expect(hasUsableAttributes(userAttributes, false)).toBe(false);
-    });
+		expect(hasUsableAttributes(userAttributes, false)).toBe(false);
+	});
 
-    test('should return true when at least one attribute is usable (mixed attributes)', () => {
-        const userAttributes: UserPropertyField[] = [
-            {
-                id: 'attr1',
-                name: 'department name',
-                type: 'text',
-                group_id: 'custom_profile_attributes',
-                attrs: {
-                    sort_order: 0,
-                    visibility: 'always',
-                    value_type: '',
-                },
-                create_at: 0,
-                update_at: 0,
-                delete_at: 0,
-            },
-            {
-                id: 'attr2',
-                name: 'location',
-                type: 'text',
-                group_id: 'custom_profile_attributes',
-                attrs: {
-                    sort_order: 0,
-                    visibility: 'always',
-                    value_type: '',
-                    ldap: 'ldap_location',
-                },
-                create_at: 0,
-                update_at: 0,
-                delete_at: 0,
-            },
-        ];
+	test('should return true when at least one attribute is usable (mixed attributes)', () => {
+		const userAttributes: UserPropertyField[] = [
+			{
+				id: 'attr1',
+				name: 'department name',
+				type: 'text',
+				group_id: 'custom_profile_attributes',
+				attrs: {
+					sort_order: 0,
+					visibility: 'always',
+					value_type: '',
+				},
+				create_at: 0,
+				update_at: 0,
+				delete_at: 0,
+			},
+			{
+				id: 'attr2',
+				name: 'location',
+				type: 'text',
+				group_id: 'custom_profile_attributes',
+				attrs: {
+					sort_order: 0,
+					visibility: 'always',
+					value_type: '',
+					ldap: 'ldap_location',
+				},
+				create_at: 0,
+				update_at: 0,
+				delete_at: 0,
+			},
+		];
 
-        expect(hasUsableAttributes(userAttributes, false)).toBe(true);
-    });
+		expect(hasUsableAttributes(userAttributes, false)).toBe(true);
+	});
 });

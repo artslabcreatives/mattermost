@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import {createMemoryHistory} from 'history';
@@ -60,7 +60,7 @@ describe('components/login/Login', () => {
                     EnableCustomBrand: 'false',
                     CustomBrandText: '',
                     CustomDescriptionText: '',
-                    SiteName: 'Mattermost',
+                    SiteName: 'Aura',
                     ExperimentalPrimaryTeam: '',
                     PasswordEnableForgotLink: 'true',
                 },

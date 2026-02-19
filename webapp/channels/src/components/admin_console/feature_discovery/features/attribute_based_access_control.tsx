@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -17,11 +17,11 @@ const AttributeBasedAccessControlFeatureDiscovery: React.FC = () => {
             minimumSKURequiredForFeature={LicenseSkus.EnterpriseAdvanced}
             title={defineMessage({
                 id: 'admin.attribute_based_access_control_feature_discovery.title',
-                defaultMessage: 'Use attribute based access policies to control channel access with Mattermost Enterprise Advanced',
+                defaultMessage: 'Use attribute based access policies to control channel access with Aura Enterprise Advanced',
             })}
             copy={defineMessage({
                 id: 'admin.attribute_based_access_control_feature_discovery.desc',
-                defaultMessage: 'Create policies containing access rules based on user attributes and apply them to channels and other resources within Mattermost.',
+                defaultMessage: 'Create policies containing access rules based on user attributes and apply them to channels and other resources within Aura.',
             })}
             learnMoreURL='https://docs.mattermost.com/deployment/'
             featureDiscoveryImage={

@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {useCallback} from 'react';
@@ -23,7 +23,7 @@ export default function NotificationPermissionDeniedSectionNotice() {
                 })}
                 text={intl.formatMessage({
                     id: 'user.settings.notifications.desktopAndMobile.notificationSection.permissionDenied.message',
-                    defaultMessage: 'You\'re missing important message and call notifications from Mattermost. To start receiving notifications, please enable notifications for Mattermost in your browser settings.',
+                    defaultMessage: 'You\'re missing important message and call notifications from Aura. To start receiving notifications, please enable notifications for Aura in your browser settings.',
                 })}
                 tertiaryButton={{
                     text: intl.formatMessage({

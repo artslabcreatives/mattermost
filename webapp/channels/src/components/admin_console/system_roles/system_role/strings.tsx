@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import {defineMessages, type MessageDescriptor} from 'react-intl';
@@ -283,7 +283,7 @@ export const sectionStrings: Record<string, Record<string, MessageDescriptor>> =
         },
         description: {
             id: 'admin.permissions.sysconsole_section_authentication.description',
-            defaultMessage: 'Review the configuration around how users can signup and access Mattermost.',
+            defaultMessage: 'Review the configuration around how users can signup and access Aura.',
         },
     }),
     authentication_signup: defineMessages({

@@ -1,23 +1,23 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {shallow} from 'enzyme';
+import { shallow } from 'enzyme';
 import React from 'react';
 
 import PopoverBar from 'components/file_preview_modal/popover_bar/popover_bar';
 
 describe('components/file_preview_modal/popover_bar/PopoverBar', () => {
-    const defaultProps = {
-        showZoomControls: false,
-    };
+	const defaultProps = {
+		showZoomControls: false,
+	};
 
-    test('should match snapshot with zoom controls enabled', () => {
-        const props = {
-            ...defaultProps,
-            showZoomControls: true,
-        };
+	test('should match snapshot with zoom controls enabled', () => {
+		const props = {
+			...defaultProps,
+			showZoomControls: true,
+		};
 
-        const wrapper = shallow(<PopoverBar {...props}/>);
-        expect(wrapper).toMatchSnapshot();
-    });
+		const wrapper = shallow(<PopoverBar {...props} />);
+		expect(wrapper).toMatchSnapshot();
+	});
 });

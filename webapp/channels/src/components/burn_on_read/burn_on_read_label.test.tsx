@@ -1,90 +1,90 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
 
-import {renderWithContext, fireEvent, screen} from 'tests/react_testing_utils';
+import { renderWithContext, fireEvent, screen } from 'tests/react_testing_utils';
 
 import BurnOnReadLabel from './burn_on_read_label';
 
 describe('BurnOnReadLabel', () => {
-    const defaultProps = {
-        canRemove: true,
-        onRemove: jest.fn(),
-        durationMinutes: 10,
-    };
+	const defaultProps = {
+		canRemove: true,
+		onRemove: jest.fn(),
+		durationMinutes: 10,
+	};
 
-    beforeEach(() => {
-        jest.clearAllMocks();
-    });
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
 
-    it('should render correctly with duration', () => {
-        renderWithContext(
-            <BurnOnReadLabel {...defaultProps}/>,
-        );
+	it('should render correctly with duration', () => {
+		renderWithContext(
+			<BurnOnReadLabel {...defaultProps} />,
+		);
 
-        expect(screen.getByText(/BURN ON READ \(10m\)/i)).toBeInTheDocument();
-    });
+		expect(screen.getByText(/BURN ON READ \(10m\)/i)).toBeInTheDocument();
+	});
 
-    it('should display custom duration', () => {
-        renderWithContext(
-            <BurnOnReadLabel
-                {...defaultProps}
-                durationMinutes={15}
-            />,
-        );
+	it('should display custom duration', () => {
+		renderWithContext(
+			<BurnOnReadLabel
+				{...defaultProps}
+				durationMinutes={15}
+			/>,
+		);
 
-        expect(screen.getByText(/BURN ON READ \(15m\)/i)).toBeInTheDocument();
-    });
+		expect(screen.getByText(/BURN ON READ \(15m\)/i)).toBeInTheDocument();
+	});
 
-    it('should render close button when canRemove is true', () => {
-        renderWithContext(
-            <BurnOnReadLabel
-                {...defaultProps}
-                canRemove={true}
-            />,
-        );
+	it('should render close button when canRemove is true', () => {
+		renderWithContext(
+			<BurnOnReadLabel
+				{...defaultProps}
+				canRemove={true}
+			/>,
+		);
 
-        const closeButton = screen.getByRole('button');
-        expect(closeButton).toBeInTheDocument();
-        expect(closeButton).toHaveAttribute('aria-label', 'Remove burn-on-read');
-    });
+		const closeButton = screen.getByRole('button');
+		expect(closeButton).toBeInTheDocument();
+		expect(closeButton).toHaveAttribute('aria-label', 'Remove burn-on-read');
+	});
 
-    it('should not render close button when canRemove is false', () => {
-        renderWithContext(
-            <BurnOnReadLabel
-                {...defaultProps}
-                canRemove={false}
-            />,
-        );
+	it('should not render close button when canRemove is false', () => {
+		renderWithContext(
+			<BurnOnReadLabel
+				{...defaultProps}
+				canRemove={false}
+			/>,
+		);
 
-        const closeButton = screen.queryByRole('button');
-        expect(closeButton).not.toBeInTheDocument();
-    });
+		const closeButton = screen.queryByRole('button');
+		expect(closeButton).not.toBeInTheDocument();
+	});
 
-    it('should call onRemove when close button is clicked', () => {
-        const onRemove = jest.fn();
-        renderWithContext(
-            <BurnOnReadLabel
-                {...defaultProps}
-                onRemove={onRemove}
-            />,
-        );
+	it('should call onRemove when close button is clicked', () => {
+		const onRemove = jest.fn();
+		renderWithContext(
+			<BurnOnReadLabel
+				{...defaultProps}
+				onRemove={onRemove}
+			/>,
+		);
 
-        const closeButton = screen.getByRole('button');
-        fireEvent.click(closeButton);
+		const closeButton = screen.getByRole('button');
+		fireEvent.click(closeButton);
 
-        expect(onRemove).toHaveBeenCalledTimes(1);
-    });
+		expect(onRemove).toHaveBeenCalledTimes(1);
+	});
 
-    it('should have correct CSS classes', () => {
-        const {container} = renderWithContext(
-            <BurnOnReadLabel {...defaultProps}/>,
-        );
+	it('should have correct CSS classes', () => {
+		const { container } = renderWithContext(
+			<BurnOnReadLabel {...defaultProps} />,
+		);
 
-        expect(container.querySelector('.BurnOnReadLabel')).toBeInTheDocument();
-        expect(container.querySelector('.BurnOnReadLabel__badge')).toBeInTheDocument();
-        expect(container.querySelector('.BurnOnReadLabel__icon')).toBeInTheDocument();
-        expect(container.querySelector('.BurnOnReadLabel__text')).toBeInTheDocument();
-    });
+		expect(container.querySelector('.BurnOnReadLabel')).toBeInTheDocument();
+		expect(container.querySelector('.BurnOnReadLabel__badge')).toBeInTheDocument();
+		expect(container.querySelector('.BurnOnReadLabel__icon')).toBeInTheDocument();
+		expect(container.querySelector('.BurnOnReadLabel__text')).toBeInTheDocument();
+	});
 });

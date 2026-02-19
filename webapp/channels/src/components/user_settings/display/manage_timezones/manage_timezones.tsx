@@ -1,285 +1,285 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {FormattedMessage} from 'react-intl';
+import { FormattedMessage } from 'react-intl';
 import ReactSelect from 'react-select';
-import type {OnChangeValue, StylesConfig} from 'react-select';
-import type {Timezone} from 'timezones.json';
+import type { OnChangeValue, StylesConfig } from 'react-select';
+import type { Timezone } from 'timezones.json';
 
-import type {UserProfile} from '@mattermost/types/users';
+import type { UserProfile } from '@mattermost/types/users';
 
-import type {ActionResult} from 'mattermost-redux/types/actions';
-import {getTimezoneLabel} from 'mattermost-redux/utils/timezone_utils';
+import type { ActionResult } from 'mattermost-redux/types/actions';
+import { getTimezoneLabel } from 'mattermost-redux/utils/timezone_utils';
 
 import SettingItemMax from 'components/setting_item_max';
 
-import {getBrowserTimezone} from 'utils/timezone';
+import { getBrowserTimezone } from 'utils/timezone';
 
 type Actions = {
-    updateMe: (user: UserProfile) => Promise<ActionResult>;
-    patchUser: (user: UserProfile) => Promise<ActionResult>;
+	updateMe: (user: UserProfile) => Promise<ActionResult>;
+	patchUser: (user: UserProfile) => Promise<ActionResult>;
 }
 
 type Props = {
-    user: UserProfile;
-    updateSection: (section: string) => void;
-    useAutomaticTimezone: boolean;
-    automaticTimezone: string;
-    manualTimezone: string;
-    timezones: Timezone[];
-    timezoneLabel: string;
-    actions: Actions;
-    adminMode?: boolean;
+	user: UserProfile;
+	updateSection: (section: string) => void;
+	useAutomaticTimezone: boolean;
+	automaticTimezone: string;
+	manualTimezone: string;
+	timezones: Timezone[];
+	timezoneLabel: string;
+	actions: Actions;
+	adminMode?: boolean;
 }
 type SelectedOption = {
-    value: string;
-    label: string;
+	value: string;
+	label: string;
 }
 
 type State = {
-    useAutomaticTimezone: boolean;
-    automaticTimezone: string;
-    manualTimezone: string;
-    isSaving: boolean;
-    serverError?: string;
-    openMenu: boolean;
-    selectedOption: SelectedOption;
+	useAutomaticTimezone: boolean;
+	automaticTimezone: string;
+	manualTimezone: string;
+	isSaving: boolean;
+	serverError?: string;
+	openMenu: boolean;
+	selectedOption: SelectedOption;
 }
 
 export default class ManageTimezones extends React.PureComponent<Props, State> {
-    constructor(props: Props) {
-        super(props);
-        this.state = {
-            useAutomaticTimezone: props.useAutomaticTimezone,
-            automaticTimezone: props.automaticTimezone,
-            manualTimezone: props.manualTimezone,
-            isSaving: false,
-            openMenu: false,
-            selectedOption: {label: props.timezoneLabel, value: props.useAutomaticTimezone ? props.automaticTimezone : props.manualTimezone},
-        };
-    }
+	constructor(props: Props) {
+		super(props);
+		this.state = {
+			useAutomaticTimezone: props.useAutomaticTimezone,
+			automaticTimezone: props.automaticTimezone,
+			manualTimezone: props.manualTimezone,
+			isSaving: false,
+			openMenu: false,
+			selectedOption: { label: props.timezoneLabel, value: props.useAutomaticTimezone ? props.automaticTimezone : props.manualTimezone },
+		};
+	}
 
-    onChange = (selectedOption: OnChangeValue<SelectedOption, boolean>) => {
-        if (selectedOption && 'value' in selectedOption) {
-            this.setState({
-                manualTimezone: selectedOption.value,
-                selectedOption,
-            });
-        }
-    };
+	onChange = (selectedOption: OnChangeValue<SelectedOption, boolean>) => {
+		if (selectedOption && 'value' in selectedOption) {
+			this.setState({
+				manualTimezone: selectedOption.value,
+				selectedOption,
+			});
+		}
+	};
 
-    timezoneNotChanged = () => {
-        const {
-            useAutomaticTimezone,
-            automaticTimezone,
-            manualTimezone,
-        } = this.state;
+	timezoneNotChanged = () => {
+		const {
+			useAutomaticTimezone,
+			automaticTimezone,
+			manualTimezone,
+		} = this.state;
 
-        const {
-            useAutomaticTimezone: oldUseAutomaticTimezone,
-            automaticTimezone: oldAutomaticTimezone,
-            manualTimezone: oldManualTimezone,
-        } = this.props;
+		const {
+			useAutomaticTimezone: oldUseAutomaticTimezone,
+			automaticTimezone: oldAutomaticTimezone,
+			manualTimezone: oldManualTimezone,
+		} = this.props;
 
-        return (
-            useAutomaticTimezone === oldUseAutomaticTimezone &&
-            automaticTimezone === oldAutomaticTimezone &&
-            manualTimezone === oldManualTimezone
-        );
-    };
+		return (
+			useAutomaticTimezone === oldUseAutomaticTimezone &&
+			automaticTimezone === oldAutomaticTimezone &&
+			manualTimezone === oldManualTimezone
+		);
+	};
 
-    changeTimezone = () => {
-        if (this.timezoneNotChanged()) {
-            this.props.updateSection('');
-            return;
-        }
+	changeTimezone = () => {
+		if (this.timezoneNotChanged()) {
+			this.props.updateSection('');
+			return;
+		}
 
-        this.submitUser();
-    };
+		this.submitUser();
+	};
 
-    submitUser = () => {
-        const {user} = this.props;
-        const {useAutomaticTimezone, automaticTimezone, manualTimezone} = this.state;
+	submitUser = () => {
+		const { user } = this.props;
+		const { useAutomaticTimezone, automaticTimezone, manualTimezone } = this.state;
 
-        const timezone = {
-            useAutomaticTimezone: useAutomaticTimezone.toString(),
-            automaticTimezone,
-            manualTimezone,
-        };
+		const timezone = {
+			useAutomaticTimezone: useAutomaticTimezone.toString(),
+			automaticTimezone,
+			manualTimezone,
+		};
 
-        const updatedUser = {
-            ...user,
-            timezone,
-        };
+		const updatedUser = {
+			...user,
+			timezone,
+		};
 
-        const action = this.props.adminMode ? this.props.actions.patchUser : this.props.actions.updateMe;
-        action(updatedUser).
-            then((res) => {
-                if ('data' in res) {
-                    this.props.updateSection('');
-                } else if ('error' in res) {
-                    const {error} = res;
-                    let serverError;
-                    if (error instanceof Error) {
-                        serverError = error.message;
-                    } else {
-                        serverError = error as string;
-                    }
-                    this.setState({serverError, isSaving: false});
-                }
-            });
-    };
+		const action = this.props.adminMode ? this.props.actions.patchUser : this.props.actions.updateMe;
+		action(updatedUser).
+			then((res) => {
+				if ('data' in res) {
+					this.props.updateSection('');
+				} else if ('error' in res) {
+					const { error } = res;
+					let serverError;
+					if (error instanceof Error) {
+						serverError = error.message;
+					} else {
+						serverError = error as string;
+					}
+					this.setState({ serverError, isSaving: false });
+				}
+			});
+	};
 
-    handleAutomaticTimezone = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const useAutomaticTimezone = e.target.checked;
-        let automaticTimezone = '';
-        let timezoneLabel: string;
-        let selectedOptionValue: string;
+	handleAutomaticTimezone = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const useAutomaticTimezone = e.target.checked;
+		let automaticTimezone = '';
+		let timezoneLabel: string;
+		let selectedOptionValue: string;
 
-        if (useAutomaticTimezone) {
-            automaticTimezone = getBrowserTimezone();
-            timezoneLabel = getTimezoneLabel(this.props.timezones, automaticTimezone);
-            selectedOptionValue = automaticTimezone;
-        } else {
-            timezoneLabel = getTimezoneLabel(this.props.timezones, getBrowserTimezone());
-            selectedOptionValue = getBrowserTimezone();
-            this.setState({
-                manualTimezone: getBrowserTimezone(),
-            });
-        }
+		if (useAutomaticTimezone) {
+			automaticTimezone = getBrowserTimezone();
+			timezoneLabel = getTimezoneLabel(this.props.timezones, automaticTimezone);
+			selectedOptionValue = automaticTimezone;
+		} else {
+			timezoneLabel = getTimezoneLabel(this.props.timezones, getBrowserTimezone());
+			selectedOptionValue = getBrowserTimezone();
+			this.setState({
+				manualTimezone: getBrowserTimezone(),
+			});
+		}
 
-        this.setState({
-            useAutomaticTimezone,
-            automaticTimezone,
-            selectedOption: {label: timezoneLabel, value: selectedOptionValue},
-        });
-    };
+		this.setState({
+			useAutomaticTimezone,
+			automaticTimezone,
+			selectedOption: { label: timezoneLabel, value: selectedOptionValue },
+		});
+	};
 
-    render() {
-        const {timezones} = this.props;
-        const {useAutomaticTimezone} = this.state;
+	render() {
+		const { timezones } = this.props;
+		const { useAutomaticTimezone } = this.state;
 
-        let index = 0;
-        let previousTimezone: Timezone;
+		let index = 0;
+		let previousTimezone: Timezone;
 
-        const timeOptions = this.props.timezones.map((timeObject) => {
-            if (timeObject.utc[index] === previousTimezone?.utc[index]) {
-                index++;
-            } else {
-                // It's safe to use the first item since consecutive timezones
-                // don't have the same 'utc' array.
-                index = index === 0 ? index : 0;
-            }
+		const timeOptions = this.props.timezones.map((timeObject) => {
+			if (timeObject.utc[index] === previousTimezone?.utc[index]) {
+				index++;
+			} else {
+				// It's safe to use the first item since consecutive timezones
+				// don't have the same 'utc' array.
+				index = index === 0 ? index : 0;
+			}
 
-            previousTimezone = timeObject;
+			previousTimezone = timeObject;
 
-            // Some more context on why different 'utc' items are used can be found here.
-            // https://github.com/mattermost/mattermost/pull/29290#issuecomment-2478492626
-            return {
-                value: timeObject.utc[index],
-                label: timeObject.text,
-            };
-        });
+			// Some more context on why different 'utc' items are used can be found here.
+			// https://github.com/mattermost/mattermost/pull/29290#issuecomment-2478492626
+			return {
+				value: timeObject.utc[index],
+				label: timeObject.text,
+			};
+		});
 
-        let serverError;
-        if (this.state.serverError) {
-            serverError = <label className='has-error'>{this.state.serverError}</label>;
-        }
+		let serverError;
+		if (this.state.serverError) {
+			serverError = <label className='has-error'>{this.state.serverError}</label>;
+		}
 
-        const inputs = [];
+		const inputs = [];
 
-        // These are passed to the 'key' prop and should all be unique.
-        const inputId = {
-            automaticTimezoneInput: 1,
-            manualTimezoneInput: 2,
-            message: 3,
-        };
+		// These are passed to the 'key' prop and should all be unique.
+		const inputId = {
+			automaticTimezoneInput: 1,
+			manualTimezoneInput: 2,
+			message: 3,
+		};
 
-        const reactStyles = {
+		const reactStyles = {
 
-            menuPortal: (provided) => ({
-                ...provided,
-                zIndex: 9999,
-            }),
+			menuPortal: (provided) => ({
+				...provided,
+				zIndex: 9999,
+			}),
 
-        } satisfies StylesConfig<SelectedOption, boolean>;
+		} satisfies StylesConfig<SelectedOption, boolean>;
 
-        const noTimezonesFromServer = timezones.length === 0;
-        const automaticTimezoneInput = (
-            <div
-                className='checkbox'
-                key={inputId.automaticTimezoneInput}
-            >
-                <label>
-                    <input
-                        id='automaticTimezoneInput'
-                        type='checkbox'
-                        checked={useAutomaticTimezone}
-                        onChange={this.handleAutomaticTimezone}
-                        disabled={noTimezonesFromServer}
-                    />
-                    <FormattedMessage
-                        id='user.settings.timezones.automatic'
-                        defaultMessage='Automatic'
-                    />
+		const noTimezonesFromServer = timezones.length === 0;
+		const automaticTimezoneInput = (
+			<div
+				className='checkbox'
+				key={inputId.automaticTimezoneInput}
+			>
+				<label>
+					<input
+						id='automaticTimezoneInput'
+						type='checkbox'
+						checked={useAutomaticTimezone}
+						onChange={this.handleAutomaticTimezone}
+						disabled={noTimezonesFromServer}
+					/>
+					<FormattedMessage
+						id='user.settings.timezones.automatic'
+						defaultMessage='Automatic'
+					/>
 
-                </label>
-            </div>
-        );
+				</label>
+			</div>
+		);
 
-        const manualTimezoneInput = (
-            <div
-                className='pt-2'
-                key={inputId.manualTimezoneInput}
-            >
-                <ReactSelect
-                    className='react-select react-select-top'
-                    classNamePrefix='react-select'
-                    id='displayTimezone'
-                    menuPortalTarget={document.body}
-                    styles={reactStyles}
-                    options={timeOptions}
-                    isClearable={false}
-                    onChange={this.onChange}
-                    value={this.state.selectedOption}
-                    aria-labelledby='changeInterfaceTimezoneLabel'
-                    isDisabled={useAutomaticTimezone}
-                />
-                {serverError}
-            </div>
-        );
+		const manualTimezoneInput = (
+			<div
+				className='pt-2'
+				key={inputId.manualTimezoneInput}
+			>
+				<ReactSelect
+					className='react-select react-select-top'
+					classNamePrefix='react-select'
+					id='displayTimezone'
+					menuPortalTarget={document.body}
+					styles={reactStyles}
+					options={timeOptions}
+					isClearable={false}
+					onChange={this.onChange}
+					value={this.state.selectedOption}
+					aria-labelledby='changeInterfaceTimezoneLabel'
+					isDisabled={useAutomaticTimezone}
+				/>
+				{serverError}
+			</div>
+		);
 
-        inputs.push(automaticTimezoneInput);
+		inputs.push(automaticTimezoneInput);
 
-        inputs.push(manualTimezoneInput);
+		inputs.push(manualTimezoneInput);
 
-        inputs.push(
-            <div key={inputId.message}>
-                <br/>
-                <FormattedMessage
-                    id='user.settings.timezones.promote'
-                    defaultMessage='Select the timezone used for timestamps in the user interface and email notifications.'
-                />
-            </div>,
-        );
+		inputs.push(
+			<div key={inputId.message}>
+				<br />
+				<FormattedMessage
+					id='user.settings.timezones.promote'
+					defaultMessage='Select the timezone used for timestamps in the user interface and email notifications.'
+				/>
+			</div>,
+		);
 
-        return (
-            <SettingItemMax
-                title={
-                    <FormattedMessage
-                        id='user.settings.display.timezone'
-                        defaultMessage='Timezone'
-                    />
-                }
-                containerStyle='timezone-container'
-                submit={this.changeTimezone}
-                saving={this.state.isSaving}
-                inputs={inputs}
-                updateSection={this.props.updateSection}
-                disableEnterSubmit={true}
-            />
-        );
-    }
+		return (
+			<SettingItemMax
+				title={
+					<FormattedMessage
+						id='user.settings.display.timezone'
+						defaultMessage='Timezone'
+					/>
+				}
+				containerStyle='timezone-container'
+				submit={this.changeTimezone}
+				saving={this.state.isSaving}
+				inputs={inputs}
+				updateSection={this.props.updateSection}
+				disableEnterSubmit={true}
+			/>
+		);
+	}
 }
 
