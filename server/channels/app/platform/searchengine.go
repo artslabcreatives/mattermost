@@ -17,6 +17,15 @@ func (ps *PlatformService) StartSearchEngine() (string, string) {
 		})
 	}
 
+	// Start Typesense if enabled
+	if ps.SearchEngine.TypesenseEngine != nil && ps.SearchEngine.TypesenseEngine.IsEnabled() {
+		ps.Go(func() {
+			if err := ps.SearchEngine.TypesenseEngine.Start(); err != nil {
+				ps.Log().Error(err.Error())
+			}
+		})
+	}
+
 	configListenerId := ps.AddConfigListener(func(oldConfig *model.Config, newConfig *model.Config) {
 		if ps.SearchEngine == nil {
 			return
@@ -50,6 +59,32 @@ func (ps *PlatformService) StartSearchEngine() (string, string) {
 				}
 			})
 		}
+
+		// Typesense configuration changes
+		if ps.SearchEngine.TypesenseEngine != nil && !*oldConfig.TypesenseSettings.EnableIndexing && *newConfig.TypesenseSettings.EnableIndexing {
+			ps.Go(func() {
+				if err := ps.SearchEngine.TypesenseEngine.Start(); err != nil {
+					ps.Log().Error(err.Error())
+				}
+			})
+		} else if ps.SearchEngine.TypesenseEngine != nil && *oldConfig.TypesenseSettings.EnableIndexing && !*newConfig.TypesenseSettings.EnableIndexing {
+			ps.Go(func() {
+				if err := ps.SearchEngine.TypesenseEngine.Stop(); err != nil {
+					ps.Log().Error(err.Error())
+				}
+			})
+		} else if ps.SearchEngine.TypesenseEngine != nil && (*oldConfig.TypesenseSettings.APIKey != *newConfig.TypesenseSettings.APIKey || *oldConfig.TypesenseSettings.ConnectionURL != *newConfig.TypesenseSettings.ConnectionURL) {
+			ps.Go(func() {
+				if *oldConfig.TypesenseSettings.EnableIndexing {
+					if err := ps.SearchEngine.TypesenseEngine.Stop(); err != nil {
+						ps.Log().Error(err.Error())
+					}
+					if err := ps.SearchEngine.TypesenseEngine.Start(); err != nil {
+						ps.Log().Error(err.Error())
+					}
+				}
+			})
+		}
 	})
 
 	licenseListenerId := ps.AddLicenseListener(func(oldLicense, newLicense *model.License) {
@@ -64,10 +99,24 @@ func (ps *PlatformService) StartSearchEngine() (string, string) {
 					}
 				})
 			}
+			if ps.SearchEngine.TypesenseEngine != nil && ps.SearchEngine.TypesenseEngine.IsActive() {
+				ps.Go(func() {
+					if err := ps.SearchEngine.TypesenseEngine.Start(); err != nil {
+						ps.Log().Error(err.Error())
+					}
+				})
+			}
 		} else if oldLicense != nil && newLicense == nil {
 			if ps.SearchEngine.ElasticsearchEngine != nil {
 				ps.Go(func() {
 					if err := ps.SearchEngine.ElasticsearchEngine.Stop(); err != nil {
+						ps.Log().Error(err.Error())
+					}
+				})
+			}
+			if ps.SearchEngine.TypesenseEngine != nil {
+				ps.Go(func() {
+					if err := ps.SearchEngine.TypesenseEngine.Stop(); err != nil {
 						ps.Log().Error(err.Error())
 					}
 				})
@@ -84,6 +133,11 @@ func (ps *PlatformService) StopSearchEngine() {
 	if ps.SearchEngine != nil && ps.SearchEngine.ElasticsearchEngine != nil && ps.SearchEngine.ElasticsearchEngine.IsActive() {
 		if err := ps.SearchEngine.ElasticsearchEngine.Stop(); err != nil {
 			ps.Log().Error("Failed to stop Elasticsearch engine", mlog.Err(err))
+		}
+	}
+	if ps.SearchEngine != nil && ps.SearchEngine.TypesenseEngine != nil && ps.SearchEngine.TypesenseEngine.IsActive() {
+		if err := ps.SearchEngine.TypesenseEngine.Stop(); err != nil {
+			ps.Log().Error("Failed to stop Typesense engine", mlog.Err(err))
 		}
 	}
 }
