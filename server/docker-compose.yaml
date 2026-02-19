@@ -45,6 +45,13 @@ services:
     extends:
         file: build/docker-compose.common.yml
         service: opensearch
+  typesense:
+    container_name: mattermost-typesense
+    ports:
+      - "8108:8108"
+    extends:
+        file: build/docker-compose.common.yml
+        service: typesense
   redis:
     container_name: mattermost-redis
     ports:
@@ -106,11 +113,12 @@ services:
       - openldap
       - elasticsearch
       - opensearch
+      - typesense
       - prometheus
       - grafana
       - loki
       - promtail
-    command: postgres:5432 minio:9000 inbucket:9001 openldap:389 elasticsearch:9200 opensearch:9201 prometheus:9090 grafana:3000 loki:3100 promtail:3180
+    command: postgres:5432 minio:9000 inbucket:9001 openldap:389 elasticsearch:9200 opensearch:9201 typesense:8108 prometheus:9090 grafana:3000 loki:3100 promtail:3180
 
   leader:
     build:

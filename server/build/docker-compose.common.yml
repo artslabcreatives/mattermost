@@ -82,6 +82,20 @@ services:
     image: "redis:7.4.0"
     networks:
       - mm-test
+  typesense:
+    image: "typesense/typesense:26.0"
+    command: '--data-dir /data --api-key=xyz --enable-cors'
+    networks:
+      - mm-test
+    environment:
+      TYPESENSE_API_KEY: xyz
+    volumes:
+      - typesense-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8108/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
   dejavu:
     image: "appbaseio/dejavu:3.4.2"
     networks:
@@ -132,3 +146,6 @@ services:
     command: -config.file=/etc/promtail/docker-config.yaml
     networks:
       - mm-test
+
+volumes:
+  typesense-data:
