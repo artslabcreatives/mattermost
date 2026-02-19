@@ -413,6 +413,24 @@ func (a *App) createUserOrGuest(rctx request.CTX, user *model.User, guest bool) 
 		}, plugin.UserHasBeenCreatedID)
 	})
 
+	// Index user in search engines
+	a.Srv().Go(func() {
+		if searchEngine := a.Srv().Platform().SearchEngine; searchEngine != nil {
+			for _, engine := range searchEngine.GetActiveEngines() {
+				if engine.IsIndexingEnabled() {
+					// For new users, they may not be in teams/channels yet
+					// These will be indexed when they join teams/channels
+					if err := engine.IndexUser(rctx, ruser, []string{}, []string{}); err != nil {
+						rctx.Logger().Error("Failed to index user in search engine",
+							mlog.String("user_id", ruser.Id),
+							mlog.String("engine", engine.GetName()),
+							mlog.Err(err))
+					}
+				}
+			}
+		}
+	})
+
 	userLimits, limitErr := a.GetServerLimits()
 	if limitErr != nil {
 		// we don't want to break the create user flow just because of this.
@@ -1547,6 +1565,36 @@ func (a *App) UpdateUser(rctx request.CTX, user *model.User, sendNotifications b
 	if newUser.Locale != userUpdate.Old.Locale {
 		a.Srv().Store().AutoTranslation().InvalidateUserLocaleCache(user.Id)
 	}
+
+	// Re-index updated user in search engines
+	a.Srv().Go(func() {
+		if searchEngine := a.Srv().Platform().SearchEngine; searchEngine != nil {
+			for _, engine := range searchEngine.GetActiveEngines() {
+				if engine.IsIndexingEnabled() {
+					// Get user's teams and channels for indexing
+					teamIds := []string{}
+					if teams, err := a.GetTeamsForUser(newUser.Id); err == nil {
+						for _, team := range teams {
+							teamIds = append(teamIds, team.Id)
+						}
+					}
+					channelIds := []string{}
+					if channels, err := a.GetChannelsForUser(rctx, newUser.Id, false, 0, 10000, ""); err == nil {
+						for _, channel := range channels {
+							channelIds = append(channelIds, channel.Id)
+						}
+					}
+					
+					if err := engine.IndexUser(rctx, newUser, teamIds, channelIds); err != nil {
+						rctx.Logger().Error("Failed to re-index updated user in search engine",
+							mlog.String("user_id", newUser.Id),
+							mlog.String("engine", engine.GetName()),
+							mlog.Err(err))
+					}
+				}
+			}
+		}
+	})
 
 	newUser.Sanitize(map[string]bool{})
 

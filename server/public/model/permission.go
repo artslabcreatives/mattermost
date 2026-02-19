@@ -151,6 +151,9 @@ var PermissionReadElasticsearchPostAggregationJob *Permission
 var PermissionPurgeBleveIndexes *Permission
 var PermissionCreatePostBleveIndexesJob *Permission
 var PermissionManagePostBleveIndexesJob *Permission
+var PermissionCreateTypesensePostIndexingJob *Permission
+var PermissionManageTypesensePostIndexingJob *Permission
+var PermissionReadTypesensePostIndexingJob *Permission
 var PermissionCreateLdapSyncJob *Permission
 var PermissionManageLdapSyncJob *Permission
 var PermissionReadLdapSyncJob *Permission
@@ -1127,6 +1130,25 @@ func initializePermissions() {
 	}
 	PermissionReadElasticsearchPostAggregationJob = &Permission{
 		"read_elasticsearch_post_aggregation_job",
+		"",
+		"",
+		PermissionScopeSystem,
+	}
+
+	PermissionCreateTypesensePostIndexingJob = &Permission{
+		"create_typesense_post_indexing_job",
+		"",
+		"",
+		PermissionScopeSystem,
+	}
+	PermissionManageTypesensePostIndexingJob = &Permission{
+		"manage_typesense_post_indexing_job",
+		"",
+		"",
+		PermissionScopeSystem,
+	}
+	PermissionReadTypesensePostIndexingJob = &Permission{
+		"read_typesense_post_indexing_job",
 		"",
 		"",
 		PermissionScopeSystem,
@@ -2486,6 +2508,9 @@ func initializePermissions() {
 		PermissionManageElasticsearchPostAggregationJob,
 		PermissionReadElasticsearchPostIndexingJob,
 		PermissionReadElasticsearchPostAggregationJob,
+		PermissionCreateTypesensePostIndexingJob,
+		PermissionManageTypesensePostIndexingJob,
+		PermissionReadTypesensePostIndexingJob,
 		PermissionCreateLdapSyncJob,
 		PermissionManageLdapSyncJob,
 		PermissionReadLdapSyncJob,

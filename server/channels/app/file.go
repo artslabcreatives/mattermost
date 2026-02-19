@@ -865,6 +865,22 @@ func (a *App) UploadFileX(rctx request.CTX, channelID, name string, input io.Rea
 		})
 	}
 
+	// Index file in search engines
+	a.Srv().Go(func() {
+		if searchEngine := a.Srv().Platform().SearchEngine; searchEngine != nil {
+			for _, engine := range searchEngine.GetActiveEngines() {
+				if engine.IsIndexingEnabled() {
+					if err := engine.IndexFile(t.fileinfo, t.ChannelId); err != nil {
+						rctx.Logger().Error("Failed to index file in search engine",
+							mlog.String("file_id", t.fileinfo.Id),
+							mlog.String("engine", engine.GetName()),
+							mlog.Err(err))
+					}
+				}
+			}
+		}
+	})
+
 	return t.fileinfo, nil
 }
 

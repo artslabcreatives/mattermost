@@ -50,6 +50,12 @@ func RegisterJobsElasticsearchIndexerInterface(f func(*Server) ejobs.IndexerJobI
 	jobsElasticsearchIndexerInterface = f
 }
 
+var jobsTypesenseIndexerInterface func(*Server) ejobs.TypesenseIndexerInterface
+
+func RegisterJobsTypesenseIndexerInterface(f func(*Server) ejobs.TypesenseIndexerInterface) {
+	jobsTypesenseIndexerInterface = f
+}
+
 var jobsLdapSyncInterface func(*App) ejobs.LdapSyncInterface
 
 func RegisterJobsLdapSyncInterface(f func(*App) ejobs.LdapSyncInterface) {

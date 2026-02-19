@@ -146,6 +146,8 @@ func (a *App) SessionHasPermissionToCreateJob(session model.Session, job *model.
 		return a.SessionHasPermissionTo(session, model.PermissionCreateElasticsearchPostIndexingJob), model.PermissionCreateElasticsearchPostIndexingJob
 	case model.JobTypeElasticsearchPostAggregation:
 		return a.SessionHasPermissionTo(session, model.PermissionCreateElasticsearchPostAggregationJob), model.PermissionCreateElasticsearchPostAggregationJob
+	case model.JobTypeTypesensePostIndexing:
+		return a.SessionHasPermissionTo(session, model.PermissionCreateTypesensePostIndexingJob), model.PermissionCreateTypesensePostIndexingJob
 	case model.JobTypeLdapSync:
 		return a.SessionHasPermissionTo(session, model.PermissionCreateLdapSyncJob), model.PermissionCreateLdapSyncJob
 	case
@@ -197,6 +199,8 @@ func (a *App) SessionHasPermissionToManageJob(session model.Session, job *model.
 		permission = model.PermissionManageElasticsearchPostIndexingJob
 	case model.JobTypeElasticsearchPostAggregation:
 		permission = model.PermissionManageElasticsearchPostAggregationJob
+	case model.JobTypeTypesensePostIndexing:
+		permission = model.PermissionManageTypesensePostIndexingJob
 	case model.JobTypeLdapSync:
 		permission = model.PermissionManageLdapSyncJob
 	case
@@ -233,6 +237,8 @@ func (a *App) SessionHasPermissionToReadJob(session model.Session, jobType strin
 		return a.SessionHasPermissionTo(session, model.PermissionReadElasticsearchPostIndexingJob), model.PermissionReadElasticsearchPostIndexingJob
 	case model.JobTypeElasticsearchPostAggregation:
 		return a.SessionHasPermissionTo(session, model.PermissionReadElasticsearchPostAggregationJob), model.PermissionReadElasticsearchPostAggregationJob
+	case model.JobTypeTypesensePostIndexing:
+		return a.SessionHasPermissionTo(session, model.PermissionReadTypesensePostIndexingJob), model.PermissionReadTypesensePostIndexingJob
 	case model.JobTypeLdapSync:
 		return a.SessionHasPermissionTo(session, model.PermissionReadLdapSyncJob), model.PermissionReadLdapSyncJob
 	case

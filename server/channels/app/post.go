@@ -398,6 +398,22 @@ func (a *App) CreatePost(rctx request.CTX, post *model.Post, channel *model.Chan
 		})
 	}
 
+	// Index post in search engines (Elasticsearch, Typesense, etc.)
+	a.Srv().Go(func() {
+		if searchEngine := a.Srv().Platform().SearchEngine; searchEngine != nil {
+			for _, engine := range searchEngine.GetActiveEngines() {
+				if engine.IsIndexingEnabled() {
+					if err := engine.IndexPost(rpost, channel.TeamId); err != nil {
+						rctx.Logger().Error("Failed to index post in search engine",
+							mlog.String("post_id", rpost.Id),
+							mlog.String("engine", engine.GetName()),
+							mlog.Err(err))
+					}
+				}
+			}
+		}
+	})
+
 	// Normally, we would let the API layer call PreparePostForClient, but we do it here since it also needs
 	// to be done when we send the post over the websocket in handlePostEvents
 	// PS: we don't want to include PostPriority from the db to avoid the replica lag,
@@ -860,6 +876,22 @@ func (a *App) UpdatePost(rctx request.CTX, receivedUpdatedPost *model.Post, upda
 			}, plugin.MessageHasBeenUpdatedID)
 		})
 	}
+
+	// Re-index updated post in search engines
+	a.Srv().Go(func() {
+		if searchEngine := a.Srv().Platform().SearchEngine; searchEngine != nil {
+			for _, engine := range searchEngine.GetActiveEngines() {
+				if engine.IsIndexingEnabled() {
+					if err := engine.IndexPost(rpost, channel.TeamId); err != nil {
+						rctx.Logger().Error("Failed to re-index updated post in search engine",
+							mlog.String("post_id", rpost.Id),
+							mlog.String("engine", engine.GetName()),
+							mlog.Err(err))
+					}
+				}
+			}
+		}
+	})
 
 	rpost = a.PreparePostForClientWithEmbedsAndImages(rctx, rpost, &model.PreparePostForClientOpts{IsEditPost: true, IncludePriority: true})
 

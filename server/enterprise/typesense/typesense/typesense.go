@@ -129,16 +129,19 @@ func (ts *TypesenseInterfaceImpl) GetPlugins() []string {
 }
 
 func (ts *TypesenseInterfaceImpl) createCollections(ctx context.Context) *model.AppError {
+	// Helper for creating bool pointers
+	truePtr := func() *bool { b := true; return &b }()
+	
 	// Create posts collection
 	postsSchema := &api.CollectionSchema{
 		Name: common.IndexBasePosts,
 		Fields: []api.Field{
 			{Name: "id", Type: "string"},
-			{Name: "team_id", Type: "string", Facet: true},
-			{Name: "channel_id", Type: "string", Facet: true},
-			{Name: "user_id", Type: "string", Facet: true},
+			{Name: "team_id", Type: "string", Facet: truePtr},
+			{Name: "channel_id", Type: "string", Facet: truePtr},
+			{Name: "user_id", Type: "string", Facet: truePtr},
 			{Name: "message", Type: "string"},
-			{Name: "hashtags", Type: "string[]", Optional: true},
+			{Name: "hashtags", Type: "string[]", Optional: truePtr},
 			{Name: "create_at", Type: "int64"},
 			{Name: "update_at", Type: "int64"},
 			{Name: "delete_at", Type: "int64"},
@@ -155,12 +158,12 @@ func (ts *TypesenseInterfaceImpl) createCollections(ctx context.Context) *model.
 		Name: common.IndexBaseChannels,
 		Fields: []api.Field{
 			{Name: "id", Type: "string"},
-			{Name: "team_id", Type: "string", Facet: true},
+			{Name: "team_id", Type: "string", Facet: truePtr},
 			{Name: "name", Type: "string"},
 			{Name: "display_name", Type: "string"},
-			{Name: "purpose", Type: "string", Optional: true},
-			{Name: "header", Type: "string", Optional: true},
-			{Name: "type", Type: "string", Facet: true},
+			{Name: "purpose", Type: "string", Optional: truePtr},
+			{Name: "header", Type: "string", Optional: truePtr},
+			{Name: "type", Type: "string", Facet: truePtr},
 			{Name: "create_at", Type: "int64"},
 			{Name: "update_at", Type: "int64"},
 			{Name: "delete_at", Type: "int64"},
@@ -177,12 +180,12 @@ func (ts *TypesenseInterfaceImpl) createCollections(ctx context.Context) *model.
 		Fields: []api.Field{
 			{Name: "id", Type: "string"},
 			{Name: "username", Type: "string"},
-			{Name: "first_name", Type: "string", Optional: true},
-			{Name: "last_name", Type: "string", Optional: true},
-			{Name: "nickname", Type: "string", Optional: true},
+			{Name: "first_name", Type: "string", Optional: truePtr},
+			{Name: "last_name", Type: "string", Optional: truePtr},
+			{Name: "nickname", Type: "string", Optional: truePtr},
 			{Name: "email", Type: "string"},
-			{Name: "teams", Type: "string[]", Optional: true},
-			{Name: "channels", Type: "string[]", Optional: true},
+			{Name: "teams", Type: "string[]", Optional: truePtr},
+			{Name: "channels", Type: "string[]", Optional: truePtr},
 			{Name: "create_at", Type: "int64"},
 			{Name: "update_at", Type: "int64"},
 			{Name: "delete_at", Type: "int64"},
@@ -198,11 +201,11 @@ func (ts *TypesenseInterfaceImpl) createCollections(ctx context.Context) *model.
 		Name: common.IndexBaseFiles,
 		Fields: []api.Field{
 			{Name: "id", Type: "string"},
-			{Name: "channel_id", Type: "string", Facet: true},
-			{Name: "user_id", Type: "string", Facet: true},
+			{Name: "channel_id", Type: "string", Facet: truePtr},
+			{Name: "user_id", Type: "string", Facet: truePtr},
 			{Name: "name", Type: "string"},
-			{Name: "extension", Type: "string", Facet: true},
-			{Name: "content", Type: "string", Optional: true},
+			{Name: "extension", Type: "string", Facet: truePtr},
+			{Name: "content", Type: "string", Optional: truePtr},
 			{Name: "create_at", Type: "int64"},
 			{Name: "update_at", Type: "int64"},
 			{Name: "delete_at", Type: "int64"},
@@ -230,7 +233,7 @@ func (ts *TypesenseInterfaceImpl) IndexPost(post *model.Post, teamID string) *mo
 		"channel_id": post.ChannelId,
 		"user_id":    post.UserId,
 		"message":    post.Message,
-		"hashtags":   post.Hashtags(),
+		"hashtags":   post.Hashtags,
 		"create_at":  post.CreateAt,
 		"update_at":  post.UpdateAt,
 		"delete_at":  post.DeleteAt,
@@ -277,7 +280,7 @@ func (ts *TypesenseInterfaceImpl) SearchPosts(channels model.ChannelList, search
 		filterBy = "delete_at:=0"
 	}
 
-	searchParams := &api.SearchCollectionParams{
+	tsSearchParams := &api.SearchCollectionParams{
 		Q:        query,
 		QueryBy:  "message",
 		FilterBy: &filterBy,
@@ -286,7 +289,7 @@ func (ts *TypesenseInterfaceImpl) SearchPosts(channels model.ChannelList, search
 		SortBy:   stringPtr("create_at:desc"),
 	}
 
-	searchResult, err := ts.client.Collection(common.IndexBasePosts).Documents().Search(ctx, searchParams)
+	searchResult, err := ts.client.Collection(common.IndexBasePosts).Documents().Search(ctx, tsSearchParams)
 	if err != nil {
 		return []string{}, nil, model.NewAppError("Typesense.SearchPosts", "ent.typesense.search_posts.error", nil, err.Error(), 500)
 	}
@@ -333,6 +336,110 @@ func (ts *TypesenseInterfaceImpl) DeleteChannelPosts(rctx request.CTX, channelID
 		return model.NewAppError("Typesense.DeleteChannelPosts", "ent.typesense.delete_channel_posts.error", nil, err.Error(), 500)
 	}
 
+	return nil
+}
+
+// SyncBulkIndexPosts bulk indexes posts
+func (ts *TypesenseInterfaceImpl) SyncBulkIndexPosts(posts []*model.PostForIndexing) *model.AppError {
+	if atomic.LoadInt32(&ts.ready) == 0 {
+		return model.NewAppError("Typesense.SyncBulkIndexPosts", "ent.typesense.not_started", nil, "", 500)
+	}
+
+	ctx := context.Background()
+	
+	for _, post := range posts {
+		if post.Type == model.PostTypeBurnOnRead {
+			continue
+		}
+
+		if post.DeleteAt == 0 {
+			document := map[string]interface{}{
+				"id":         post.Id,
+				"team_id":    post.TeamId,
+				"channel_id": post.ChannelId,
+				"user_id":    post.UserId,
+				"message":    post.Message,
+				"hashtags":   post.Hashtags,
+				"create_at":  post.CreateAt,
+				"update_at":  post.UpdateAt,
+				"delete_at":  post.DeleteAt,
+			}
+
+			if _, err := ts.client.Collection(common.IndexBasePosts).Documents().Upsert(ctx, document); err != nil {
+				mlog.Warn("Error indexing post in bulk", mlog.String("post_id", post.Id), mlog.Err(err))
+			}
+		} else {
+			if _, err := ts.client.Collection(common.IndexBasePosts).Document(post.Id).Delete(ctx); err != nil {
+				mlog.Debug("Error deleting post in bulk", mlog.String("post_id", post.Id), mlog.Err(err))
+			}
+		}
+	}
+	
+	return nil
+}
+
+// SyncBulkIndexUsers bulk indexes users
+func (ts *TypesenseInterfaceImpl) SyncBulkIndexUsers(users []*model.UserForIndexing) *model.AppError {
+	if atomic.LoadInt32(&ts.ready) == 0 {
+		return model.NewAppError("Typesense.SyncBulkIndexUsers", "ent.typesense.not_started", nil, "", 500)
+	}
+
+	ctx := context.Background()
+	
+	for _, user := range users {
+		document := map[string]interface{}{
+			"id":         user.Id,
+			"username":   user.Username,
+			"first_name": user.FirstName,
+			"last_name":  user.LastName,
+			"nickname":   user.Nickname,
+			"roles":      user.Roles,
+			"teams":      user.TeamsIds,
+			"channels":   user.ChannelsIds,
+			"create_at":  user.CreateAt,
+			"delete_at":  user.DeleteAt,
+		}
+
+		if _, err := ts.client.Collection(common.IndexBaseUsers).Documents().Upsert(ctx, document); err != nil {
+			mlog.Warn("Error indexing user in bulk", mlog.String("user_id", user.Id), mlog.Err(err))
+		}
+	}
+	
+	return nil
+}
+
+// SyncBulkIndexFiles bulk indexes files
+func (ts *TypesenseInterfaceImpl) SyncBulkIndexFiles(files []*model.FileForIndexing) *model.AppError {
+	if atomic.LoadInt32(&ts.ready) == 0 {
+		return model.NewAppError("Typesense.SyncBulkIndexFiles", "ent.typesense.not_started", nil, "", 500)
+	}
+
+	ctx := context.Background()
+	
+	for _, file := range files {
+		if file.ShouldIndex() {
+			document := map[string]interface{}{
+				"id":         file.Id,
+				"channel_id": file.ChannelId,
+				"user_id":    file.CreatorId,
+				"name":       file.Name,
+				"extension":  file.Extension,
+				"content":    file.Content,
+				"create_at":  file.CreateAt,
+				"update_at":  file.UpdateAt,
+				"delete_at":  file.DeleteAt,
+			}
+
+			if _, err := ts.client.Collection(common.IndexBaseFiles).Documents().Upsert(ctx, document); err != nil {
+				mlog.Warn("Error indexing file in bulk", mlog.String("file_id", file.Id), mlog.Err(err))
+			}
+		} else {
+			if _, err := ts.client.Collection(common.IndexBaseFiles).Document(file.Id).Delete(ctx); err != nil {
+				mlog.Debug("Error deleting file in bulk", mlog.String("file_id", file.Id), mlog.Err(err))
+			}
+		}
+	}
+	
 	return nil
 }
 
@@ -619,7 +726,7 @@ func (ts *TypesenseInterfaceImpl) SearchFiles(channels model.ChannelList, search
 		filterBy = "delete_at:=0"
 	}
 
-	searchParams := &api.SearchCollectionParams{
+	tsSearchParams := &api.SearchCollectionParams{
 		Q:        query,
 		QueryBy:  "name,content",
 		FilterBy: &filterBy,
@@ -627,7 +734,7 @@ func (ts *TypesenseInterfaceImpl) SearchFiles(channels model.ChannelList, search
 		PerPage:  intPtr(perPage),
 	}
 
-	searchResult, err := ts.client.Collection(common.IndexBaseFiles).Documents().Search(ctx, searchParams)
+	searchResult, err := ts.client.Collection(common.IndexBaseFiles).Documents().Search(ctx, tsSearchParams)
 	if err != nil {
 		return []string{}, model.NewAppError("Typesense.SearchFiles", "ent.typesense.search_files.error", nil, err.Error(), 500)
 	}

@@ -310,6 +310,40 @@ func (a *App) CreateChannel(rctx request.CTX, channel *model.Channel, addMember 
 		}, plugin.ChannelHasBeenCreatedID)
 	})
 
+	// Index channel in search engines
+	a.Srv().Go(func() {
+		if searchEngine := a.Srv().Platform().SearchEngine; searchEngine != nil {
+			for _, engine := range searchEngine.GetActiveEngines() {
+				if engine.IsIndexingEnabled() {
+					// Get user IDs for private channels
+					userIds := []string{}
+					teamMemberIds := []string{}
+					if sc.Type == model.ChannelTypePrivate {
+						if members, err := a.GetChannelMembersPage(rctx, sc.Id, 0, 10000); err == nil {
+							for i := range members {
+								userIds = append(userIds, members[i].UserId)
+							}
+						}
+					}
+					if sc.TeamId != "" {
+						if members, err := a.GetTeamMembers(sc.TeamId, 0, 10000, nil); err == nil {
+							for i := range members {
+								teamMemberIds = append(teamMemberIds, members[i].UserId)
+							}
+						}
+					}
+					
+					if err := engine.IndexChannel(rctx, sc, userIds, teamMemberIds); err != nil {
+						rctx.Logger().Error("Failed to index channel in search engine",
+							mlog.String("channel_id", sc.Id),
+							mlog.String("engine", engine.GetName()),
+							mlog.Err(err))
+					}
+				}
+			}
+		}
+	})
+
 	return sc, nil
 }
 
@@ -747,6 +781,40 @@ func (a *App) UpdateChannel(rctx request.CTX, channel *model.Channel) (*model.Ch
 	}
 	messageWs.Add("channel", string(channelJSON))
 	a.Publish(messageWs)
+
+	// Re-index updated channel in search engines
+	a.Srv().Go(func() {
+		if searchEngine := a.Srv().Platform().SearchEngine; searchEngine != nil {
+			for _, engine := range searchEngine.GetActiveEngines() {
+				if engine.IsIndexingEnabled() {
+					// Get user IDs for private channels
+					userIds := []string{}
+					teamMemberIds := []string{}
+					if channel.Type == model.ChannelTypePrivate {
+						if members, err := a.GetChannelMembersPage(rctx, channel.Id, 0, 10000); err == nil {
+							for i := range members {
+								userIds = append(userIds, members[i].UserId)
+							}
+						}
+					}
+					if channel.TeamId != "" {
+						if members, err := a.GetTeamMembers(channel.TeamId, 0, 10000, nil); err == nil {
+							for i := range members {
+								teamMemberIds = append(teamMemberIds, members[i].UserId)
+							}
+						}
+					}
+					
+					if err := engine.IndexChannel(rctx, channel, userIds, teamMemberIds); err != nil {
+						rctx.Logger().Error("Failed to re-index updated channel in search engine",
+							mlog.String("channel_id", channel.Id),
+							mlog.String("engine", engine.GetName()),
+							mlog.Err(err))
+					}
+				}
+			}
+		}
+	})
 
 	return channel, nil
 }

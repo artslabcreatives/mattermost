@@ -414,7 +414,6 @@ export default class DatabaseSettings extends OLDAdminSettings<Props, State> {
                             id='activeSearchBackend'
                             className='form-control'
                             value={this.state.searchBackend}
-                            disabled={true}
                         >
                             <option value='none'>{'none'}</option>
                             <option value='database'>{'database'}</option>

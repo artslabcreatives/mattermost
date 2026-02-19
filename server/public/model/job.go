@@ -15,6 +15,7 @@ const (
 	JobTypeCLIMessageExport              = "cli_message_export"
 	JobTypeElasticsearchPostIndexing     = "elasticsearch_post_indexing"
 	JobTypeElasticsearchPostAggregation  = "elasticsearch_post_aggregation"
+	JobTypeTypesensePostIndexing         = "typesense_post_indexing"
 	JobTypeLdapSync                      = "ldap_sync"
 	JobTypeMigrations                    = "migrations"
 	JobTypePlugins                       = "plugins"
@@ -62,6 +63,7 @@ var AllJobTypes = [...]string{
 	JobTypeMessageExport,
 	JobTypeElasticsearchPostIndexing,
 	JobTypeElasticsearchPostAggregation,
+	JobTypeTypesensePostIndexing,
 	JobTypeLdapSync,
 	JobTypeMigrations,
 	JobTypePlugins,

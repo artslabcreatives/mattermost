@@ -8,7 +8,7 @@ COPY . .
 
 # Build backend only (just the binaries, not the full package)
 WORKDIR /build/server
-RUN make setup-go-work build-linux-amd64 BUILD_NUMBER=custom BUILD_TAGS="sourceavailable"
+RUN make setup-go-work build-linux-amd64 BUILD_NUMBER=custom BUILD_TAGS="sourceavailable" BUILD_ENTERPRISE_DIR=./enterprise
 
 # Build mmctl
 RUN make mmctl-build
