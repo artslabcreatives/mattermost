@@ -11,7 +11,7 @@ services:
     networks:
       - mattermost
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8108/health"]
+      test: ["CMD", "pgrep", "-f", "typesense-server"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -25,6 +25,8 @@ services:
     restart: ${RESTART_POLICY:-unless-stopped}
     networks:
       - mattermost
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     security_opt:
       - no-new-privileges:true
     pids_limit: 200
@@ -102,9 +104,9 @@ services:
       # Typesense search
       - MM_TYPESENSESETTINGS_CONNECTIONURL=${MM_TYPESENSESETTINGS_CONNECTIONURL:-http://typesense:8108}
       - MM_TYPESENSESETTINGS_APIKEY=${MM_TYPESENSESETTINGS_APIKEY:-xyz}
-      - MM_TYPESENSESETTINGS_ENABLEINDEXING=${MM_TYPESENSESETTINGS_ENABLEINDEXING:-false}
-      - MM_TYPESENSESETTINGS_ENABLESEARCHING=${MM_TYPESENSESETTINGS_ENABLESEARCHING:-false}
-      - MM_TYPESENSESETTINGS_ENABLEAUTOCOMPLETE=${MM_TYPESENSESETTINGS_ENABLEAUTOCOMPLETE:-false}
+      - MM_TYPESENSESETTINGS_ENABLEINDEXING=${MM_TYPESENSESETTINGS_ENABLEINDEXING:-true}
+      - MM_TYPESENSESETTINGS_ENABLESEARCHING=${MM_TYPESENSESETTINGS_ENABLESEARCHING:-true}
+      - MM_TYPESENSESETTINGS_ENABLEAUTOCOMPLETE=${MM_TYPESENSESETTINGS_ENABLEAUTOCOMPLETE:-true}
       
       # Logging
       - MM_LOGSETTINGS_CONSOLELEVEL=${MM_LOGSETTINGS_CONSOLELEVEL:-INFO}

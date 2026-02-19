@@ -12,7 +12,7 @@ mattermost.mattermost-license
 config/mattermost.mattermost-license
 config/config.json
 config/*.crt
-
+volumes/
 web/static/js/bundle*.js
 web/static/js/bundle*.js.map
 web/static/js/libs*.js
