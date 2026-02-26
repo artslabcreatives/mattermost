@@ -1,7 +1,7 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {combineReducers} from 'redux';
+import { combineReducers } from 'redux';
 
 import admin from './admin';
 import agents from './agents';
@@ -35,34 +35,34 @@ import usage from './usage';
 import users from './users';
 
 export default combineReducers({
-    general,
-    agents,
-    users,
-    limits,
-    teams,
-    channels,
-    posts,
-    files,
-    preferences,
-    recaps,
-    typing,
-    integrations,
-    emojis,
-    admin,
-    jobs,
-    search,
-    roles,
-    schemes,
-    groups,
-    bots,
-    threads,
-    channelCategories,
-    apps,
-    cloud,
-    usage,
-    hostedCustomer,
-    channelBookmarks,
-    scheduledPosts,
-    sharedChannels,
-    contentFlagging,
+	general,
+	agents,
+	users,
+	limits,
+	teams,
+	channels,
+	posts,
+	files,
+	preferences,
+	recaps,
+	typing,
+	integrations,
+	emojis,
+	admin,
+	jobs,
+	search,
+	roles,
+	schemes,
+	groups,
+	bots,
+	threads,
+	channelCategories,
+	apps,
+	cloud,
+	usage,
+	hostedCustomer,
+	channelBookmarks,
+	scheduledPosts,
+	sharedChannels,
+	contentFlagging,
 });

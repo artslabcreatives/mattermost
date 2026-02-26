@@ -1,26 +1,26 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {GlobalState as BaseGlobalState} from '@mattermost/types/store';
+import type { GlobalState as BaseGlobalState } from '@mattermost/types/store';
 
-import type {MMReduxAction} from 'mattermost-redux/action_types';
+import type { MMReduxAction } from 'mattermost-redux/action_types';
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
 import type * as MMReduxTypes from 'mattermost-redux/types/actions';
 
-import type {PluginsState} from './plugins';
-import type {StorageState} from './storage';
-import type {ViewsState} from './views';
+import type { PluginsState } from './plugins';
+import type { StorageState } from './storage';
+import type { ViewsState } from './views';
 
 export type DraggingState = {
-    state?: string;
-    type?: string;
-    id?: string;
+	state?: string;
+	type?: string;
+	id?: string;
 }
 
 export type GlobalState = BaseGlobalState & {
-    plugins: PluginsState;
-    storage: StorageState;
-    views: ViewsState;
+	plugins: PluginsState;
+	storage: StorageState;
+	views: ViewsState;
 };
 
 /**
@@ -42,22 +42,22 @@ export type GetStateFunc<State extends GlobalState = GlobalState> = MMReduxTypes
  * A version of {@link MMReduxTypes.ActionFunc} which supports web app state and allows dispatching its actions.
  */
 export type ActionFunc<
-    Data = unknown,
-    State extends GlobalState = GlobalState,
+	Data = unknown,
+	State extends GlobalState = GlobalState,
 > = MMReduxTypes.ActionFunc<Data, State, MMAction>;
 
 /**
  * A version of {@link MMReduxTypes.ActionFuncAsync} which supports web app state and allows dispatching its actions.
  */
 export type ActionFuncAsync<
-    Data = unknown,
-    State extends GlobalState = GlobalState,
+	Data = unknown,
+	State extends GlobalState = GlobalState,
 > = MMReduxTypes.ActionFuncAsync<Data, State, MMAction>;
 
 /**
  * A version of {@link MMReduxTypes.ThunkActionFunc} which supports web app state and allows dispatching its actions.
  */
 export type ThunkActionFunc<
-    ReturnType,
-    State extends GlobalState = GlobalState
+	ReturnType,
+	State extends GlobalState = GlobalState
 > = MMReduxTypes.ThunkActionFunc<ReturnType, State, MMAction>;

@@ -1,30 +1,30 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {ConnectedProps} from 'react-redux';
-import {connect} from 'react-redux';
+import type { ConnectedProps } from 'react-redux';
+import { connect } from 'react-redux';
 
-import {getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUser} from 'mattermost-redux/selectors/entities/users';
+import { getCurrentTeam } from 'mattermost-redux/selectors/entities/teams';
+import { getCurrentUser } from 'mattermost-redux/selectors/entities/users';
 
-import {openModal} from 'actions/views/modals';
+import { openModal } from 'actions/views/modals';
 
-import type {GlobalState} from 'types/store';
+import type { GlobalState } from 'types/store';
 
 import MobileSidebarHeader from './mobile_sidebar_header';
 
 function mapStateToProps(state: GlobalState) {
-    const currentTeam = getCurrentTeam(state);
-    const currentUser = getCurrentUser(state);
+	const currentTeam = getCurrentTeam(state);
+	const currentUser = getCurrentUser(state);
 
-    return {
-        username: currentUser?.username,
-        teamDisplayName: currentTeam?.display_name ?? '',
-    };
+	return {
+		username: currentUser?.username,
+		teamDisplayName: currentTeam?.display_name ?? '',
+	};
 }
 
 const mapDispatchToProps = {
-    openModal,
+	openModal,
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);

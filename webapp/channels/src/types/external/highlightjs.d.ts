@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 declare module 'highlight.js/lib/languages/1c.js';
@@ -65,6 +65,6 @@ declare module 'highlight.js/lib/languages/xml.js';
 declare module 'highlight.js/lib/languages/yaml.js';
 
 declare module 'highlight.js/styles/*.css' {
-    const url: string;
-    export default url;
+	const url: string;
+	export default url;
 }

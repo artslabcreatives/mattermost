@@ -1,24 +1,24 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {useCallback} from 'react';
-import {useSelector, useDispatch, shallowEqual} from 'react-redux';
+import { useCallback } from 'react';
+import { useSelector, useDispatch, shallowEqual } from 'react-redux';
 
-import {createSelector} from 'mattermost-redux/selectors/create_selector';
-import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import { createSelector } from 'mattermost-redux/selectors/create_selector';
+import { getCurrentTeamId } from 'mattermost-redux/selectors/entities/teams';
+import { getCurrentUserId } from 'mattermost-redux/selectors/entities/users';
 
-import {setGlobalItem} from 'actions/storage';
-import {makeGetGlobalItem} from 'selectors/storage';
+import { setGlobalItem } from 'actions/storage';
+import { makeGetGlobalItem } from 'selectors/storage';
 
 const currentUserAndTeamSuffix = createSelector('currentUserAndTeamSuffix', [
-    getCurrentUserId,
-    getCurrentTeamId,
+	getCurrentUserId,
+	getCurrentTeamId,
 ], (
-    userId,
-    teamId,
+	userId,
+	teamId,
 ) => {
-    return `:${userId}:${teamId}`;
+	return `:${userId}:${teamId}`;
 });
 
 /**
@@ -28,20 +28,20 @@ const currentUserAndTeamSuffix = createSelector('currentUserAndTeamSuffix', [
  * @param suffix to provide scope; defaults to user and team
  */
 export function useGlobalState<TVal>(
-    initialValue: TVal,
-    name: string,
-    suffix?: string,
+	initialValue: TVal,
+	name: string,
+	suffix?: string,
 ): [TVal, (value: TVal) => ReturnType<typeof setGlobalItem>] {
-    const dispatch = useDispatch();
-    const defaultSuffix = useSelector(currentUserAndTeamSuffix);
-    const suffixToUse = suffix || defaultSuffix;
-    const storedKey = `${name}${suffixToUse}`;
+	const dispatch = useDispatch();
+	const defaultSuffix = useSelector(currentUserAndTeamSuffix);
+	const suffixToUse = suffix || defaultSuffix;
+	const storedKey = `${name}${suffixToUse}`;
 
-    const value = useSelector(makeGetGlobalItem(storedKey, initialValue), shallowEqual);
-    const setValue = useCallback((newValue: TVal) => dispatch(setGlobalItem(storedKey, newValue)), [storedKey]);
+	const value = useSelector(makeGetGlobalItem(storedKey, initialValue), shallowEqual);
+	const setValue = useCallback((newValue: TVal) => dispatch(setGlobalItem(storedKey, newValue)), [storedKey]);
 
-    return [
-        value,
-        setValue,
-    ];
+	return [
+		value,
+		setValue,
+	];
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 /**
@@ -6,7 +6,7 @@
  * @param text The text to insert.
  */
 export function execCommandInsertText(text: string) {
-    document.execCommand('insertText', false, text);
+	document.execCommand('insertText', false, text);
 }
 
 /**
@@ -15,6 +15,6 @@ export function execCommandInsertText(text: string) {
  * is not supported by JSDOM and Jest can't mock anything that acts on document.activeElement.
  */
 export function focusAndInsertText(element: HTMLElement, text: string) {
-    element.focus();
-    document.execCommand('insertText', false, text);
+	element.focus();
+	document.execCommand('insertText', false, text);
 }

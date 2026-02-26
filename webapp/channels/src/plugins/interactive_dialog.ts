@@ -1,19 +1,19 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {IntegrationTypes} from 'mattermost-redux/action_types';
+import { IntegrationTypes } from 'mattermost-redux/action_types';
 
-import {openModal} from 'actions/views/modals';
+import { openModal } from 'actions/views/modals';
 import store from 'stores/redux_store';
 
 import DialogRouter from 'components/dialog_router';
 
-import {ModalIdentifiers} from 'utils/constants';
+import { ModalIdentifiers } from 'utils/constants';
 
 export function openInteractiveDialog(dialog: any): void {
-    store.dispatch({type: IntegrationTypes.RECEIVED_DIALOG, data: dialog});
+	store.dispatch({ type: IntegrationTypes.RECEIVED_DIALOG, data: dialog });
 
-    store.dispatch(openModal({modalId: ModalIdentifiers.INTERACTIVE_DIALOG, dialogType: DialogRouter}));
+	store.dispatch(openModal({ modalId: ModalIdentifiers.INTERACTIVE_DIALOG, dialogType: DialogRouter }));
 }
 
 // This code is problematic for a couple of different reasons:
@@ -25,19 +25,19 @@ export function openInteractiveDialog(dialog: any): void {
 // It's worth fixing all of this, but I think this requires some refactoring.
 let previousTriggerId = '';
 store.subscribe(() => {
-    const state = store.getState();
-    const currentTriggerId = state.entities.integrations.dialogTriggerId;
+	const state = store.getState();
+	const currentTriggerId = state.entities.integrations.dialogTriggerId;
 
-    if (currentTriggerId === previousTriggerId) {
-        return;
-    }
+	if (currentTriggerId === previousTriggerId) {
+		return;
+	}
 
-    previousTriggerId = currentTriggerId;
+	previousTriggerId = currentTriggerId;
 
-    const dialog = state.entities.integrations.dialog;
-    if (!dialog || dialog.trigger_id !== currentTriggerId) {
-        return;
-    }
+	const dialog = state.entities.integrations.dialog;
+	if (!dialog || dialog.trigger_id !== currentTriggerId) {
+		return;
+	}
 
-    store.dispatch(openModal({modalId: ModalIdentifiers.INTERACTIVE_DIALOG, dialogType: DialogRouter}));
+	store.dispatch(openModal({ modalId: ModalIdentifiers.INTERACTIVE_DIALOG, dialogType: DialogRouter }));
 });

@@ -1,12 +1,12 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {PostTypes} from 'mattermost-redux/action_types';
-import {forceLogoutIfNecessary} from 'mattermost-redux/actions/helpers';
-import {Client4} from 'mattermost-redux/client';
-import {getPost} from 'mattermost-redux/selectors/entities/posts';
+import { PostTypes } from 'mattermost-redux/action_types';
+import { forceLogoutIfNecessary } from 'mattermost-redux/actions/helpers';
+import { Client4 } from 'mattermost-redux/client';
+import { getPost } from 'mattermost-redux/selectors/entities/posts';
 
-import type {DispatchFunc, GetStateFunc, ActionFuncAsync} from 'types/store';
+import type { DispatchFunc, GetStateFunc, ActionFuncAsync } from 'types/store';
 
 /**
  * Shared helper to remove a post from Redux state
@@ -16,19 +16,19 @@ import type {DispatchFunc, GetStateFunc, ActionFuncAsync} from 'types/store';
  * @returns true if post was removed or didn't exist, false otherwise
  */
 function removePostFromState(postId: string, dispatch: DispatchFunc, getState: GetStateFunc): boolean {
-    const state = getState();
-    const post = getPost(state, postId);
+	const state = getState();
+	const post = getPost(state, postId);
 
-    if (!post) {
-        return true;
-    }
+	if (!post) {
+		return true;
+	}
 
-    dispatch({
-        type: PostTypes.POST_REMOVED,
-        data: post,
-    });
+	dispatch({
+		type: PostTypes.POST_REMOVED,
+		data: post,
+	});
 
-    return true;
+	return true;
 }
 
 /**
@@ -39,19 +39,19 @@ function removePostFromState(postId: string, dispatch: DispatchFunc, getState: G
  * @param postId - The ID of the post to burn/delete
  */
 export function burnPostNow(postId: string): ActionFuncAsync<boolean> {
-    return async (dispatch, getState) => {
-        try {
-            // Use burn endpoint for both sender and recipient
-            await Client4.burnPostNow(postId);
+	return async (dispatch, getState) => {
+		try {
+			// Use burn endpoint for both sender and recipient
+			await Client4.burnPostNow(postId);
 
-            // Remove post from Redux state
-            const removed = removePostFromState(postId, dispatch, getState);
-            return {data: removed};
-        } catch (error) {
-            forceLogoutIfNecessary(error, dispatch, getState);
-            return {error};
-        }
-    };
+			// Remove post from Redux state
+			const removed = removePostFromState(postId, dispatch, getState);
+			return { data: removed };
+		} catch (error) {
+			forceLogoutIfNecessary(error, dispatch, getState);
+			return { error };
+		}
+	};
 }
 
 /**
@@ -66,9 +66,9 @@ export function burnPostNow(postId: string): ActionFuncAsync<boolean> {
  * to immediately remove expired posts from the UI without waiting for backend.
  */
 export function handlePostExpired(postId: string): ActionFuncAsync<boolean> {
-    return async (dispatch, getState) => {
-        // Remove post from Redux state (client-side only)
-        const removed = removePostFromState(postId, dispatch, getState);
-        return {data: removed};
-    };
+	return async (dispatch, getState) => {
+		// Remove post from Redux state (client-side only)
+		const removed = removePostFromState(postId, dispatch, getState);
+		return { data: removed };
+	};
 }

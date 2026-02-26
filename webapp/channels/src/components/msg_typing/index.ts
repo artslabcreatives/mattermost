@@ -1,35 +1,35 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {connect} from 'react-redux';
+import { connect } from 'react-redux';
 
-import {makeGetUsersTypingByChannelAndPost} from 'mattermost-redux/selectors/entities/typing';
+import { makeGetUsersTypingByChannelAndPost } from 'mattermost-redux/selectors/entities/typing';
 
-import type {GlobalState} from 'types/store';
+import type { GlobalState } from 'types/store';
 
-import {userStartedTyping, userStoppedTyping} from './actions';
+import { userStartedTyping, userStoppedTyping } from './actions';
 import MsgTyping from './msg_typing';
 
 type OwnProps = {
-    channelId: string;
-    rootId: string;
+	channelId: string;
+	rootId: string;
 };
 
 function makeMapStateToProps() {
-    const getUsersTypingByChannelAndPost = makeGetUsersTypingByChannelAndPost();
+	const getUsersTypingByChannelAndPost = makeGetUsersTypingByChannelAndPost();
 
-    return function mapStateToProps(state: GlobalState, ownProps: OwnProps) {
-        const typingUsers = getUsersTypingByChannelAndPost(state, {channelId: ownProps.channelId, postId: ownProps.rootId});
+	return function mapStateToProps(state: GlobalState, ownProps: OwnProps) {
+		const typingUsers = getUsersTypingByChannelAndPost(state, { channelId: ownProps.channelId, postId: ownProps.rootId });
 
-        return {
-            typingUsers,
-        };
-    };
+		return {
+			typingUsers,
+		};
+	};
 }
 
 const mapDispatchToProps = {
-    userStartedTyping,
-    userStoppedTyping,
+	userStartedTyping,
+	userStoppedTyping,
 };
 
 export default connect(makeMapStateToProps, mapDispatchToProps)(MsgTyping);

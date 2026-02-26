@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 /**
@@ -17,30 +17,30 @@ initialUA = window.navigator.userAgent;
 initialPlatform = window.navigator.platform;
 
 Object.defineProperty(window.navigator, 'userAgent', {
-    get() {
-        return currentUA;
-    },
+	get() {
+		return currentUA;
+	},
 });
 Object.defineProperty(window.navigator, 'platform', {
-    get() {
-        return currentPlatform;
-    },
+	get() {
+		return currentPlatform;
+	},
 });
 
 export function reset() {
-    set(initialUA);
-    setPlatform(initialPlatform);
+	set(initialUA);
+	setPlatform(initialPlatform);
 }
 export function set(ua: string) {
-    currentUA = ua;
+	currentUA = ua;
 }
 export function setPlatform(platform: string) {
-    currentPlatform = platform;
+	currentPlatform = platform;
 }
 
 export function mockSafari() {
-    set('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15');
+	set('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15');
 }
 export function mockChrome() {
-    set('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36');
+	set('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36');
 }

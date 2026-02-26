@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 /**
@@ -8,38 +8,38 @@
  */
 const elementIdentifiers = [
 
-    // Post list
-    ['post__content', 'post'],
-    ['create_post', 'post_textbox'],
+	// Post list
+	['post__content', 'post'],
+	['create_post', 'post_textbox'],
 
-    // LHS
-    ['SidebarContainer', 'channel_sidebar'],
-    ['team-sidebar', 'team_sidebar'],
+	// LHS
+	['SidebarContainer', 'channel_sidebar'],
+	['team-sidebar', 'team_sidebar'],
 
-    // Header
-    ['channel-header', 'channel_header'],
-    ['global-header', 'global_header'],
-    ['announcement-bar', 'announcement_bar'],
+	// Header
+	['channel-header', 'channel_header'],
+	['global-header', 'global_header'],
+	['announcement-bar', 'announcement_bar'],
 
-    // Areas of the app
-    ['channel_view', 'center_channel'],
-    ['modal-content', 'modal_content'],
+	// Areas of the app
+	['channel_view', 'center_channel'],
+	['modal-content', 'modal_content'],
 ] as const satisfies Array<[string, string]>;
 
 export type ElementIdentifier = 'other' | typeof elementIdentifiers[number][1];
 
 export function identifyElementRegion(element: Element): ElementIdentifier {
-    let currentElement: Element | null = element;
+	let currentElement: Element | null = element;
 
-    while (currentElement) {
-        for (const identifier of elementIdentifiers) {
-            if (currentElement.id === identifier[0] || currentElement.classList.contains(identifier[0])) {
-                return identifier[1];
-            }
-        }
+	while (currentElement) {
+		for (const identifier of elementIdentifiers) {
+			if (currentElement.id === identifier[0] || currentElement.classList.contains(identifier[0])) {
+				return identifier[1];
+			}
+		}
 
-        currentElement = currentElement.parentElement;
-    }
+		currentElement = currentElement.parentElement;
+	}
 
-    return 'other';
+	return 'other';
 }

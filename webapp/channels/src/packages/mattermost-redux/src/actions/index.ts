@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import * as admin from './admin';
@@ -24,26 +24,26 @@ import * as users from './users';
 import * as websocket from './websocket';
 
 export {
-    admin,
-    bots,
-    channels,
-    cloud,
-    errors,
-    emojis,
-    files,
-    general,
-    groups,
-    integrations,
-    helpers,
-    jobs,
-    posts,
-    preferences,
-    roles,
-    schemes,
-    search,
-    teams,
-    timezone,
-    websocket,
-    users,
+	admin,
+	bots,
+	channels,
+	cloud,
+	errors,
+	emojis,
+	files,
+	general,
+	groups,
+	integrations,
+	helpers,
+	jobs,
+	posts,
+	preferences,
+	roles,
+	schemes,
+	search,
+	teams,
+	timezone,
+	websocket,
+	users,
 };
 

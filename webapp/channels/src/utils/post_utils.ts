@@ -1,50 +1,50 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {useMemo} from 'react';
-import {useIntl} from 'react-intl';
-import type {IntlShape} from 'react-intl';
-import {useSelector} from 'react-redux';
+import { useMemo } from 'react';
+import { useIntl } from 'react-intl';
+import type { IntlShape } from 'react-intl';
+import { useSelector } from 'react-redux';
 
-import type {Channel} from '@mattermost/types/channels';
-import type {ClientConfig, ClientLicense} from '@mattermost/types/config';
-import type {ServerError} from '@mattermost/types/errors';
-import type {Group} from '@mattermost/types/groups';
-import {isMessageAttachmentArray} from '@mattermost/types/message_attachments';
-import type {Post, PostPriorityMetadata} from '@mattermost/types/posts';
-import {PostPriority} from '@mattermost/types/posts';
-import type {Reaction} from '@mattermost/types/reactions';
-import type {UserProfile} from '@mattermost/types/users';
+import type { Channel } from '@mattermost/types/channels';
+import type { ClientConfig, ClientLicense } from '@mattermost/types/config';
+import type { ServerError } from '@mattermost/types/errors';
+import type { Group } from '@mattermost/types/groups';
+import { isMessageAttachmentArray } from '@mattermost/types/message_attachments';
+import type { Post, PostPriorityMetadata } from '@mattermost/types/posts';
+import { PostPriority } from '@mattermost/types/posts';
+import type { Reaction } from '@mattermost/types/reactions';
+import type { UserProfile } from '@mattermost/types/users';
 
-import {Client4} from 'mattermost-redux/client';
-import {Permissions, Posts} from 'mattermost-redux/constants';
-import {createSelector} from 'mattermost-redux/selectors/create_selector';
-import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getConfig} from 'mattermost-redux/selectors/entities/general';
-import {getAllGroupsForReferenceByName} from 'mattermost-redux/selectors/entities/groups';
-import {isPostFlagged, makeGetReactionsForPost} from 'mattermost-redux/selectors/entities/posts';
-import {getTeammateNameDisplaySetting, isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/preferences';
-import {haveIChannelPermission} from 'mattermost-redux/selectors/entities/roles';
-import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
-import {makeGetDisplayName, getCurrentUserId, getUser, getUsersByUsername} from 'mattermost-redux/selectors/entities/users';
-import type {UserMentionKey} from 'mattermost-redux/selectors/entities/users';
-import {getUserIdFromChannelName} from 'mattermost-redux/utils/channel_utils';
-import {memoizeResult} from 'mattermost-redux/utils/helpers';
+import { Client4 } from 'mattermost-redux/client';
+import { Permissions, Posts } from 'mattermost-redux/constants';
+import { createSelector } from 'mattermost-redux/selectors/create_selector';
+import { getChannel } from 'mattermost-redux/selectors/entities/channels';
+import { getConfig } from 'mattermost-redux/selectors/entities/general';
+import { getAllGroupsForReferenceByName } from 'mattermost-redux/selectors/entities/groups';
+import { isPostFlagged, makeGetReactionsForPost } from 'mattermost-redux/selectors/entities/posts';
+import { getTeammateNameDisplaySetting, isCollapsedThreadsEnabled } from 'mattermost-redux/selectors/entities/preferences';
+import { haveIChannelPermission } from 'mattermost-redux/selectors/entities/roles';
+import { getCurrentTeamId, getTeam } from 'mattermost-redux/selectors/entities/teams';
+import { makeGetDisplayName, getCurrentUserId, getUser, getUsersByUsername } from 'mattermost-redux/selectors/entities/users';
+import type { UserMentionKey } from 'mattermost-redux/selectors/entities/users';
+import { getUserIdFromChannelName } from 'mattermost-redux/utils/channel_utils';
+import { memoizeResult } from 'mattermost-redux/utils/helpers';
 import * as PostListUtils from 'mattermost-redux/utils/post_list';
-import {canEditPost as canEditPostRedux} from 'mattermost-redux/utils/post_utils';
-import {displayUsername} from 'mattermost-redux/utils/user_utils';
+import { canEditPost as canEditPostRedux } from 'mattermost-redux/utils/post_utils';
+import { displayUsername } from 'mattermost-redux/utils/user_utils';
 
-import {getEmojiMap} from 'selectors/emojis';
-import {getIsMobileView} from 'selectors/views/browser';
+import { getEmojiMap } from 'selectors/emojis';
+import { getIsMobileView } from 'selectors/views/browser';
 
-import Constants, {PostListRowListIds} from 'utils/constants';
+import Constants, { PostListRowListIds } from 'utils/constants';
 import * as Keyboard from 'utils/keyboard';
-import {formatWithRenderer} from 'utils/markdown';
+import { formatWithRenderer } from 'utils/markdown';
 import MentionableRenderer from 'utils/markdown/mentionable_renderer';
-import {allAtMentions} from 'utils/text_formatting';
-import {isMobile} from 'utils/user_agent';
+import { allAtMentions } from 'utils/text_formatting';
+import { isMobile } from 'utils/user_agent';
 
-import type {GlobalState} from 'types/store';
+import type { GlobalState } from 'types/store';
 
 import type EmojiMap from './emoji_map';
 import * as Emoticons from './emoticons';
@@ -52,615 +52,615 @@ import * as Emoticons from './emoticons';
 const CHANNEL_SWITCH_IGNORE_ENTER_THRESHOLD_MS = 500;
 
 export function isSystemMessage(post: Post): boolean {
-    return Boolean(post.type && (post.type.lastIndexOf(Constants.SYSTEM_MESSAGE_PREFIX) === 0));
+	return Boolean(post.type && (post.type.lastIndexOf(Constants.SYSTEM_MESSAGE_PREFIX) === 0));
 }
 
 export function fromAutoResponder(post: Post): boolean {
-    return Boolean(post.type && (post.type === Constants.AUTO_RESPONDER));
+	return Boolean(post.type && (post.type === Constants.AUTO_RESPONDER));
 }
 
 export function isFromWebhook(post: Post): boolean {
-    return post.props?.from_webhook === 'true';
+	return post.props?.from_webhook === 'true';
 }
 
 export function isFromBot(post: Post): boolean {
-    return post.props && post.props.from_bot === 'true';
+	return post.props && post.props.from_bot === 'true';
 }
 
 export function isPostOwner(state: GlobalState, post: Post): boolean {
-    return getCurrentUserId(state) === post.user_id;
+	return getCurrentUserId(state) === post.user_id;
 }
 
 export function isComment(post: Post): boolean {
-    if ('root_id' in post) {
-        return post.root_id !== '' && post.root_id != null;
-    }
-    return false;
+	if ('root_id' in post) {
+		return post.root_id !== '' && post.root_id != null;
+	}
+	return false;
 }
 
 export function isEdited(post: Post): boolean {
-    return post.edit_at > 0;
+	return post.edit_at > 0;
 }
 
 export function getImageSrc(src: string, hasImageProxy = false): string {
-    if (!src) {
-        return src;
-    }
+	if (!src) {
+		return src;
+	}
 
-    const imageAPI = Client4.getBaseRoute() + '/image?url=';
+	const imageAPI = Client4.getBaseRoute() + '/image?url=';
 
-    if (hasImageProxy && !src.startsWith(imageAPI)) {
-        return imageAPI + encodeURIComponent(src);
-    }
+	if (hasImageProxy && !src.startsWith(imageAPI)) {
+		return imageAPI + encodeURIComponent(src);
+	}
 
-    return src;
+	return src;
 }
 
 export function canDeletePost(state: GlobalState, post: Post, channel?: Channel): boolean {
-    if (post.type === Constants.PostTypes.FAKE_PARENT_DELETED) {
-        return false;
-    }
+	if (post.type === Constants.PostTypes.FAKE_PARENT_DELETED) {
+		return false;
+	}
 
-    if (channel && channel.delete_at !== 0) {
-        return false;
-    }
+	if (channel && channel.delete_at !== 0) {
+		return false;
+	}
 
-    if (isPostOwner(state, post)) {
-        return haveIChannelPermission(state, channel && channel.team_id, post.channel_id, Permissions.DELETE_POST);
-    }
-    return haveIChannelPermission(state, channel && channel.team_id, post.channel_id, Permissions.DELETE_OTHERS_POSTS);
+	if (isPostOwner(state, post)) {
+		return haveIChannelPermission(state, channel && channel.team_id, post.channel_id, Permissions.DELETE_POST);
+	}
+	return haveIChannelPermission(state, channel && channel.team_id, post.channel_id, Permissions.DELETE_OTHERS_POSTS);
 }
 
 export function canEditPost(
-    state: GlobalState,
-    post: Post,
-    license?: ClientLicense,
-    config?: Partial<ClientConfig>,
-    channel?: Channel,
-    userId?: string,
+	state: GlobalState,
+	post: Post,
+	license?: ClientLicense,
+	config?: Partial<ClientConfig>,
+	channel?: Channel,
+	userId?: string,
 ): boolean {
-    return canEditPostRedux(state, config, license, channel?.team_id ?? '', channel?.id ?? '', userId ?? '', post);
+	return canEditPostRedux(state, config, license, channel?.team_id ?? '', channel?.id ?? '', userId ?? '', post);
 }
 
 export function shouldShowDotMenu(state: GlobalState, post: Post, channel: Channel): boolean {
-    if (post && post.state === Posts.POST_DELETED) {
-        return false;
-    }
+	if (post && post.state === Posts.POST_DELETED) {
+		return false;
+	}
 
-    if (getIsMobileView(state)) {
-        return true;
-    }
+	if (getIsMobileView(state)) {
+		return true;
+	}
 
-    if (!isSystemMessage(post)) {
-        return true;
-    }
+	if (!isSystemMessage(post)) {
+		return true;
+	}
 
-    if (canDeletePost(state, post, channel)) {
-        return true;
-    }
+	if (canDeletePost(state, post, channel)) {
+		return true;
+	}
 
-    if (canEditPost(state, post)) {
-        return true;
-    }
+	if (canEditPost(state, post)) {
+		return true;
+	}
 
-    return false;
+	return false;
 }
 
 export function shouldShowActionsMenu(state: GlobalState, post: Post): boolean {
-    const config = getConfig(state);
-    const pluginsEnabled = config.PluginsEnabled === 'true';
-    if (!pluginsEnabled) {
-        return false;
-    }
+	const config = getConfig(state);
+	const pluginsEnabled = config.PluginsEnabled === 'true';
+	if (!pluginsEnabled) {
+		return false;
+	}
 
-    if (isSystemMessage(post)) {
-        return false;
-    }
+	if (isSystemMessage(post)) {
+		return false;
+	}
 
-    // Hide plugin/app actions for burn-on-read posts
-    if (post.type === Constants.PostTypes.BURN_ON_READ) {
-        return false;
-    }
+	// Hide plugin/app actions for burn-on-read posts
+	if (post.type === Constants.PostTypes.BURN_ON_READ) {
+		return false;
+	}
 
-    return true;
+	return true;
 }
 
-export function containsAtChannel(text: string, options?: {checkAllMentions: boolean}): boolean {
-    // Don't warn for slash commands
-    if (!text || text.startsWith('/')) {
-        return false;
-    }
+export function containsAtChannel(text: string, options?: { checkAllMentions: boolean }): boolean {
+	// Don't warn for slash commands
+	if (!text || text.startsWith('/')) {
+		return false;
+	}
 
-    let mentionsRegex;
-    if (options?.checkAllMentions) {
-        mentionsRegex = new RegExp(Constants.SPECIAL_MENTIONS_REGEX);
-    } else {
-        mentionsRegex = new RegExp(Constants.ALL_MEMBERS_MENTIONS_REGEX);
-    }
+	let mentionsRegex;
+	if (options?.checkAllMentions) {
+		mentionsRegex = new RegExp(Constants.SPECIAL_MENTIONS_REGEX);
+	} else {
+		mentionsRegex = new RegExp(Constants.ALL_MEMBERS_MENTIONS_REGEX);
+	}
 
-    const mentionableText = formatWithRenderer(text, new MentionableRenderer());
-    return mentionsRegex.test(mentionableText);
+	const mentionableText = formatWithRenderer(text, new MentionableRenderer());
+	return mentionsRegex.test(mentionableText);
 }
 
-export function specialMentionsInText(text: string): {[key: string]: boolean} {
-    const mentions = {
-        all: false,
-        channel: false,
-        here: false,
-    };
+export function specialMentionsInText(text: string): { [key: string]: boolean } {
+	const mentions = {
+		all: false,
+		channel: false,
+		here: false,
+	};
 
-    // Don't warn for slash commands
-    if (!text || text.startsWith('/')) {
-        return mentions;
-    }
+	// Don't warn for slash commands
+	if (!text || text.startsWith('/')) {
+		return mentions;
+	}
 
-    const mentionableText = formatWithRenderer(text, new MentionableRenderer());
+	const mentionableText = formatWithRenderer(text, new MentionableRenderer());
 
-    mentions.all = new RegExp(Constants.ALL_MENTION_REGEX).test(mentionableText);
-    mentions.channel = new RegExp(Constants.CHANNEL_MENTION_REGEX).test(mentionableText);
-    mentions.here = new RegExp(Constants.HERE_MENTION_REGEX).test(mentionableText);
+	mentions.all = new RegExp(Constants.ALL_MENTION_REGEX).test(mentionableText);
+	mentions.channel = new RegExp(Constants.CHANNEL_MENTION_REGEX).test(mentionableText);
+	mentions.here = new RegExp(Constants.HERE_MENTION_REGEX).test(mentionableText);
 
-    return mentions;
+	return mentions;
 }
 
 export const groupsMentionedInText = (text: string, groups: Map<string, Group> | null): Group[] => {
-    // Don't warn for slash commands
-    if (!text || text.startsWith('/')) {
-        return [];
-    }
+	// Don't warn for slash commands
+	if (!text || text.startsWith('/')) {
+		return [];
+	}
 
-    if (!groups) {
-        return [];
-    }
+	if (!groups) {
+		return [];
+	}
 
-    const mentionableText = formatWithRenderer(text, new MentionableRenderer());
-    const mentions = allAtMentions(mentionableText);
+	const mentionableText = formatWithRenderer(text, new MentionableRenderer());
+	const mentions = allAtMentions(mentionableText);
 
-    const ret: Group[] = [];
-    for (const mention of mentions) {
-        const group = groups.get(mention);
+	const ret: Group[] = [];
+	for (const mention of mentions) {
+		const group = groups.get(mention);
 
-        if (group) {
-            ret.push(group);
-        }
-    }
-    return ret;
+		if (group) {
+			ret.push(group);
+		}
+	}
+	return ret;
 };
 
 export function shouldFocusMainTextbox(e: React.KeyboardEvent | KeyboardEvent, activeElement: Element | null): boolean {
-    if (!e) {
-        return false;
-    }
+	if (!e) {
+		return false;
+	}
 
-    // Do not focus if we're currently focused on a textarea or input
-    const keepFocusTags = ['TEXTAREA', 'INPUT'];
-    if (!activeElement || keepFocusTags.includes(activeElement.tagName)) {
-        return false;
-    }
+	// Do not focus if we're currently focused on a textarea or input
+	const keepFocusTags = ['TEXTAREA', 'INPUT'];
+	if (!activeElement || keepFocusTags.includes(activeElement.tagName)) {
+		return false;
+	}
 
-    // Focus if it is an attempted paste
-    if (Keyboard.cmdOrCtrlPressed(e) && Keyboard.isKeyPressed(e, Constants.KeyCodes.V)) {
-        return true;
-    }
+	// Focus if it is an attempted paste
+	if (Keyboard.cmdOrCtrlPressed(e) && Keyboard.isKeyPressed(e, Constants.KeyCodes.V)) {
+		return true;
+	}
 
-    // Do not focus if a modifier key is pressed
-    if (e.ctrlKey || e.metaKey || e.altKey) {
-        return false;
-    }
+	// Do not focus if a modifier key is pressed
+	if (e.ctrlKey || e.metaKey || e.altKey) {
+		return false;
+	}
 
-    // Do not focus if the key is undefined or null
-    if (e.key == null) {
-        return false;
-    }
+	// Do not focus if the key is undefined or null
+	if (e.key == null) {
+		return false;
+	}
 
-    // Do not focus for non-character or non-number keys
-    if (e.key.length !== 1 || !e.key.match(/./)) {
-        return false;
-    }
+	// Do not focus for non-character or non-number keys
+	if (e.key.length !== 1 || !e.key.match(/./)) {
+		return false;
+	}
 
-    // Do not focus when pressing space on link elements
-    const spaceKeepFocusTags = ['BUTTON', 'A'];
-    if (Keyboard.isKeyPressed(e, Constants.KeyCodes.SPACE) && spaceKeepFocusTags.includes(activeElement.tagName)) {
-        return false;
-    }
+	// Do not focus when pressing space on link elements
+	const spaceKeepFocusTags = ['BUTTON', 'A'];
+	if (Keyboard.isKeyPressed(e, Constants.KeyCodes.SPACE) && spaceKeepFocusTags.includes(activeElement.tagName)) {
+		return false;
+	}
 
-    return true;
+	return true;
 }
 
 function canAutomaticallyCloseBackticks(message: string) {
-    const splitMessage = message.split('\n').filter((line) => line.trim() !== '');
-    const lastPart = splitMessage[splitMessage.length - 1];
+	const splitMessage = message.split('\n').filter((line) => line.trim() !== '');
+	const lastPart = splitMessage[splitMessage.length - 1];
 
-    if (splitMessage.length > 1 && !lastPart.includes('```')) {
-        return {
-            allowSending: true,
-            message: message.endsWith('\n') ? message.concat('```') : message.concat('\n```'),
-            withClosedCodeBlock: true,
-        };
-    }
+	if (splitMessage.length > 1 && !lastPart.includes('```')) {
+		return {
+			allowSending: true,
+			message: message.endsWith('\n') ? message.concat('```') : message.concat('\n```'),
+			withClosedCodeBlock: true,
+		};
+	}
 
-    return {allowSending: true};
+	return { allowSending: true };
 }
 
 export function isWithinCodeBlock(message: string, caretPosition: number): boolean {
-    const match = message.substring(0, caretPosition).match(Constants.REGEX_CODE_BLOCK_OPTIONAL_LANGUAGE_TAG);
+	const match = message.substring(0, caretPosition).match(Constants.REGEX_CODE_BLOCK_OPTIONAL_LANGUAGE_TAG);
 
-    return Boolean(match && match.length % 2 !== 0);
+	return Boolean(match && match.length % 2 !== 0);
 }
 
 function sendOnCtrlEnter(message: string, ctrlOrMetaKeyPressed: boolean, isSendMessageOnCtrlEnter: boolean, caretPosition: number) {
-    const inCodeBlock = isWithinCodeBlock(message, caretPosition);
-    if (isSendMessageOnCtrlEnter && ctrlOrMetaKeyPressed && !inCodeBlock) {
-        return {allowSending: true};
-    } else if (!isSendMessageOnCtrlEnter && !inCodeBlock) {
-        return {allowSending: true};
-    } else if (ctrlOrMetaKeyPressed && inCodeBlock) {
-        return canAutomaticallyCloseBackticks(message);
-    }
+	const inCodeBlock = isWithinCodeBlock(message, caretPosition);
+	if (isSendMessageOnCtrlEnter && ctrlOrMetaKeyPressed && !inCodeBlock) {
+		return { allowSending: true };
+	} else if (!isSendMessageOnCtrlEnter && !inCodeBlock) {
+		return { allowSending: true };
+	} else if (ctrlOrMetaKeyPressed && inCodeBlock) {
+		return canAutomaticallyCloseBackticks(message);
+	}
 
-    return {allowSending: false};
+	return { allowSending: false };
 }
 
 export function postMessageOnKeyPress(
-    event: React.KeyboardEvent,
-    message: string,
-    sendMessageOnCtrlEnter: boolean,
-    sendCodeBlockOnCtrlEnter: boolean,
-    now = 0,
-    lastChannelSwitchAt = 0,
-    caretPosition = 0,
-): {allowSending: boolean; ignoreKeyPress?: boolean; withClosedCodeBlock?: boolean; message?: string} {
-    if (!event) {
-        return {allowSending: false};
-    }
+	event: React.KeyboardEvent,
+	message: string,
+	sendMessageOnCtrlEnter: boolean,
+	sendCodeBlockOnCtrlEnter: boolean,
+	now = 0,
+	lastChannelSwitchAt = 0,
+	caretPosition = 0,
+): { allowSending: boolean; ignoreKeyPress?: boolean; withClosedCodeBlock?: boolean; message?: string } {
+	if (!event) {
+		return { allowSending: false };
+	}
 
-    // Typing enter on mobile never sends.
-    if (isMobile()) {
-        return {allowSending: false};
-    }
+	// Typing enter on mobile never sends.
+	if (isMobile()) {
+		return { allowSending: false };
+	}
 
-    // Only ENTER sends, unless shift or alt key pressed.
-    if (!Keyboard.isKeyPressed(event, Constants.KeyCodes.ENTER) || event.shiftKey || event.altKey) {
-        return {allowSending: false};
-    }
+	// Only ENTER sends, unless shift or alt key pressed.
+	if (!Keyboard.isKeyPressed(event, Constants.KeyCodes.ENTER) || event.shiftKey || event.altKey) {
+		return { allowSending: false };
+	}
 
-    // Don't send if we just switched channels within a threshold.
-    if (lastChannelSwitchAt > 0 && now > 0 && now - lastChannelSwitchAt <= CHANNEL_SWITCH_IGNORE_ENTER_THRESHOLD_MS) {
-        return {allowSending: false, ignoreKeyPress: true};
-    }
+	// Don't send if we just switched channels within a threshold.
+	if (lastChannelSwitchAt > 0 && now > 0 && now - lastChannelSwitchAt <= CHANNEL_SWITCH_IGNORE_ENTER_THRESHOLD_MS) {
+		return { allowSending: false, ignoreKeyPress: true };
+	}
 
-    if (
-        message.trim() === '' ||
-        !(sendMessageOnCtrlEnter || sendCodeBlockOnCtrlEnter)
-    ) {
-        return {allowSending: true};
-    }
+	if (
+		message.trim() === '' ||
+		!(sendMessageOnCtrlEnter || sendCodeBlockOnCtrlEnter)
+	) {
+		return { allowSending: true };
+	}
 
-    const ctrlOrMetaKeyPressed = event.ctrlKey || event.metaKey;
+	const ctrlOrMetaKeyPressed = event.ctrlKey || event.metaKey;
 
-    if (sendMessageOnCtrlEnter) {
-        return sendOnCtrlEnter(message, ctrlOrMetaKeyPressed, true, caretPosition);
-    } else if (sendCodeBlockOnCtrlEnter) {
-        return sendOnCtrlEnter(message, ctrlOrMetaKeyPressed, false, caretPosition);
-    }
+	if (sendMessageOnCtrlEnter) {
+		return sendOnCtrlEnter(message, ctrlOrMetaKeyPressed, true, caretPosition);
+	} else if (sendCodeBlockOnCtrlEnter) {
+		return sendOnCtrlEnter(message, ctrlOrMetaKeyPressed, false, caretPosition);
+	}
 
-    return {allowSending: false};
+	return { allowSending: false };
 }
 
 export function isServerError(err: unknown): err is ServerError {
-    return Boolean(err && typeof err === 'object' && 'server_error_id' in err);
+	return Boolean(err && typeof err === 'object' && 'server_error_id' in err);
 }
 
 export function isErrorInvalidSlashCommand(error: ServerError | null): boolean {
-    if (error && error.server_error_id) {
-        return error.server_error_id === 'api.command.execute_command.not_found.app_error';
-    }
+	if (error && error.server_error_id) {
+		return error.server_error_id === 'api.command.execute_command.not_found.app_error';
+	}
 
-    return false;
+	return false;
 }
 
 export function isIdNotPost(postId: string): boolean {
-    return (
-        PostListUtils.isStartOfNewMessages(postId) ||
-        PostListUtils.isDateLine(postId) ||
-        postId in PostListRowListIds
-    );
+	return (
+		PostListUtils.isStartOfNewMessages(postId) ||
+		PostListUtils.isDateLine(postId) ||
+		postId in PostListRowListIds
+	);
 }
 
 // getOldestPostId returns the oldest valid post ID in the given list of post IDs. This function is copied from
 // mattermost-redux, except it also includes additional special IDs that are only used in the web app.
 export function getOldestPostId(postIds: string[]): string {
-    for (let i = postIds.length - 1; i >= 0; i--) {
-        const item = postIds[i];
+	for (let i = postIds.length - 1; i >= 0; i--) {
+		const item = postIds[i];
 
-        if (isIdNotPost(item)) {
-            // This is not a post at all
-            continue;
-        }
+		if (isIdNotPost(item)) {
+			// This is not a post at all
+			continue;
+		}
 
-        if (PostListUtils.isCombinedUserActivityPost(item)) {
-            // This is a combined post, so find the first post ID from it
-            const combinedIds = PostListUtils.getPostIdsForCombinedUserActivityPost(item);
+		if (PostListUtils.isCombinedUserActivityPost(item)) {
+			// This is a combined post, so find the first post ID from it
+			const combinedIds = PostListUtils.getPostIdsForCombinedUserActivityPost(item);
 
-            return combinedIds[combinedIds.length - 1];
-        }
+			return combinedIds[combinedIds.length - 1];
+		}
 
-        // This is a post ID
-        return item;
-    }
+		// This is a post ID
+		return item;
+	}
 
-    return '';
+	return '';
 }
 
 export function getPreviousPostId(postIds: string[], startIndex: number): string {
-    for (let i = startIndex + 1; i < postIds.length; i++) {
-        const itemId = postIds[i];
+	for (let i = startIndex + 1; i < postIds.length; i++) {
+		const itemId = postIds[i];
 
-        if (isIdNotPost(itemId)) {
-            // This is not a post at all
-            continue;
-        }
+		if (isIdNotPost(itemId)) {
+			// This is not a post at all
+			continue;
+		}
 
-        if (PostListUtils.isCombinedUserActivityPost(itemId)) {
-            // This is a combined post, so find the last post ID from it
-            const combinedIds = PostListUtils.getPostIdsForCombinedUserActivityPost(itemId);
+		if (PostListUtils.isCombinedUserActivityPost(itemId)) {
+			// This is a combined post, so find the last post ID from it
+			const combinedIds = PostListUtils.getPostIdsForCombinedUserActivityPost(itemId);
 
-            return combinedIds[0];
-        }
+			return combinedIds[0];
+		}
 
-        // This is a post ID
-        return itemId;
-    }
+		// This is a post ID
+		return itemId;
+	}
 
-    return '';
+	return '';
 }
 
 // getLatestPostId returns the most recent valid post ID in the given list of post IDs. This function is copied from
 // mattermost-redux, except it also includes additional special IDs that are only used in the web app.
 export function getLatestPostId(postIds: string[]): string {
-    for (let i = 0; i < postIds.length; i++) {
-        const item = postIds[i];
+	for (let i = 0; i < postIds.length; i++) {
+		const item = postIds[i];
 
-        if (isIdNotPost(item)) {
-            // This is not a post at all
-            continue;
-        }
+		if (isIdNotPost(item)) {
+			// This is not a post at all
+			continue;
+		}
 
-        if (PostListUtils.isCombinedUserActivityPost(item)) {
-            // This is a combined post, so find the lastest post ID from it
-            const combinedIds = PostListUtils.getPostIdsForCombinedUserActivityPost(item);
+		if (PostListUtils.isCombinedUserActivityPost(item)) {
+			// This is a combined post, so find the lastest post ID from it
+			const combinedIds = PostListUtils.getPostIdsForCombinedUserActivityPost(item);
 
-            return combinedIds[0];
-        }
+			return combinedIds[0];
+		}
 
-        // This is a post ID
-        return item;
-    }
+		// This is a post ID
+		return item;
+	}
 
-    return '';
+	return '';
 }
 
 export function makeGetMentionsFromMessage(): (state: GlobalState, post: Post) => Record<string, UserProfile> {
-    return createSelector(
-        'getMentionsFromMessage',
-        (state: GlobalState, post: Post) => post,
-        (state: GlobalState) => getUsersByUsername(state),
-        (post, users) => {
-            const mentions: Record<string, UserProfile> = {};
-            const mentionsArray = post.message.match(Constants.MENTIONS_REGEX) || [];
-            for (let i = 0; i < mentionsArray.length; i++) {
-                const mention = mentionsArray[i];
-                const user = getMentionDetails(users, mention.substring(1)) as UserProfile | '';
+	return createSelector(
+		'getMentionsFromMessage',
+		(state: GlobalState, post: Post) => post,
+		(state: GlobalState) => getUsersByUsername(state),
+		(post, users) => {
+			const mentions: Record<string, UserProfile> = {};
+			const mentionsArray = post.message.match(Constants.MENTIONS_REGEX) || [];
+			for (let i = 0; i < mentionsArray.length; i++) {
+				const mention = mentionsArray[i];
+				const user = getMentionDetails(users, mention.substring(1)) as UserProfile | '';
 
-                if (user) {
-                    mentions[mention] = user;
-                }
-            }
+				if (user) {
+					mentions[mention] = user;
+				}
+			}
 
-            return mentions;
-        },
-    );
+			return mentions;
+		},
+	);
 }
 
 export function usePostAriaLabel(post: Post | undefined) {
-    const intl = useIntl();
+	const intl = useIntl();
 
-    const getDisplayName = useMemo(makeGetDisplayName, []);
-    const getReactionsForPost = useMemo(makeGetReactionsForPost, []);
-    const getMentionsFromMessage = useMemo(makeGetMentionsFromMessage, []);
+	const getDisplayName = useMemo(makeGetDisplayName, []);
+	const getReactionsForPost = useMemo(makeGetReactionsForPost, []);
+	const getMentionsFromMessage = useMemo(makeGetMentionsFromMessage, []);
 
-    const createAriaLabelMemoized = memoizeResult(createAriaLabelForPost);
+	const createAriaLabelMemoized = memoizeResult(createAriaLabelForPost);
 
-    return useSelector((state: GlobalState) => {
-        if (!post) {
-            return '';
-        }
+	return useSelector((state: GlobalState) => {
+		if (!post) {
+			return '';
+		}
 
-        const authorDisplayName = getDisplayName(state, post.user_id);
-        const reactions = getReactionsForPost(state, post.id);
-        const isFlagged = isPostFlagged(state, post.id);
-        const emojiMap = getEmojiMap(state);
-        const mentions = getMentionsFromMessage(state, post);
-        const teammateNameDisplaySetting = getTeammateNameDisplaySetting(state);
+		const authorDisplayName = getDisplayName(state, post.user_id);
+		const reactions = getReactionsForPost(state, post.id);
+		const isFlagged = isPostFlagged(state, post.id);
+		const emojiMap = getEmojiMap(state);
+		const mentions = getMentionsFromMessage(state, post);
+		const teammateNameDisplaySetting = getTeammateNameDisplaySetting(state);
 
-        return createAriaLabelMemoized(
-            post,
-            authorDisplayName,
-            isFlagged,
-            reactions,
-            intl,
-            emojiMap,
-            mentions,
-            teammateNameDisplaySetting,
-        );
-    });
+		return createAriaLabelMemoized(
+			post,
+			authorDisplayName,
+			isFlagged,
+			reactions,
+			intl,
+			emojiMap,
+			mentions,
+			teammateNameDisplaySetting,
+		);
+	});
 }
 
 export function createAriaLabelForPost(post: Post, author: string, isFlagged: boolean, reactions: Record<string, Reaction> | undefined, intl: IntlShape, emojiMap: EmojiMap, mentions: Record<string, UserProfile>, teammateNameDisplaySetting: string): string {
-    const {formatMessage, formatTime, formatDate} = intl;
+	const { formatMessage, formatTime, formatDate } = intl;
 
-    let message = post.state === Posts.POST_DELETED ? formatMessage({
-        id: 'post_body.deleted',
-        defaultMessage: '(message deleted)',
-    }) : post.message || '';
-    let match;
+	let message = post.state === Posts.POST_DELETED ? formatMessage({
+		id: 'post_body.deleted',
+		defaultMessage: '(message deleted)',
+	}) : post.message || '';
+	let match;
 
-    // Match all the shorthand forms of emojis first
-    for (const name of Object.keys(Emoticons.emoticonPatterns)) {
-        const pattern = Emoticons.emoticonPatterns[name];
-        message = message.replace(pattern, `:${name}:`);
-    }
+	// Match all the shorthand forms of emojis first
+	for (const name of Object.keys(Emoticons.emoticonPatterns)) {
+		const pattern = Emoticons.emoticonPatterns[name];
+		message = message.replace(pattern, `:${name}:`);
+	}
 
-    while ((match = Emoticons.EMOJI_PATTERN.exec(message)) !== null) {
-        if (emojiMap.has(match[2])) {
-            message = message.replace(match[0], `${match[2].replace(/_/g, ' ')} emoji`);
-        }
-    }
+	while ((match = Emoticons.EMOJI_PATTERN.exec(message)) !== null) {
+		if (emojiMap.has(match[2])) {
+			message = message.replace(match[0], `${match[2].replace(/_/g, ' ')} emoji`);
+		}
+	}
 
-    // Replace mentions with preferred username
-    for (const mention of Object.keys(mentions)) {
-        const user = mentions[mention];
-        if (user) {
-            message = message.replace(mention, `@${displayUsername(user, teammateNameDisplaySetting)}`);
-        }
-    }
+	// Replace mentions with preferred username
+	for (const mention of Object.keys(mentions)) {
+		const user = mentions[mention];
+		if (user) {
+			message = message.replace(mention, `@${displayUsername(user, teammateNameDisplaySetting)}`);
+		}
+	}
 
-    let ariaLabel;
-    if (post.root_id) {
-        ariaLabel = formatMessage({
-            id: 'post.ariaLabel.replyMessage',
-            defaultMessage: 'At {time} {date}, {authorName} replied, {message}',
-        },
-        {
-            authorName: author,
-            time: formatTime(post.create_at),
-            date: formatDate(post.create_at, {weekday: 'long', month: 'long', day: 'numeric'}),
-            message,
-        });
-    } else {
-        ariaLabel = formatMessage({
-            id: 'post.ariaLabel.message',
-            defaultMessage: 'At {time} {date}, {authorName} wrote, {message}',
-        },
-        {
-            authorName: author,
-            time: formatTime(post.create_at),
-            date: formatDate(post.create_at, {weekday: 'long', month: 'long', day: 'numeric'}),
-            message,
-        });
-    }
+	let ariaLabel;
+	if (post.root_id) {
+		ariaLabel = formatMessage({
+			id: 'post.ariaLabel.replyMessage',
+			defaultMessage: 'At {time} {date}, {authorName} replied, {message}',
+		},
+			{
+				authorName: author,
+				time: formatTime(post.create_at),
+				date: formatDate(post.create_at, { weekday: 'long', month: 'long', day: 'numeric' }),
+				message,
+			});
+	} else {
+		ariaLabel = formatMessage({
+			id: 'post.ariaLabel.message',
+			defaultMessage: 'At {time} {date}, {authorName} wrote, {message}',
+		},
+			{
+				authorName: author,
+				time: formatTime(post.create_at),
+				date: formatDate(post.create_at, { weekday: 'long', month: 'long', day: 'numeric' }),
+				message,
+			});
+	}
 
-    let attachmentCount = 0;
-    if (isMessageAttachmentArray(post.props?.attachments)) {
-        attachmentCount += post.props.attachments.length;
-    }
-    if (post.file_ids) {
-        attachmentCount += post.file_ids.length;
-    }
+	let attachmentCount = 0;
+	if (isMessageAttachmentArray(post.props?.attachments)) {
+		attachmentCount += post.props.attachments.length;
+	}
+	if (post.file_ids) {
+		attachmentCount += post.file_ids.length;
+	}
 
-    if (attachmentCount) {
-        if (attachmentCount > 1) {
-            ariaLabel += formatMessage({
-                id: 'post.ariaLabel.attachmentMultiple',
-                defaultMessage: ', {attachmentCount} attachments',
-            },
-            {
-                attachmentCount,
-            });
-        } else {
-            ariaLabel += formatMessage({
-                id: 'post.ariaLabel.attachment',
-                defaultMessage: ', 1 attachment',
-            });
-        }
-    }
+	if (attachmentCount) {
+		if (attachmentCount > 1) {
+			ariaLabel += formatMessage({
+				id: 'post.ariaLabel.attachmentMultiple',
+				defaultMessage: ', {attachmentCount} attachments',
+			},
+				{
+					attachmentCount,
+				});
+		} else {
+			ariaLabel += formatMessage({
+				id: 'post.ariaLabel.attachment',
+				defaultMessage: ', 1 attachment',
+			});
+		}
+	}
 
-    if (reactions) {
-        const emojiNames = [];
-        for (const reaction of Object.values(reactions)) {
-            const emojiName = reaction.emoji_name;
+	if (reactions) {
+		const emojiNames = [];
+		for (const reaction of Object.values(reactions)) {
+			const emojiName = reaction.emoji_name;
 
-            if (emojiNames.indexOf(emojiName) < 0) {
-                emojiNames.push(emojiName);
-            }
-        }
+			if (emojiNames.indexOf(emojiName) < 0) {
+				emojiNames.push(emojiName);
+			}
+		}
 
-        if (emojiNames.length > 1) {
-            ariaLabel += formatMessage({
-                id: 'post.ariaLabel.reactionMultiple',
-                defaultMessage: ', {reactionCount} reactions',
-            },
-            {
-                reactionCount: emojiNames.length,
-            });
-        } else if (emojiNames.length === 1) {
-            ariaLabel += formatMessage({
-                id: 'post.ariaLabel.reaction',
-                defaultMessage: ', 1 reaction',
-            });
-        }
-    }
+		if (emojiNames.length > 1) {
+			ariaLabel += formatMessage({
+				id: 'post.ariaLabel.reactionMultiple',
+				defaultMessage: ', {reactionCount} reactions',
+			},
+				{
+					reactionCount: emojiNames.length,
+				});
+		} else if (emojiNames.length === 1) {
+			ariaLabel += formatMessage({
+				id: 'post.ariaLabel.reaction',
+				defaultMessage: ', 1 reaction',
+			});
+		}
+	}
 
-    if (isFlagged) {
-        if (post.is_pinned) {
-            ariaLabel += formatMessage({
-                id: 'post.ariaLabel.messageIsFlaggedAndPinned',
-                defaultMessage: ', message is saved and pinned',
-            });
-        } else {
-            ariaLabel += formatMessage({
-                id: 'post.ariaLabel.messageIsFlagged',
-                defaultMessage: ', message is saved',
-            });
-        }
-    } else if (!isFlagged && post.is_pinned) {
-        ariaLabel += formatMessage({
-            id: 'post.ariaLabel.messageIsPinned',
-            defaultMessage: ', message is pinned',
-        });
-    }
+	if (isFlagged) {
+		if (post.is_pinned) {
+			ariaLabel += formatMessage({
+				id: 'post.ariaLabel.messageIsFlaggedAndPinned',
+				defaultMessage: ', message is saved and pinned',
+			});
+		} else {
+			ariaLabel += formatMessage({
+				id: 'post.ariaLabel.messageIsFlagged',
+				defaultMessage: ', message is saved',
+			});
+		}
+	} else if (!isFlagged && post.is_pinned) {
+		ariaLabel += formatMessage({
+			id: 'post.ariaLabel.messageIsPinned',
+			defaultMessage: ', message is pinned',
+		});
+	}
 
-    return ariaLabel;
+	return ariaLabel;
 }
 
 // Splits text message based on the current caret position
-export function splitMessageBasedOnCaretPosition(caretPosition: number, message: string): {firstPiece: string; lastPiece: string} {
-    const firstPiece = message.substring(0, caretPosition);
-    const lastPiece = message.substring(caretPosition, message.length);
-    return {firstPiece, lastPiece};
+export function splitMessageBasedOnCaretPosition(caretPosition: number, message: string): { firstPiece: string; lastPiece: string } {
+	const firstPiece = message.substring(0, caretPosition);
+	const lastPiece = message.substring(caretPosition, message.length);
+	return { firstPiece, lastPiece };
 }
 
-export function splitMessageBasedOnTextSelection(selectionStart: number, selectionEnd: number, message: string): {firstPiece: string; lastPiece: string} {
-    const firstPiece = message.substring(0, selectionStart);
-    const lastPiece = message.substring(selectionEnd, message.length);
-    return {firstPiece, lastPiece};
+export function splitMessageBasedOnTextSelection(selectionStart: number, selectionEnd: number, message: string): { firstPiece: string; lastPiece: string } {
+	const firstPiece = message.substring(0, selectionStart);
+	const lastPiece = message.substring(selectionEnd, message.length);
+	return { firstPiece, lastPiece };
 }
 
 export function areConsecutivePostsBySameUser(post: Post, previousPost: Post): boolean {
-    if (!(post && previousPost)) {
-        return false;
-    }
+	if (!(post && previousPost)) {
+		return false;
+	}
 
-    const sameUser = post.user_id === previousPost.user_id;
-    const withinTimeWindow = post.create_at - previousPost.create_at <= Posts.POST_COLLAPSE_TIMEOUT;
-    const notFromWebhook = !(post.props && post.props.from_webhook) && !(previousPost.props && previousPost.props.from_webhook);
-    const notSystemMessage = !isSystemMessage(post) && !isSystemMessage(previousPost);
-    const sameAiGeneratedStatus = post.props?.ai_generated_by === previousPost.props?.ai_generated_by;
-    const notBoRMessage = post.type !== Constants.PostTypes.BURN_ON_READ && previousPost.type !== Constants.PostTypes.BURN_ON_READ; // And neither is a burn-on-read post
+	const sameUser = post.user_id === previousPost.user_id;
+	const withinTimeWindow = post.create_at - previousPost.create_at <= Posts.POST_COLLAPSE_TIMEOUT;
+	const notFromWebhook = !(post.props && post.props.from_webhook) && !(previousPost.props && previousPost.props.from_webhook);
+	const notSystemMessage = !isSystemMessage(post) && !isSystemMessage(previousPost);
+	const sameAiGeneratedStatus = post.props?.ai_generated_by === previousPost.props?.ai_generated_by;
+	const notBoRMessage = post.type !== Constants.PostTypes.BURN_ON_READ && previousPost.type !== Constants.PostTypes.BURN_ON_READ; // And neither is a burn-on-read post
 
-    return sameUser &&
-        withinTimeWindow &&
-        notFromWebhook &&
-        notSystemMessage &&
-        sameAiGeneratedStatus &&
-        notBoRMessage;
+	return sameUser &&
+		withinTimeWindow &&
+		notFromWebhook &&
+		notSystemMessage &&
+		sameAiGeneratedStatus &&
+		notBoRMessage;
 }
 
 // Checks if a post has valid AI-generated metadata
 export function hasAiGeneratedMetadata(post: Post): boolean {
-    return Boolean(post.props && post.props.ai_generated_by && post.props.ai_generated_by_username) &&
-        typeof post.props.ai_generated_by === 'string' &&
-        typeof post.props.ai_generated_by_username === 'string';
+	return Boolean(post.props && post.props.ai_generated_by && post.props.ai_generated_by_username) &&
+		typeof post.props.ai_generated_by === 'string' &&
+		typeof post.props.ai_generated_by_username === 'string';
 }
 
 // Constructs the URL of a post.
@@ -671,113 +671,113 @@ export function hasAiGeneratedMetadata(post: Post): boolean {
 //
 // Note: In the case of DM_CHANNEL, users must be fetched beforehand.
 export function getPostURL(state: GlobalState, post: Post): string {
-    const channel = getChannel(state, post.channel_id);
-    if (!channel) {
-        return '';
-    }
-    const currentUserId = getCurrentUserId(state);
-    const team = getTeam(state, channel.team_id || getCurrentTeamId(state));
-    if (!team) {
-        return '';
-    }
+	const channel = getChannel(state, post.channel_id);
+	if (!channel) {
+		return '';
+	}
+	const currentUserId = getCurrentUserId(state);
+	const team = getTeam(state, channel.team_id || getCurrentTeamId(state));
+	if (!team) {
+		return '';
+	}
 
-    const postURI = isCollapsedThreadsEnabled(state) && isComment(post) ? '' : `/${post.id}`;
+	const postURI = isCollapsedThreadsEnabled(state) && isComment(post) ? '' : `/${post.id}`;
 
-    switch (channel.type) {
-    case Constants.DM_CHANNEL: {
-        const userId = getUserIdFromChannelName(currentUserId, channel.name);
-        const user = getUser(state, userId);
-        return `/${team.name}/messages/@${user.username}${postURI}`;
-    }
-    case Constants.GM_CHANNEL:
-        return `/${team.name}/messages/${channel.name}${postURI}`;
-    default:
-        return `/${team.name}/channels/${channel.name}${postURI}`;
-    }
+	switch (channel.type) {
+		case Constants.DM_CHANNEL: {
+			const userId = getUserIdFromChannelName(currentUserId, channel.name);
+			const user = getUser(state, userId);
+			return `/${team.name}/messages/@${user.username}${postURI}`;
+		}
+		case Constants.GM_CHANNEL:
+			return `/${team.name}/messages/${channel.name}${postURI}`;
+		default:
+			return `/${team.name}/channels/${channel.name}${postURI}`;
+	}
 }
 
 export function matchUserMentionTriggersWithMessageMentions(userMentionKeys: UserMentionKey[],
-    messageMentionKeys: string[]): boolean {
-    let isMentioned = false;
-    for (const mentionKey of userMentionKeys) {
-        const isPresentInMessage = messageMentionKeys.includes(mentionKey.key);
-        if (isPresentInMessage) {
-            isMentioned = true;
-            break;
-        }
-    }
-    return isMentioned;
+	messageMentionKeys: string[]): boolean {
+	let isMentioned = false;
+	for (const mentionKey of userMentionKeys) {
+		const isPresentInMessage = messageMentionKeys.includes(mentionKey.key);
+		if (isPresentInMessage) {
+			isMentioned = true;
+			break;
+		}
+	}
+	return isMentioned;
 }
 
 /**
  * This removes custom emoji reactions of a post, which are deleted from the custom emoji store.
  */
 export function makeGetUniqueReactionsToPost(): (state: GlobalState, postId: Post['id']) => Record<string, Reaction> | undefined | null {
-    const getReactionsForPost = makeGetReactionsForPost();
+	const getReactionsForPost = makeGetReactionsForPost();
 
-    return createSelector(
-        'makeGetUniqueReactionsToPost',
-        (state: GlobalState, postId: string) => getReactionsForPost(state, postId),
-        getEmojiMap,
-        (reactions, emojiMap) => {
-            if (!reactions) {
-                return null;
-            }
+	return createSelector(
+		'makeGetUniqueReactionsToPost',
+		(state: GlobalState, postId: string) => getReactionsForPost(state, postId),
+		getEmojiMap,
+		(reactions, emojiMap) => {
+			if (!reactions) {
+				return null;
+			}
 
-            const reactionsForPost: Record<string, Reaction> = {};
+			const reactionsForPost: Record<string, Reaction> = {};
 
-            Object.entries(reactions).forEach(([userIdEmojiKey, emojiReaction]) => {
-                if (emojiMap.get(emojiReaction.emoji_name)) {
-                    reactionsForPost[userIdEmojiKey] = emojiReaction;
-                }
-            });
+			Object.entries(reactions).forEach(([userIdEmojiKey, emojiReaction]) => {
+				if (emojiMap.get(emojiReaction.emoji_name)) {
+					reactionsForPost[userIdEmojiKey] = emojiReaction;
+				}
+			});
 
-            return reactionsForPost;
-        },
-    );
+			return reactionsForPost;
+		},
+	);
 }
 
 export function makeGetUniqueEmojiNameReactionsForPost(): (state: GlobalState, postId: Post['id']) => string[] | undefined | null {
-    const getReactionsForPost = makeGetReactionsForPost();
+	const getReactionsForPost = makeGetReactionsForPost();
 
-    return createSelector(
-        'makeGetUniqueEmojiReactionsForPost',
-        (state: GlobalState, postId: string) => getReactionsForPost(state, postId),
-        getEmojiMap,
-        (reactions, emojiMap) => {
-            if (!reactions) {
-                return null;
-            }
+	return createSelector(
+		'makeGetUniqueEmojiReactionsForPost',
+		(state: GlobalState, postId: string) => getReactionsForPost(state, postId),
+		getEmojiMap,
+		(reactions, emojiMap) => {
+			if (!reactions) {
+				return null;
+			}
 
-            const emojiNames: string[] = [];
+			const emojiNames: string[] = [];
 
-            Object.values(reactions).forEach((reaction) => {
-                if (emojiMap.get(reaction.emoji_name) && !emojiNames.includes(reaction.emoji_name)) {
-                    emojiNames.push(reaction.emoji_name);
-                }
-            });
+			Object.values(reactions).forEach((reaction) => {
+				if (emojiMap.get(reaction.emoji_name) && !emojiNames.includes(reaction.emoji_name)) {
+					emojiNames.push(reaction.emoji_name);
+				}
+			});
 
-            return emojiNames;
-        },
-    );
+			return emojiNames;
+		},
+	);
 }
 
 export function makeGetIsReactionAlreadyAddedToPost(): (state: GlobalState, postId: Post['id'], emojiName: string) => boolean {
-    const getUniqueReactionsToPost = makeGetUniqueReactionsToPost();
+	const getUniqueReactionsToPost = makeGetUniqueReactionsToPost();
 
-    return createSelector(
-        'makeGetIsReactionAlreadyAddedToPost',
-        (state: GlobalState, postId: string) => getUniqueReactionsToPost(state, postId),
-        getCurrentUserId,
-        (state: GlobalState, postId: string, emojiName: string) => emojiName,
-        (reactions, currentUserId, emojiName) => {
-            const reactionsForPost = reactions || {};
+	return createSelector(
+		'makeGetIsReactionAlreadyAddedToPost',
+		(state: GlobalState, postId: string) => getUniqueReactionsToPost(state, postId),
+		getCurrentUserId,
+		(state: GlobalState, postId: string, emojiName: string) => emojiName,
+		(reactions, currentUserId, emojiName) => {
+			const reactionsForPost = reactions || {};
 
-            const isReactionAlreadyAddedToPost = Object.values(reactionsForPost).some((reaction) => reaction.user_id === currentUserId && reaction.emoji_name === emojiName);
+			const isReactionAlreadyAddedToPost = Object.values(reactionsForPost).some((reaction) => reaction.user_id === currentUserId && reaction.emoji_name === emojiName);
 
-            return isReactionAlreadyAddedToPost;
-        },
-    );
+			return isReactionAlreadyAddedToPost;
+		},
+	);
 }
 
 /**
@@ -788,92 +788,92 @@ export function makeGetIsReactionAlreadyAddedToPost(): (state: GlobalState, post
  * getPotentialMentionsForName('username..') return ['username..', 'username.', 'username'].
  */
 export function getPotentialMentionsForName(mentionName: string): string[] {
-    let mentionNameToLowerCase = mentionName.toLowerCase();
+	let mentionNameToLowerCase = mentionName.toLowerCase();
 
-    const potentialMentions = [mentionNameToLowerCase];
+	const potentialMentions = [mentionNameToLowerCase];
 
-    // Repeatedly trim off trailing punctuation in case this is at the end of a sentence
-    while (mentionNameToLowerCase.length > 0 && (/[._-]$/).test(mentionNameToLowerCase)) {
-        mentionNameToLowerCase = mentionNameToLowerCase.substring(0, mentionNameToLowerCase.length - 1);
+	// Repeatedly trim off trailing punctuation in case this is at the end of a sentence
+	while (mentionNameToLowerCase.length > 0 && (/[._-]$/).test(mentionNameToLowerCase)) {
+		mentionNameToLowerCase = mentionNameToLowerCase.substring(0, mentionNameToLowerCase.length - 1);
 
-        potentialMentions.push(mentionNameToLowerCase);
-    }
+		potentialMentions.push(mentionNameToLowerCase);
+	}
 
-    return potentialMentions;
+	return potentialMentions;
 }
 
 export function getMentionDetails<T extends UserProfile | Group>(entitiesByName: Record<string, T>, mentionName: string): T | undefined {
-    for (const potentialMention of getPotentialMentionsForName(mentionName)) {
-        if (Object.hasOwn(entitiesByName, potentialMention)) {
-            return entitiesByName[potentialMention];
-        }
-    }
+	for (const potentialMention of getPotentialMentionsForName(mentionName)) {
+		if (Object.hasOwn(entitiesByName, potentialMention)) {
+			return entitiesByName[potentialMention];
+		}
+	}
 
-    return undefined;
+	return undefined;
 }
 
 export function getUserOrGroupFromMentionName(
-    mentionName: string,
-    users: Record<string, UserProfile>,
-    groups: Record<string, Group>,
-    groupsDisabled?: boolean,
-    getMention = getMentionDetails,
+	mentionName: string,
+	users: Record<string, UserProfile>,
+	groups: Record<string, Group>,
+	groupsDisabled?: boolean,
+	getMention = getMentionDetails,
 ): [UserProfile?, Group?] {
-    const user = getMention(users, mentionName);
+	const user = getMention(users, mentionName);
 
-    // prioritizes user if user exists with the same name as a group.
-    if (!user && !groupsDisabled) {
-        const group = getMention(groups, mentionName);
-        if (group && !group.allow_reference) {
-            return [undefined, undefined]; // remove group mention if not allowed to reference
-        }
+	// prioritizes user if user exists with the same name as a group.
+	if (!user && !groupsDisabled) {
+		const group = getMention(groups, mentionName);
+		if (group && !group.allow_reference) {
+			return [undefined, undefined]; // remove group mention if not allowed to reference
+		}
 
-        return [undefined, group];
-    }
+		return [undefined, group];
+	}
 
-    return [user, undefined];
+	return [user, undefined];
 }
 
 export function mentionsMinusSpecialMentionsInText(message: string) {
-    const allMentions = message.match(Constants.MENTIONS_REGEX) || [];
-    const mentions = [];
-    for (let i = 0; i < allMentions.length; i++) {
-        const mention = allMentions[i];
-        if (!Constants.SPECIAL_MENTIONS_REGEX.test(mention)) {
-            mentions.push(mention.substring(1).trim());
-        }
-    }
+	const allMentions = message.match(Constants.MENTIONS_REGEX) || [];
+	const mentions = [];
+	for (let i = 0; i < allMentions.length; i++) {
+		const mention = allMentions[i];
+		if (!Constants.SPECIAL_MENTIONS_REGEX.test(mention)) {
+			mentions.push(mention.substring(1).trim());
+		}
+	}
 
-    return mentions;
+	return mentions;
 }
 
 export function makeGetUserOrGroupMentionCountFromMessage(): (state: GlobalState, message: Post['message']) => number {
-    return createSelector(
-        'getUserOrGroupMentionCountFromMessage',
-        (_state: GlobalState, message: Post['message']) => message,
-        getUsersByUsername,
-        getAllGroupsForReferenceByName,
-        (message, users, groups) => {
-            let count = 0;
-            const markdownCleanedText = formatWithRenderer(message, new MentionableRenderer());
-            const mentions = new Set(markdownCleanedText.match(Constants.MENTIONS_REGEX) || []);
-            mentions.forEach((mention) => {
-                const [user, group] = getUserOrGroupFromMentionName(mention.substring(1), users, groups);
+	return createSelector(
+		'getUserOrGroupMentionCountFromMessage',
+		(_state: GlobalState, message: Post['message']) => message,
+		getUsersByUsername,
+		getAllGroupsForReferenceByName,
+		(message, users, groups) => {
+			let count = 0;
+			const markdownCleanedText = formatWithRenderer(message, new MentionableRenderer());
+			const mentions = new Set(markdownCleanedText.match(Constants.MENTIONS_REGEX) || []);
+			mentions.forEach((mention) => {
+				const [user, group] = getUserOrGroupFromMentionName(mention.substring(1), users, groups);
 
-                if (user) {
-                    count++;
-                } else if (group) {
-                    count += group.member_count;
-                }
-            });
-            return count;
-        },
-    );
+				if (user) {
+					count++;
+				} else if (group) {
+					count += group.member_count;
+				}
+			});
+			return count;
+		},
+	);
 }
 
 export function hasRequestedPersistentNotifications(priority?: PostPriorityMetadata) {
-    return (
-        priority?.priority === PostPriority.URGENT &&
-        priority?.persistent_notifications
-    );
+	return (
+		priority?.priority === PostPriority.URGENT &&
+		priority?.persistent_notifications
+	);
 }

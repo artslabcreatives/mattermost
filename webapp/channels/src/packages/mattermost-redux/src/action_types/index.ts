@@ -1,7 +1,7 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {AnyAction} from 'redux';
+import type { AnyAction } from 'redux';
 
 import AdminTypes from './admin';
 import AgentTypes from './agents';
@@ -37,38 +37,38 @@ import ThreadTypes from './threads';
 import UserTypes from './users';
 
 export {
-    ErrorTypes,
-    GeneralTypes,
-    UserTypes,
-    TeamTypes,
-    ChannelTypes,
-    PostTypes,
-    FileTypes,
-    PreferenceTypes,
-    RecapTypes,
-    IntegrationTypes,
-    EmojiTypes,
-    AdminTypes,
-    JobTypes,
-    LimitsTypes,
-    SearchTypes,
-    RoleTypes,
-    SchemeTypes,
-    GroupTypes,
-    BotTypes,
-    PluginTypes,
-    ChannelCategoryTypes,
-    CloudTypes,
-    AppsTypes,
-    ThreadTypes,
-    HostedCustomerTypes,
-    DraftTypes,
-    PlaybookType,
-    ChannelBookmarkTypes,
-    ScheduledPostTypes,
-    SharedChannelTypes,
-    ContentFlaggingTypes,
-    AgentTypes,
+	ErrorTypes,
+	GeneralTypes,
+	UserTypes,
+	TeamTypes,
+	ChannelTypes,
+	PostTypes,
+	FileTypes,
+	PreferenceTypes,
+	RecapTypes,
+	IntegrationTypes,
+	EmojiTypes,
+	AdminTypes,
+	JobTypes,
+	LimitsTypes,
+	SearchTypes,
+	RoleTypes,
+	SchemeTypes,
+	GroupTypes,
+	BotTypes,
+	PluginTypes,
+	ChannelCategoryTypes,
+	CloudTypes,
+	AppsTypes,
+	ThreadTypes,
+	HostedCustomerTypes,
+	DraftTypes,
+	PlaybookType,
+	ChannelBookmarkTypes,
+	ScheduledPostTypes,
+	SharedChannelTypes,
+	ContentFlaggingTypes,
+	AgentTypes,
 };
 
 /**

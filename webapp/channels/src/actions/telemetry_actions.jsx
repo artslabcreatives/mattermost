@@ -1,7 +1,7 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {Client4} from 'mattermost-redux/client';
+import { Client4 } from 'mattermost-redux/client';
 
 const HEADER_X_PAGE_LOAD_CONTEXT = 'X-Page-Load-Context';
 
@@ -12,11 +12,11 @@ const HEADER_X_PAGE_LOAD_CONTEXT = 'X-Page-Load-Context';
  *
  */
 export function clearMarks(names) {
-    names.forEach((name) => performance.clearMarks(name));
+	names.forEach((name) => performance.clearMarks(name));
 }
 
 export function mark(name) {
-    performance.mark(name);
+	performance.mark(name);
 }
 
 /**
@@ -26,8 +26,8 @@ export function mark(name) {
  * A more accurate approach will result in more obtrusive code, which would add risk and maintenance cost.
  */
 export const temporarilySetPageLoadContext = (pageLoadContext) => {
-    Client4.setHeader(HEADER_X_PAGE_LOAD_CONTEXT, pageLoadContext);
-    setTimeout(() => {
-        Client4.removeHeader(HEADER_X_PAGE_LOAD_CONTEXT);
-    }, 5000);
+	Client4.setHeader(HEADER_X_PAGE_LOAD_CONTEXT, pageLoadContext);
+	setTimeout(() => {
+		Client4.removeHeader(HEADER_X_PAGE_LOAD_CONTEXT);
+	}, 5000);
 };

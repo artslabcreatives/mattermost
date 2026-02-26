@@ -1,11 +1,11 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useContext, useEffect} from 'react';
+import React, { useContext, useEffect } from 'react';
 
 export const ThemeContext = React.createContext({
-    startUsingUserTheme: () => {},
-    stopUsingUserTheme: () => {},
+	startUsingUserTheme: () => { },
+	stopUsingUserTheme: () => { },
 });
 
 /**
@@ -13,15 +13,15 @@ export const ThemeContext = React.createContext({
  * calling component remains mounted.
  */
 export function useUserTheme() {
-    const context = useContext(ThemeContext);
+	const context = useContext(ThemeContext);
 
-    useEffect(() => {
-        context.startUsingUserTheme();
+	useEffect(() => {
+		context.startUsingUserTheme();
 
-        return () => {
-            context.stopUsingUserTheme();
-        };
-    }, [context]);
+		return () => {
+			context.stopUsingUserTheme();
+		};
+	}, [context]);
 }
 
 /**
@@ -29,8 +29,8 @@ export function useUserTheme() {
  * remains mounted. It's used to wrap multiple routes in the Root component instead of having each of them call
  * useUserTheme separately.
  */
-export function WithUserTheme({children}: {children: React.ReactNode}) {
-    useUserTheme();
+export function WithUserTheme({ children }: { children: React.ReactNode }) {
+	useUserTheme();
 
-    return children;
+	return children;
 }

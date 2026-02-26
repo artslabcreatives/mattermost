@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import AnnouncementBannerFeatureDiscovery from './announcement_banner';
@@ -16,17 +16,17 @@ import SAMLFeatureDiscovery from './saml';
 import SystemRolesFeatureDiscovery from './system_roles';
 
 export {
-    LDAPFeatureDiscovery,
-    SAMLFeatureDiscovery,
-    OpenIDFeatureDiscovery,
-    OpenIDCustomFeatureDiscovery,
-    GitLabFeatureDiscovery,
-    AnnouncementBannerFeatureDiscovery,
-    ComplianceExportFeatureDiscovery,
-    CustomTermsOfServiceFeatureDiscovery,
-    DataRetentionFeatureDiscovery,
-    GuestAccessFeatureDiscovery,
-    SystemRolesFeatureDiscovery,
-    GroupsFeatureDiscovery,
-    MobileSecurityFeatureDiscovery,
+	LDAPFeatureDiscovery,
+	SAMLFeatureDiscovery,
+	OpenIDFeatureDiscovery,
+	OpenIDCustomFeatureDiscovery,
+	GitLabFeatureDiscovery,
+	AnnouncementBannerFeatureDiscovery,
+	ComplianceExportFeatureDiscovery,
+	CustomTermsOfServiceFeatureDiscovery,
+	DataRetentionFeatureDiscovery,
+	GuestAccessFeatureDiscovery,
+	SystemRolesFeatureDiscovery,
+	GroupsFeatureDiscovery,
+	MobileSecurityFeatureDiscovery,
 };

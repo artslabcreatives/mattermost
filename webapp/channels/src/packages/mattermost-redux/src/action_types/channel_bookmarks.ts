@@ -1,11 +1,11 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import keyMirror from 'mattermost-redux/utils/key_mirror';
 
 export default keyMirror({
-    RECEIVED_BOOKMARK: null,
-    RECEIVED_BOOKMARKS: null,
+	RECEIVED_BOOKMARK: null,
+	RECEIVED_BOOKMARKS: null,
 
-    BOOKMARK_DELETED: null,
+	BOOKMARK_DELETED: null,
 });

@@ -1,16 +1,16 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {GlobalState} from 'types/store';
+import type { GlobalState } from 'types/store';
 
 export function isShowOnboardingTaskCompletion(state: GlobalState) {
-    return state.views.onboardingTasks.isShowOnboardingTaskCompletion;
+	return state.views.onboardingTasks.isShowOnboardingTaskCompletion;
 }
 
 export function isShowOnboardingCompleteProfileTour(state: GlobalState) {
-    return state.views.onboardingTasks.isShowOnboardingCompleteProfileTour;
+	return state.views.onboardingTasks.isShowOnboardingCompleteProfileTour;
 }
 
 export function isShowOnboardingVisitConsoleTour(state: GlobalState) {
-    return state.views.onboardingTasks.isShowOnboardingVisitConsoleTour;
+	return state.views.onboardingTasks.isShowOnboardingVisitConsoleTour;
 }

@@ -1,10 +1,10 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 export enum Load {
-    DONE,
-    LOADING,
-    FAILED,
+	DONE,
+	LOADING,
+	FAILED,
 }
 
 export const USER_GROUP_POPOVER_OPENING_DELAY = 300;

@@ -1,28 +1,28 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {useCallback} from 'react';
+import { useCallback } from 'react';
 
-import {useExternalLink} from './use_external_link';
-import useCWSAvailabilityCheck, {CSWAvailabilityCheckTypes} from './useCWSAvailabilityCheck';
+import { useExternalLink } from './use_external_link';
+import useCWSAvailabilityCheck, { CSWAvailabilityCheckTypes } from './useCWSAvailabilityCheck';
 
 export type UseOpenPricingModalReturn = {
-    openPricingModal: () => void;
-    isAirGapped: boolean;
+	openPricingModal: () => void;
+	isAirGapped: boolean;
 }
 
 export default function useOpenPricingModal(): UseOpenPricingModalReturn {
-    const cwsAvailability = useCWSAvailabilityCheck();
-    const [externalLink] = useExternalLink('https://mattermost.com/pricing');
+	const cwsAvailability = useCWSAvailabilityCheck();
+	const [externalLink] = useExternalLink('https://mattermost.com/pricing');
 
-    const isAirGapped = cwsAvailability === CSWAvailabilityCheckTypes.Unavailable;
+	const isAirGapped = cwsAvailability === CSWAvailabilityCheckTypes.Unavailable;
 
-    const openPricingModal = useCallback(() => {
-        window.open(externalLink, '_blank', 'noopener,noreferrer');
-    }, [externalLink]);
+	const openPricingModal = useCallback(() => {
+		window.open(externalLink, '_blank', 'noopener,noreferrer');
+	}, [externalLink]);
 
-    return {
-        openPricingModal,
-        isAirGapped,
-    };
+	return {
+		openPricingModal,
+		isAirGapped,
+	};
 }

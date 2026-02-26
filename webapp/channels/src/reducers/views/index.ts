@@ -1,7 +1,7 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {combineReducers} from 'redux';
+import { combineReducers } from 'redux';
 
 import admin from './admin';
 import announcementBar from './announcement_bar';
@@ -29,28 +29,28 @@ import textbox from './textbox';
 import threads from './threads';
 
 export default combineReducers({
-    admin,
-    announcementBar,
-    browser,
-    channel,
-    rhs,
-    rhsSuppressed,
-    posts,
-    modals,
-    emoji,
-    i18n,
-    lhs,
-    search,
-    notice,
-    system,
-    channelSelectorModal,
-    settings,
-    marketplace,
-    textbox,
-    channelSidebar,
-    onboardingTasks,
-    threads,
-    productMenu,
-    drafts,
-    readout,
+	admin,
+	announcementBar,
+	browser,
+	channel,
+	rhs,
+	rhsSuppressed,
+	posts,
+	modals,
+	emoji,
+	i18n,
+	lhs,
+	search,
+	notice,
+	system,
+	channelSelectorModal,
+	settings,
+	marketplace,
+	textbox,
+	channelSidebar,
+	onboardingTasks,
+	threads,
+	productMenu,
+	drafts,
+	readout,
 });

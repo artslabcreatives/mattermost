@@ -1,17 +1,17 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {parseISO, isValid, format} from 'date-fns';
-import type {Moment} from 'moment-timezone';
+import { parseISO, isValid, format } from 'date-fns';
+import type { Moment } from 'moment-timezone';
 
-import {getCurrentMomentForTimezone, parseDateInTimezone} from './timezone';
+import { getCurrentMomentForTimezone, parseDateInTimezone } from './timezone';
 
 export enum DateReference {
 
-    // Absolute
-    TODAY = 'today',
-    TOMORROW = 'tomorrow',
-    YESTERDAY = 'yesterday',
+	// Absolute
+	TODAY = 'today',
+	TOMORROW = 'tomorrow',
+	YESTERDAY = 'yesterday',
 }
 
 export const DATE_FORMAT = 'yyyy-MM-dd';
@@ -22,27 +22,27 @@ const MOMENT_DATETIME_FORMAT = 'YYYY-MM-DDTHH:mm:ss[Z]';
  * For date-only fields, datetime formats are accepted and the date portion is extracted
  */
 export function stringToMoment(value: string | null, timezone?: string): Moment | null {
-    if (!value) {
-        return null;
-    }
+	if (!value) {
+		return null;
+	}
 
-    // Handle relative dates/times
-    const relativeMoment = resolveRelativeDateToMoment(value, timezone);
-    if (relativeMoment) {
-        return relativeMoment;
-    }
+	// Handle relative dates/times
+	const relativeMoment = resolveRelativeDateToMoment(value, timezone);
+	if (relativeMoment) {
+		return relativeMoment;
+	}
 
-    try {
-        const parsedDate = parseISO(value);
-        if (!isValid(parsedDate)) {
-            return null;
-        }
-    } catch (error) {
-        return null;
-    }
+	try {
+		const parsedDate = parseISO(value);
+		if (!isValid(parsedDate)) {
+			return null;
+		}
+	} catch (error) {
+		return null;
+	}
 
-    // parseISO validation passed, now parse with timezone handling
-    return parseDateInTimezone(value, timezone);
+	// parseISO validation passed, now parse with timezone handling
+	return parseDateInTimezone(value, timezone);
 }
 
 /**
@@ -55,79 +55,79 @@ export function stringToMoment(value: string | null, timezone?: string): Moment 
  * For date fields, stores in local date format (YYYY-MM-DD) since timezone is not relevant.
  */
 export function momentToString(momentValue: Moment | null, isDateTime: boolean): string | null {
-    if (!momentValue || !momentValue.isValid()) {
-        return null;
-    }
+	if (!momentValue || !momentValue.isValid()) {
+		return null;
+	}
 
-    if (isDateTime) {
-        return momentValue.utc().format(MOMENT_DATETIME_FORMAT);
-    }
+	if (isDateTime) {
+		return momentValue.utc().format(MOMENT_DATETIME_FORMAT);
+	}
 
-    // Store date only: "2025-01-14"
-    const date = momentValue.toDate();
-    return format(date, DATE_FORMAT);
+	// Store date only: "2025-01-14"
+	const date = momentValue.toDate();
+	return format(date, DATE_FORMAT);
 }
 
 /**
  * Resolve relative date references to Moment objects (internal helper)
  */
 function resolveRelativeDateToMoment(dateStr: string, timezone?: string): Moment | null {
-    // Get current time in timezone
-    const now = getCurrentMomentForTimezone(timezone);
+	// Get current time in timezone
+	const now = getCurrentMomentForTimezone(timezone);
 
-    switch (dateStr) {
-    case DateReference.TODAY:
-        return now.startOf('day');
+	switch (dateStr) {
+		case DateReference.TODAY:
+			return now.startOf('day');
 
-    case DateReference.TOMORROW:
-        return now.add(1, 'day').startOf('day');
+		case DateReference.TOMORROW:
+			return now.add(1, 'day').startOf('day');
 
-    case DateReference.YESTERDAY:
-        return now.subtract(1, 'day').startOf('day');
+		case DateReference.YESTERDAY:
+			return now.subtract(1, 'day').startOf('day');
 
-    default: {
-        // Handle dynamic patterns like "+5d", "+2w", "+1m"
-        const dynamicMatch = dateStr.match(/^([+-]\d{1,4})([dwm])$/i);
-        if (dynamicMatch) {
-            const [, amount, unit] = dynamicMatch;
-            const value = parseInt(amount, 10);
+		default: {
+			// Handle dynamic patterns like "+5d", "+2w", "+1m"
+			const dynamicMatch = dateStr.match(/^([+-]\d{1,4})([dwm])$/i);
+			if (dynamicMatch) {
+				const [, amount, unit] = dynamicMatch;
+				const value = parseInt(amount, 10);
 
-            if (Math.abs(value) > 9999) {
-                return null;
-            }
+				if (Math.abs(value) > 9999) {
+					return null;
+				}
 
-            let momentUnit: moment.unitOfTime.DurationConstructor;
+				let momentUnit: moment.unitOfTime.DurationConstructor;
 
-            switch (unit.toLowerCase()) {
-            case 'd':
-                momentUnit = 'day';
-                return now.add(value, momentUnit).startOf('day');
-            case 'w':
-                momentUnit = 'week';
-                return now.add(value, momentUnit).startOf('day');
-            case 'm':
-                momentUnit = 'month';
-                return now.add(value, momentUnit).startOf('day');
-            default:
-                return null;
-            }
-        }
+				switch (unit.toLowerCase()) {
+					case 'd':
+						momentUnit = 'day';
+						return now.add(value, momentUnit).startOf('day');
+					case 'w':
+						momentUnit = 'week';
+						return now.add(value, momentUnit).startOf('day');
+					case 'm':
+						momentUnit = 'month';
+						return now.add(value, momentUnit).startOf('day');
+					default:
+						return null;
+				}
+			}
 
-        return null;
-    }
-    }
+			return null;
+		}
+	}
 }
 
 /**
  * Resolve relative date references to ISO strings
  */
 export function resolveRelativeDate(dateStr: string, timezone?: string): string {
-    const relativeMoment = resolveRelativeDateToMoment(dateStr, timezone);
-    if (relativeMoment) {
-        return format(relativeMoment.toDate(), DATE_FORMAT);
-    }
+	const relativeMoment = resolveRelativeDateToMoment(dateStr, timezone);
+	if (relativeMoment) {
+		return format(relativeMoment.toDate(), DATE_FORMAT);
+	}
 
-    return dateStr;
+	return dateStr;
 }
 
 /**
@@ -135,23 +135,23 @@ export function resolveRelativeDate(dateStr: string, timezone?: string): string 
  * For date-only fields - no timezone conversion needed
  */
 export function stringToDate(value: string | null): Date | null {
-    if (!value) {
-        return null;
-    }
+	if (!value) {
+		return null;
+	}
 
-    // Handle relative dates first
-    const resolved = resolveRelativeDate(value);
+	// Handle relative dates first
+	const resolved = resolveRelativeDate(value);
 
-    // Parse ISO date string
-    try {
-        const parsed = parseISO(resolved);
-        if (!isValid(parsed)) {
-            return null;
-        }
-        return parsed;
-    } catch (error) {
-        return null;
-    }
+	// Parse ISO date string
+	try {
+		const parsed = parseISO(resolved);
+		if (!isValid(parsed)) {
+			return null;
+		}
+		return parsed;
+	} catch (error) {
+		return null;
+	}
 }
 
 /**
@@ -159,9 +159,9 @@ export function stringToDate(value: string | null): Date | null {
  * For date-only fields - no timezone conversion needed
  */
 export function dateToString(date: Date | null): string | null {
-    if (!date || isNaN(date.getTime())) {
-        return null;
-    }
-    return format(date, DATE_FORMAT);
+	if (!date || isNaN(date.getTime())) {
+		return null;
+	}
+	return format(date, DATE_FORMAT);
 }
 

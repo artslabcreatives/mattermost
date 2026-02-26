@@ -1,17 +1,17 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {useCallback} from 'react';
-import {useDispatch} from 'react-redux';
+import { useCallback } from 'react';
+import { useDispatch } from 'react-redux';
 
-import {setReadout} from 'actions/views/root';
+import { setReadout } from 'actions/views/root';
 
 export const useReadout = () => {
-    const dispatch = useDispatch();
+	const dispatch = useDispatch();
 
-    const readAloud = useCallback((message: string) => {
-        dispatch(setReadout(message));
-    }, [dispatch]);
+	const readAloud = useCallback((message: string) => {
+		dispatch(setReadout(message));
+	}, [dispatch]);
 
-    return readAloud;
+	return readAloud;
 };

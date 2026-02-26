@@ -1,22 +1,22 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {useCallback} from 'react';
-import {useSelector} from 'react-redux';
+import { useCallback } from 'react';
+import { useSelector } from 'react-redux';
 
-import {getCloudCustomer} from 'mattermost-redux/selectors/entities/cloud';
+import { getCloudCustomer } from 'mattermost-redux/selectors/entities/cloud';
 
-import {getCloudSupportLink, goToCloudSupportForm} from 'utils/contact_support_sales';
+import { getCloudSupportLink, goToCloudSupportForm } from 'utils/contact_support_sales';
 
 export function useOpenCloudZendeskSupportForm(subject: string, description: string): [() => void, string] {
-    const customer = useSelector(getCloudCustomer);
-    const customerEmail = customer?.email || '';
+	const customer = useSelector(getCloudCustomer);
+	const customerEmail = customer?.email || '';
 
-    const url = getCloudSupportLink(customerEmail, subject, description, window.location.host);
+	const url = getCloudSupportLink(customerEmail, subject, description, window.location.host);
 
-    const openContactSupport = useCallback(
-        () => goToCloudSupportForm(customerEmail, subject, description, window.location.host),
-        [customerEmail, subject, description],
-    );
-    return [openContactSupport, url];
+	const openContactSupport = useCallback(
+		() => goToCloudSupportForm(customerEmail, subject, description, window.location.host),
+		[customerEmail, subject, description],
+	);
+	return [openContactSupport, url];
 }

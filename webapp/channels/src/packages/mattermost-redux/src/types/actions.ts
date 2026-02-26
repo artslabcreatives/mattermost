@@ -1,12 +1,12 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {Action, Dispatch} from 'redux';
-import type {ThunkAction} from 'redux-thunk';
+import type { Action, Dispatch } from 'redux';
+import type { ThunkAction } from 'redux-thunk';
 
-import type {GlobalState} from '@mattermost/types/store';
+import type { GlobalState } from '@mattermost/types/store';
 
-import type {MMReduxAction} from 'mattermost-redux/action_types';
+import type { MMReduxAction } from 'mattermost-redux/action_types';
 
 /**
  * These files extends Redux's Dispatch type and bindActionCreators function to support Thunk actions by default.
@@ -23,8 +23,8 @@ export type GetStateFunc<State = GlobalState> = () => State;
  * ActionResult should be the return value of most Thunk action creators.
  */
 export type ActionResult<Data = any, Error = any> = {
-    data?: Data;
-    error?: Error;
+	data?: Data;
+	error?: Error;
 };
 
 /**
@@ -32,9 +32,9 @@ export type ActionResult<Data = any, Error = any> = {
  * the second type parameter should be used to pass the version of GlobalState from 'types/store'.
  */
 export type ActionFunc<
-    Data = unknown,
-    State extends GlobalState = GlobalState,
-    TAction extends Action = MMReduxAction
+	Data = unknown,
+	State extends GlobalState = GlobalState,
+	TAction extends Action = MMReduxAction
 > = ThunkAction<ActionResult<Data>, State, unknown, TAction>;
 
 /**
@@ -42,9 +42,9 @@ export type ActionFunc<
  * the second type parameter should be used to pass the version of GlobalState from 'types/store'.
  */
 export type ActionFuncAsync<
-    Data = unknown,
-    State extends GlobalState = GlobalState,
-    TAction extends Action = MMReduxAction
+	Data = unknown,
+	State extends GlobalState = GlobalState,
+	TAction extends Action = MMReduxAction
 > = ThunkAction<Promise<ActionResult<Data>>, State, unknown, TAction>;
 
 /**
@@ -54,7 +54,7 @@ export type ActionFuncAsync<
  * ActionFunc or ActionFuncAsync should generally be preferred, but this type is available for legacy code.
  */
 export type ThunkActionFunc<
-    ReturnType,
-    State extends GlobalState = GlobalState,
-    TAction extends Action = MMReduxAction
+	ReturnType,
+	State extends GlobalState = GlobalState,
+	TAction extends Action = MMReduxAction
 > = ThunkAction<ReturnType, State, unknown, TAction>;

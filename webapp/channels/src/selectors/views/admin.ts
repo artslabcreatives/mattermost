@@ -1,24 +1,24 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {GlobalState} from 'types/store';
+import type { GlobalState } from 'types/store';
 
 export function getNavigationBlocked(state: GlobalState) {
-    return state.views.admin.navigationBlock.blocked;
+	return state.views.admin.navigationBlock.blocked;
 }
 
 export function showNavigationPrompt(state: GlobalState) {
-    return state.views.admin.navigationBlock.showNavigationPrompt;
+	return state.views.admin.navigationBlock.showNavigationPrompt;
 }
 
 export function getOnNavigationConfirmed(state: GlobalState) {
-    return state.views.admin.navigationBlock.onNavigationConfirmed;
+	return state.views.admin.navigationBlock.onNavigationConfirmed;
 }
 
 export function getNeedsLoggedInLimitReachedCheck(state: GlobalState): boolean {
-    return state.views.admin.needsLoggedInLimitReachedCheck;
+	return state.views.admin.needsLoggedInLimitReachedCheck;
 }
 
 export function getAdminConsoleUserManagementTableProperties(state: GlobalState) {
-    return state.views.admin.adminConsoleUserManagementTableProperties;
+	return state.views.admin.adminConsoleUserManagementTableProperties;
 }

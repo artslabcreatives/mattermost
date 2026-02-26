@@ -1,45 +1,45 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {connect} from 'react-redux';
-import type {ConnectedProps} from 'react-redux';
-import {bindActionCreators} from 'redux';
-import type {Dispatch} from 'redux';
+import { connect } from 'react-redux';
+import type { ConnectedProps } from 'react-redux';
+import { bindActionCreators } from 'redux';
+import type { Dispatch } from 'redux';
 
-import {getCurrentChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getConfig} from 'mattermost-redux/selectors/entities/general';
+import { getCurrentChannel } from 'mattermost-redux/selectors/entities/channels';
+import { getConfig } from 'mattermost-redux/selectors/entities/general';
 
-import {openModal} from 'actions/views/modals';
-import {getFilesDropdownPluginMenuItems} from 'selectors/plugins';
+import { openModal } from 'actions/views/modals';
+import { getFilesDropdownPluginMenuItems } from 'selectors/plugins';
 
-import {canDownloadFiles} from 'utils/file_utils';
+import { canDownloadFiles } from 'utils/file_utils';
 
-import type {GlobalState} from 'types/store';
+import type { GlobalState } from 'types/store';
 
 import FileAttachment from './file_attachment';
 
 export type OwnProps = {
-    preventDownload?: boolean;
+	preventDownload?: boolean;
 }
 
 function mapStateToProps(state: GlobalState, ownProps: OwnProps) {
-    const config = getConfig(state);
+	const config = getConfig(state);
 
-    return {
-        canDownloadFiles: !ownProps.preventDownload && canDownloadFiles(config),
-        enableSVGs: config.EnableSVGs === 'true',
-        enablePublicLink: config.EnablePublicLink === 'true',
-        pluginMenuItems: getFilesDropdownPluginMenuItems(state),
-        currentChannel: getCurrentChannel(state),
-    };
+	return {
+		canDownloadFiles: !ownProps.preventDownload && canDownloadFiles(config),
+		enableSVGs: config.EnableSVGs === 'true',
+		enablePublicLink: config.EnablePublicLink === 'true',
+		pluginMenuItems: getFilesDropdownPluginMenuItems(state),
+		currentChannel: getCurrentChannel(state),
+	};
 }
 
 function mapDispatchToProps(dispatch: Dispatch) {
-    return {
-        actions: bindActionCreators({
-            openModal,
-        }, dispatch),
-    };
+	return {
+		actions: bindActionCreators({
+			openModal,
+		}, dispatch),
+	};
 }
 
 const connector = connect(mapStateToProps, mapDispatchToProps);

@@ -1,52 +1,52 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {Moment} from 'moment-timezone';
+import type { Moment } from 'moment-timezone';
 import moment from 'moment-timezone';
 
 export function getBrowserTimezone() {
-    return new Intl.DateTimeFormat().resolvedOptions().timeZone;
+	return new Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
 export function getBrowserUtcOffset() {
-    return moment().utcOffset();
+	return moment().utcOffset();
 }
 
 export function getUtcOffsetForTimeZone(timezone: string) {
-    return moment.tz(timezone).utcOffset();
+	return moment.tz(timezone).utcOffset();
 }
 
 export function getCurrentDateForTimezone(timezone: string) {
-    const tztime = moment().tz(timezone);
-    return new Date(tztime.year(), tztime.month(), tztime.date());
+	const tztime = moment().tz(timezone);
+	return new Date(tztime.year(), tztime.month(), tztime.date());
 }
 
 export function getCurrentDateTimeForTimezone(timezone: string) {
-    const tztime = moment().tz(timezone);
-    return new Date(tztime.year(), tztime.month(), tztime.date(), tztime.hour(), tztime.minute(), tztime.second());
+	const tztime = moment().tz(timezone);
+	return new Date(tztime.year(), tztime.month(), tztime.date(), tztime.hour(), tztime.minute(), tztime.second());
 }
 
 export function getCurrentMomentForTimezone(timezone?: string) {
-    return timezone ? moment.tz(timezone) : moment();
+	return timezone ? moment.tz(timezone) : moment();
 }
 
 export function isBeforeTime(dateTime1: Moment, dateTime2: Moment) {
-    const a = dateTime1.clone().set({year: 0, month: 0, date: 1});
-    const b = dateTime2.clone().set({year: 0, month: 0, date: 1});
+	const a = dateTime1.clone().set({ year: 0, month: 0, date: 1 });
+	const b = dateTime2.clone().set({ year: 0, month: 0, date: 1 });
 
-    return a.isBefore(b);
+	return a.isBefore(b);
 }
 
 export function isValidTimezone(timezone: string): boolean {
-    return moment.tz.zone(timezone) !== null;
+	return moment.tz.zone(timezone) !== null;
 }
 
 export function parseDateInTimezone(value: string, timezone?: string): Moment | null {
-    if (!timezone || !isValidTimezone(timezone)) {
-        const parsed = moment(value);
-        return parsed.isValid() ? parsed : null;
-    }
+	if (!timezone || !isValidTimezone(timezone)) {
+		const parsed = moment(value);
+		return parsed.isValid() ? parsed : null;
+	}
 
-    const parsed = moment.tz(value, timezone);
-    return parsed.isValid() ? parsed : null;
+	const parsed = moment.tz(value, timezone);
+	return parsed.isValid() ? parsed : null;
 }

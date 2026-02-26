@@ -1,16 +1,16 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {ClientLicense} from '@mattermost/types/config';
+import type { ClientLicense } from '@mattermost/types/config';
 
-import {createSelector} from 'mattermost-redux/selectors/create_selector';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/common';
-import {getConfig, getLicense} from 'mattermost-redux/selectors/entities/general';
-import {getInt} from 'mattermost-redux/selectors/entities/preferences';
+import { createSelector } from 'mattermost-redux/selectors/create_selector';
+import { getCurrentUserId } from 'mattermost-redux/selectors/entities/common';
+import { getConfig, getLicense } from 'mattermost-redux/selectors/entities/general';
+import { getInt } from 'mattermost-redux/selectors/entities/preferences';
 
-import {isMinimumEnterpriseAdvancedLicense} from 'utils/license_utils';
+import { isMinimumEnterpriseAdvancedLicense } from 'utils/license_utils';
 
-import type {GlobalState} from 'types/store';
+import type { GlobalState } from 'types/store';
 
 // Preference category for storing whether user has seen the Burn-on-Read tour tip
 export const BURN_ON_READ_TOUR_TIP_PREFERENCE = 'burn_on_read_tour_tip';
@@ -21,14 +21,14 @@ export const BURN_ON_READ_TOUR_TIP_PREFERENCE = 'burn_on_read_tour_tip';
  * When enabled, users can send messages that auto-delete after being read by recipients.
  */
 export const isBurnOnReadEnabled: (state: GlobalState) => boolean = createSelector(
-    'isBurnOnReadEnabled',
-    getConfig,
-    getLicense,
-    (config, license: ClientLicense): boolean => {
-        const configEnabled = config.EnableBurnOnRead === 'true';
-        const licenseSupportsFeature = isMinimumEnterpriseAdvancedLicense(license);
-        return configEnabled && licenseSupportsFeature;
-    },
+	'isBurnOnReadEnabled',
+	getConfig,
+	getLicense,
+	(config, license: ClientLicense): boolean => {
+		const configEnabled = config.EnableBurnOnRead === 'true';
+		const licenseSupportsFeature = isMinimumEnterpriseAdvancedLicense(license);
+		return configEnabled && licenseSupportsFeature;
+	},
 );
 
 /**
@@ -37,9 +37,9 @@ export const isBurnOnReadEnabled: (state: GlobalState) => boolean = createSelect
  * Converts from backend seconds storage to user-friendly minutes.
  */
 export const getBurnOnReadDurationMinutes = (state: GlobalState): number => {
-    const config = getConfig(state);
-    const seconds = parseInt(config.BurnOnReadDurationSeconds || '600', 10);
-    return Math.floor(seconds / 60);
+	const config = getConfig(state);
+	const seconds = parseInt(config.BurnOnReadDurationSeconds || '600', 10);
+	return Math.floor(seconds / 60);
 };
 
 /**
@@ -48,8 +48,8 @@ export const getBurnOnReadDurationMinutes = (state: GlobalState): number => {
  * Future versions may implement user/group-level restrictions.
  */
 export const canUserSendBurnOnRead = (state: GlobalState): boolean => {
-    // For MVP: All users can send BoR when feature is enabled
-    return isBurnOnReadEnabled(state);
+	// For MVP: All users can send BoR when feature is enabled
+	return isBurnOnReadEnabled(state);
 };
 
 /**
@@ -57,7 +57,7 @@ export const canUserSendBurnOnRead = (state: GlobalState): boolean => {
  * Used to determine if the tour tip pulsating dot should be displayed.
  */
 export const hasSeenBurnOnReadTourTip = (state: GlobalState): boolean => {
-    const currentUserId = getCurrentUserId(state);
-    const value = getInt(state, BURN_ON_READ_TOUR_TIP_PREFERENCE, currentUserId, 0);
-    return value === 1;
+	const currentUserId = getCurrentUserId(state);
+	const value = getInt(state, BURN_ON_READ_TOUR_TIP_PREFERENCE, currentUserId, 0);
+	return value === 1;
 };

@@ -1,11 +1,11 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {defineMessage} from 'react-intl';
+import { defineMessage } from 'react-intl';
 
-import type {EmojiCategory} from '@mattermost/types/emojis';
+import type { EmojiCategory } from '@mattermost/types/emojis';
 
-import type {Categories} from '../types';
+import type { Categories } from '../types';
 
 export const RECENT: EmojiCategory = 'recent' as const;
 export const SEARCH_RESULTS: EmojiCategory = 'searchResults' as const;
@@ -13,108 +13,108 @@ export const SMILEY_EMOTION: EmojiCategory = 'smileys-emotion' as const;
 export const CUSTOM: EmojiCategory = 'custom' as const;
 
 export const EMOJI_CATEGORIES: Categories = {
-    recent: {
-        name: 'recent',
-        label: defineMessage({
-            id: 'emoji_picker.recent',
-            defaultMessage: 'Recently Used',
-        }),
-        iconClassName: 'icon-clock-outline',
-    },
-    searchResults: {
-        name: 'searchResults',
-        label: defineMessage({
-            id: 'emoji_picker.searchResults',
-            defaultMessage: 'Search Results',
-        }),
-        iconClassName: '',
-    },
-    'smileys-emotion': {
-        name: 'smileys-emotion',
-        label: defineMessage({
-            id: 'emoji_picker.smileys-emotion',
-            defaultMessage: 'Smileys & Emotion',
-        }),
-        iconClassName: 'icon-emoticon-happy-outline',
-    },
-    'people-body': {
-        name: 'people-body',
-        label: defineMessage({
-            id: 'emoji_picker.people-body',
-            defaultMessage: 'People & Body',
-        }),
-        iconClassName: 'icon-account-outline',
-    },
-    'animals-nature': {
-        name: 'animals-nature',
-        label: defineMessage({
-            id: 'emoji_picker.animals-nature',
-            defaultMessage: 'Animals & Nature',
-        }),
-        iconClassName: 'icon-leaf-outline',
-    },
-    'food-drink': {
-        name: 'food-drink',
-        label: defineMessage({
-            id: 'emoji_picker.food-drink',
-            defaultMessage: 'Food & Drink',
-        }),
-        iconClassName: 'icon-food-apple',
-    },
-    'travel-places': {
-        name: 'travel-places',
-        label: defineMessage({
-            id: 'emoji_picker.travel-places',
-            defaultMessage: 'Travel & Places',
-        }),
-        iconClassName: 'icon-airplane-variant',
-    },
-    activities: {
-        name: 'activities',
-        label: defineMessage({
-            id: 'emoji_picker.activities',
-            defaultMessage: 'Activities',
-        }),
-        iconClassName: 'icon-basketball',
-    },
-    objects: {
-        name: 'objects',
-        label: defineMessage({
-            id: 'emoji_picker.objects',
-            defaultMessage: 'Objects',
-        }),
-        iconClassName: 'icon-lightbulb-outline',
-    },
-    symbols: {
-        name: 'symbols',
-        label: defineMessage({
-            id: 'emoji_picker.symbols',
-            defaultMessage: 'Symbols',
-        }),
-        iconClassName: 'icon-heart-outline',
-    },
-    flags: {
-        name: 'flags',
-        label: defineMessage({
-            id: 'emoji_picker.flags',
-            defaultMessage: 'Flags',
-        }),
-        iconClassName: 'icon-flag-outline',
-    },
-    custom: {
-        name: 'custom',
-        label: defineMessage({
-            id: 'emoji_picker.custom',
-            defaultMessage: 'Custom',
-        }),
-        iconClassName: 'icon-emoticon-custom-outline',
-    },
+	recent: {
+		name: 'recent',
+		label: defineMessage({
+			id: 'emoji_picker.recent',
+			defaultMessage: 'Recently Used',
+		}),
+		iconClassName: 'icon-clock-outline',
+	},
+	searchResults: {
+		name: 'searchResults',
+		label: defineMessage({
+			id: 'emoji_picker.searchResults',
+			defaultMessage: 'Search Results',
+		}),
+		iconClassName: '',
+	},
+	'smileys-emotion': {
+		name: 'smileys-emotion',
+		label: defineMessage({
+			id: 'emoji_picker.smileys-emotion',
+			defaultMessage: 'Smileys & Emotion',
+		}),
+		iconClassName: 'icon-emoticon-happy-outline',
+	},
+	'people-body': {
+		name: 'people-body',
+		label: defineMessage({
+			id: 'emoji_picker.people-body',
+			defaultMessage: 'People & Body',
+		}),
+		iconClassName: 'icon-account-outline',
+	},
+	'animals-nature': {
+		name: 'animals-nature',
+		label: defineMessage({
+			id: 'emoji_picker.animals-nature',
+			defaultMessage: 'Animals & Nature',
+		}),
+		iconClassName: 'icon-leaf-outline',
+	},
+	'food-drink': {
+		name: 'food-drink',
+		label: defineMessage({
+			id: 'emoji_picker.food-drink',
+			defaultMessage: 'Food & Drink',
+		}),
+		iconClassName: 'icon-food-apple',
+	},
+	'travel-places': {
+		name: 'travel-places',
+		label: defineMessage({
+			id: 'emoji_picker.travel-places',
+			defaultMessage: 'Travel & Places',
+		}),
+		iconClassName: 'icon-airplane-variant',
+	},
+	activities: {
+		name: 'activities',
+		label: defineMessage({
+			id: 'emoji_picker.activities',
+			defaultMessage: 'Activities',
+		}),
+		iconClassName: 'icon-basketball',
+	},
+	objects: {
+		name: 'objects',
+		label: defineMessage({
+			id: 'emoji_picker.objects',
+			defaultMessage: 'Objects',
+		}),
+		iconClassName: 'icon-lightbulb-outline',
+	},
+	symbols: {
+		name: 'symbols',
+		label: defineMessage({
+			id: 'emoji_picker.symbols',
+			defaultMessage: 'Symbols',
+		}),
+		iconClassName: 'icon-heart-outline',
+	},
+	flags: {
+		name: 'flags',
+		label: defineMessage({
+			id: 'emoji_picker.flags',
+			defaultMessage: 'Flags',
+		}),
+		iconClassName: 'icon-flag-outline',
+	},
+	custom: {
+		name: 'custom',
+		label: defineMessage({
+			id: 'emoji_picker.custom',
+			defaultMessage: 'Custom',
+		}),
+		iconClassName: 'icon-emoticon-custom-outline',
+	},
 } as const;
 
-const {recent, searchResults, ...standardCategories} = EMOJI_CATEGORIES;
+const { recent, searchResults, ...standardCategories } = EMOJI_CATEGORIES;
 
-export const RECENT_EMOJI_CATEGORY: Pick<Categories, typeof RECENT> = {recent};
-export const SEARCH_EMOJI_CATEGORY: Pick<Categories, typeof SEARCH_RESULTS> = {searchResults};
+export const RECENT_EMOJI_CATEGORY: Pick<Categories, typeof RECENT> = { recent };
+export const SEARCH_EMOJI_CATEGORY: Pick<Categories, typeof SEARCH_RESULTS> = { searchResults };
 
 // TODO CATEGORIES doesn't contain 'recent' or 'searchResults' as it's type claims
 export const CATEGORIES = standardCategories as Categories;

@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 /**
@@ -7,21 +7,21 @@
  * @returns Formatted string like "10:00", "05:30", "1:30:00"
  */
 export function formatTimeRemaining(ms: number): string {
-    // Ensure non-negative
-    const remaining = Math.max(0, ms);
+	// Ensure non-negative
+	const remaining = Math.max(0, ms);
 
-    const totalSeconds = Math.ceil(remaining / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
+	const totalSeconds = Math.ceil(remaining / 1000);
+	const hours = Math.floor(totalSeconds / 3600);
+	const minutes = Math.floor((totalSeconds % 3600) / 60);
+	const seconds = totalSeconds % 60;
 
-    // If >= 1 hour, show HH:MM:SS format
-    if (hours > 0) {
-        return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
+	// If >= 1 hour, show HH:MM:SS format
+	if (hours > 0) {
+		return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+	}
 
-    // Otherwise show MM:SS format
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+	// Otherwise show MM:SS format
+	return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
 /**
@@ -30,10 +30,10 @@ export function formatTimeRemaining(ms: number): string {
  * @returns Milliseconds remaining (negative if already expired)
  */
 export function calculateRemainingTime(expireAt: number): number {
-    // If expireAt looks like seconds (< 10000000000), convert to milliseconds
-    // This handles backend inconsistency between seconds and milliseconds
-    const expireAtMs = expireAt < 10000000000 ? expireAt * 1000 : expireAt;
-    return expireAtMs - Date.now();
+	// If expireAt looks like seconds (< 10000000000), convert to milliseconds
+	// This handles backend inconsistency between seconds and milliseconds
+	const expireAtMs = expireAt < 10000000000 ? expireAt * 1000 : expireAt;
+	return expireAtMs - Date.now();
 }
 
 /**
@@ -42,7 +42,7 @@ export function calculateRemainingTime(expireAt: number): number {
  * @returns True if ≤ 60 seconds remaining
  */
 export function isTimerInWarningState(remainingMs: number): boolean {
-    return remainingMs <= 60000; // 60 seconds
+	return remainingMs <= 60000; // 60 seconds
 }
 
 /**
@@ -51,7 +51,7 @@ export function isTimerInWarningState(remainingMs: number): boolean {
  * @returns True if timer has expired (≤ 0)
  */
 export function isTimerExpired(remainingMs: number): boolean {
-    return remainingMs <= 0;
+	return remainingMs <= 0;
 }
 
 /**
@@ -61,13 +61,13 @@ export function isTimerExpired(remainingMs: number): boolean {
  * @returns Announcement interval in milliseconds
  */
 export function getAriaAnnouncementInterval(remainingMs: number): number {
-    // Final minute: announce every 10 seconds
-    if (remainingMs <= 60000) {
-        return 10000;
-    }
+	// Final minute: announce every 10 seconds
+	if (remainingMs <= 60000) {
+		return 10000;
+	}
 
-    // Otherwise: announce every 60 seconds
-    return 60000;
+	// Otherwise: announce every 60 seconds
+	return 60000;
 }
 
 /**
@@ -76,21 +76,21 @@ export function getAriaAnnouncementInterval(remainingMs: number): number {
  * @returns Human-readable announcement like "10 minutes remaining" or "30 seconds remaining"
  */
 export function formatAriaAnnouncement(ms: number): string {
-    const remaining = Math.max(0, ms);
-    const totalSeconds = Math.ceil(remaining / 1000);
+	const remaining = Math.max(0, ms);
+	const totalSeconds = Math.ceil(remaining / 1000);
 
-    if (totalSeconds === 0) {
-        return 'Message deleting now';
-    }
+	if (totalSeconds === 0) {
+		return 'Message deleting now';
+	}
 
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
 
-    if (minutes > 0 && seconds > 0) {
-        return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ${seconds} ${seconds === 1 ? 'second' : 'seconds'} remaining`;
-    }
-    if (minutes > 0) {
-        return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} remaining`;
-    }
-    return `${seconds} ${seconds === 1 ? 'second' : 'seconds'} remaining`;
+	if (minutes > 0 && seconds > 0) {
+		return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ${seconds} ${seconds === 1 ? 'second' : 'seconds'} remaining`;
+	}
+	if (minutes > 0) {
+		return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} remaining`;
+	}
+	return `${seconds} ${seconds === 1 ? 'second' : 'seconds'} remaining`;
 }

@@ -1,71 +1,71 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {useIntl} from 'react-intl';
+import type { useIntl } from 'react-intl';
 
-import type {AdminConfig} from '@mattermost/types/config';
+import type { AdminConfig } from '@mattermost/types/config';
 
-import {ldapTest} from 'actions/admin_actions';
+import { ldapTest } from 'actions/admin_actions';
 
-import {ConsolePages, DocLinks} from 'utils/constants';
+import { ConsolePages, DocLinks } from 'utils/constants';
 
-import {impactModifiers} from '../dashboard.data';
-import {ItemStatus} from '../dashboard.type';
-import type {ItemModel, Options} from '../dashboard.type';
+import { impactModifiers } from '../dashboard.data';
+import { ItemStatus } from '../dashboard.type';
+import type { ItemModel, Options } from '../dashboard.type';
 
 // import {Client4} from 'mattermost-redux/client';
 // import {AnalyticsRow} from '@mattermost/types/admin';
 
 const usesLDAP = async (
-    config: Partial<AdminConfig>,
-    formatMessage: ReturnType<typeof useIntl>['formatMessage'],
-    options: Options,
+	config: Partial<AdminConfig>,
+	formatMessage: ReturnType<typeof useIntl>['formatMessage'],
+	options: Options,
 ): Promise<ItemModel> => {
-    const testLdap = async (
-        config: Partial<AdminConfig>,
-        options: Options,
-    ): Promise<ItemStatus> => {
-        let check = ItemStatus.INFO;
+	const testLdap = async (
+		config: Partial<AdminConfig>,
+		options: Options,
+	): Promise<ItemStatus> => {
+		let check = ItemStatus.INFO;
 
-        if (!options.isLicensed || !config.LdapSettings?.Enable) {
-            return check;
-        }
+		if (!options.isLicensed || !config.LdapSettings?.Enable) {
+			return check;
+		}
 
-        const onSuccess = ({status}: any) => {
-            if (status === 'OK') {
-                check = ItemStatus.OK;
-            }
-        };
+		const onSuccess = ({ status }: any) => {
+			if (status === 'OK') {
+				check = ItemStatus.OK;
+			}
+		};
 
-        await ldapTest(onSuccess);
+		await ldapTest(onSuccess);
 
-        return check;
-    };
+		return check;
+	};
 
-    // something feels flawed in this check.
-    const status = options.analytics?.TOTAL_USERS as number > 100 ? await testLdap(config, options) : ItemStatus.OK;
+	// something feels flawed in this check.
+	const status = options.analytics?.TOTAL_USERS as number > 100 ? await testLdap(config, options) : ItemStatus.OK;
 
-    return {
-        id: 'ad-ldap',
-        title: formatMessage({
-            id: 'admin.reporting.workspace_optimization.ease_of_management.ldap.title',
-            defaultMessage: 'AD/LDAP integration recommended',
-        }),
-        description: formatMessage({
-            id: 'admin.reporting.workspace_optimization.ease_of_management.ldap.description',
-            defaultMessage: 'You\'ve reached over 100 users! We recommend setting up AD/LDAP user authentication for easier onboarding as well as automated deactivations and role assignments.',
-        }),
-        ...(options.isLicensed && !options.isStarterLicense ? {
-            configUrl: ConsolePages.AD_LDAP,
-            configText: formatMessage({id: 'admin.reporting.workspace_optimization.ease_of_management.ldap.cta', defaultMessage: 'Try AD/LDAP'}),
-        } : options.trialOrEnterpriseCtaConfig),
-        infoUrl: DocLinks.SETUP_LDAP,
-        infoText: formatMessage({id: 'admin.reporting.workspace_optimization.cta.learnMore', defaultMessage: 'Learn more'}),
-        telemetryAction: 'ad-ldap',
-        status,
-        scoreImpact: 22,
-        impactModifier: impactModifiers[status],
-    };
+	return {
+		id: 'ad-ldap',
+		title: formatMessage({
+			id: 'admin.reporting.workspace_optimization.ease_of_management.ldap.title',
+			defaultMessage: 'AD/LDAP integration recommended',
+		}),
+		description: formatMessage({
+			id: 'admin.reporting.workspace_optimization.ease_of_management.ldap.description',
+			defaultMessage: 'You\'ve reached over 100 users! We recommend setting up AD/LDAP user authentication for easier onboarding as well as automated deactivations and role assignments.',
+		}),
+		...(options.isLicensed && !options.isStarterLicense ? {
+			configUrl: ConsolePages.AD_LDAP,
+			configText: formatMessage({ id: 'admin.reporting.workspace_optimization.ease_of_management.ldap.cta', defaultMessage: 'Try AD/LDAP' }),
+		} : options.trialOrEnterpriseCtaConfig),
+		infoUrl: DocLinks.SETUP_LDAP,
+		infoText: formatMessage({ id: 'admin.reporting.workspace_optimization.cta.learnMore', defaultMessage: 'Learn more' }),
+		telemetryAction: 'ad-ldap',
+		status,
+		scoreImpact: 22,
+		impactModifier: impactModifiers[status],
+	};
 };
 
 // // commented out for now.
@@ -119,16 +119,16 @@ const usesLDAP = async (
 // };
 
 export const runEaseOfUseChecks = async (
-    config: Partial<AdminConfig>,
-    formatMessage: ReturnType<typeof useIntl>['formatMessage'],
-    options: Options,
+	config: Partial<AdminConfig>,
+	formatMessage: ReturnType<typeof useIntl>['formatMessage'],
+	options: Options,
 ): Promise<ItemModel[]> => {
-    const checks = [
-        usesLDAP,
+	const checks = [
+		usesLDAP,
 
-        // guestAccounts,
-    ];
+		// guestAccounts,
+	];
 
-    const results = await Promise.all(checks.map((check) => check(config, formatMessage, options)));
-    return results;
+	const results = await Promise.all(checks.map((check) => check(config, formatMessage, options)));
+	return results;
 };
