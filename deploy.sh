@@ -83,7 +83,7 @@ echo "Starting deployment..."
 echo ""
 
 # Build image (no Go compile inside Docker) and start services
-docker compose -f docker-compose.prod.yml up -d --build
+sudo docker compose -f docker-compose.prod.yml up -d --build
 
 # ── Patch DB roles with any new permissions ─────────────────────────
 echo ""

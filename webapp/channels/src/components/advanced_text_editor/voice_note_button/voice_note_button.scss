@@ -1,0 +1,38 @@
+.voiceNoteButton {
+	display: flex;
+	align-items: center;
+
+	&.recording {
+		color: var(--error-text);
+	}
+
+	&__recording {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+
+		svg {
+			animation: pulse 1s infinite;
+		}
+	}
+
+	&__timer {
+		font-size: 11px;
+		font-weight: 600;
+		min-width: 30px;
+		color: var(--error-text);
+		font-variant-numeric: tabular-nums;
+	}
+}
+
+@keyframes pulse {
+
+	0%,
+	100% {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: 0.3;
+	}
+}

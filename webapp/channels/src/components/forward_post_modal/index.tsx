@@ -29,7 +29,7 @@ import { getSiteURL } from 'utils/url';
 
 import type { GlobalState } from 'types/store';
 
-import ForwardPostChannelSelect, { makeSelectedChannelOption } from './forward_post_channel_select';
+import ForwardPostChannelSelect from './forward_post_channel_select';
 import type { ChannelOption } from './forward_post_channel_select';
 import ForwardPostCommentInput from './forward_post_comment_input';
 
@@ -86,9 +86,9 @@ const ForwardPostModal = ({ onExited, post }: Props) => {
 
 	const canPostInSelectedChannel = useSelector(
 		(state: GlobalState) => {
-			const channelId = isPrivateConversation ? post.channel_id : selectedChannelId;
+			const channelId = selectedChannelId;
 			const isDMChannel = selectedChannel?.details?.type === Constants.DM_CHANNEL;
-			const teamId = isPrivateConversation ? currentTeam?.id : selectedChannel?.details?.team_id;
+			const teamId = selectedChannel?.details?.team_id;
 
 			const hasChannelPermission = haveIChannelPermission(
 				state,
@@ -101,7 +101,7 @@ const ForwardPostModal = ({ onExited, post }: Props) => {
 		},
 	);
 
-	const canForwardPost = (isPrivateConversation || canPostInSelectedChannel) && !postError;
+	const canForwardPost = canPostInSelectedChannel && !postError;
 
 	const onHide = useCallback(() => {
 		onExited?.();
@@ -144,8 +144,8 @@ const ForwardPostModal = ({ onExited, post }: Props) => {
 			const channelName = `~${channel.display_name}`;
 			notificationText = (
 				<FormattedMessage
-					id='forward_post_modal.notification.private_channel'
-					defaultMessage='This message is from a private channel and can only be shared with <strong>{channelName}</strong>'
+					id='forward_post_modal.notification.private_channel_warning'
+					defaultMessage='This message is from the private channel <strong>{channelName}</strong>. Please be mindful of privacy when forwarding.'
 					values={{
 						channelName,
 						strong: (x: React.ReactNode) => <strong>{x}</strong>,
@@ -158,8 +158,8 @@ const ForwardPostModal = ({ onExited, post }: Props) => {
 
 			notificationText = (
 				<FormattedMessage
-					id='forward_post_modal.notification.dm_or_gm'
-					defaultMessage='This message is from a private conversation and can only be shared with {participants}'
+					id='forward_post_modal.notification.dm_or_gm_warning'
+					defaultMessage='This message is from a private conversation with {participants}. Please be mindful of privacy when forwarding.'
 					values={{
 						participants: <FormattedList value={participants} />,
 					}}
@@ -191,7 +191,7 @@ const ForwardPostModal = ({ onExited, post }: Props) => {
 			return Promise.resolve();
 		}
 
-		const channelToForward = isPrivateConversation ? makeSelectedChannelOption(channel) : selectedChannel;
+		const channelToForward = selectedChannel;
 
 		if (!channelToForward) {
 			return Promise.resolve();
@@ -220,11 +220,7 @@ const ForwardPostModal = ({ onExited, post }: Props) => {
 			}
 			return { data: false };
 		}).then(() => {
-			// only switch channels when we are not in a private conversation
-			if (!isPrivateConversation) {
-				return dispatch(switchToChannel(channelToForward.details));
-			}
-			return { data: false };
+			return dispatch(switchToChannel(channelToForward.details));
 		}).then(() => {
 			onHide();
 		}).catch((result) => {
@@ -270,15 +266,12 @@ const ForwardPostModal = ({ onExited, post }: Props) => {
 				className={'forward-post__body'}
 				ref={measuredRef}
 			>
-				{isPrivateConversation ? (
-					notification
-				) : (
-					<ForwardPostChannelSelect
-						onSelect={handleChannelSelect}
-						value={selectedChannel}
-						currentBodyHeight={bodyHeight}
-					/>
-				)}
+				{notification}
+				<ForwardPostChannelSelect
+					onSelect={handleChannelSelect}
+					value={selectedChannel}
+					currentBodyHeight={bodyHeight}
+				/>
 				<ForwardPostCommentInput
 					canForwardPost={canForwardPost}
 					channelId={selectedChannelId}

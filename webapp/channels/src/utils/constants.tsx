@@ -422,6 +422,7 @@ export const ModalIdentifiers = {
 	REQUEST_BUSINESS_EMAIL_MODAL: 'request_business_email_modal',
 	FEATURE_RESTRICTED_MODAL: 'feature_restricted_modal',
 	FORWARD_POST_MODAL: 'forward_post_modal',
+	VIDEO_NOTE_MODAL: 'video_note_modal',
 	JOIN_PUBLIC_CHANNEL_MODAL: 'join_public_channel_modal',
 	CLOUD_INVOICE_PREVIEW: 'cloud_invoice_preview',
 	BILLING_HISTORY: 'billing_history',

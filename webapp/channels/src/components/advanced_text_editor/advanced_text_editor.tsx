@@ -6,6 +6,10 @@ import React, { lazy, useCallback, useEffect, useMemo, useRef, useState } from '
 import { FormattedMessage, useIntl } from 'react-intl';
 import { useDispatch, useSelector } from 'react-redux';
 
+import {
+	AtIcon,
+} from '@mattermost/compass-icons/components';
+
 import type { ServerError } from '@mattermost/types/errors';
 import type { SchedulingInfo } from '@mattermost/types/schedule_post';
 
@@ -46,6 +50,7 @@ import type { TextboxElement } from 'components/textbox';
 import type TextboxClass from 'components/textbox/textbox';
 import { OnboardingTourSteps, OnboardingTourStepsForGuestUsers, TutorialTourName } from 'components/tours/constant';
 import { SendMessageTour } from 'components/tours/onboarding_tour';
+import WithTooltip from 'components/with_tooltip';
 
 import Constants, {
 	Locations,
@@ -57,11 +62,13 @@ import Constants, {
 	AdvancedTextEditorTextboxIds,
 } from 'utils/constants';
 import { canUploadFiles as canUploadFilesAccordingToConfig } from 'utils/file_utils';
+
 import type { ApplyMarkdownOptions } from 'utils/markdown/apply_markdown';
 import { applyMarkdown as applyMarkdownUtil } from 'utils/markdown/apply_markdown';
 import { isErrorInvalidSlashCommand } from 'utils/post_utils';
 import { allAtMentions } from 'utils/text_formatting';
 import * as Utils from 'utils/utils';
+import { focusAndInsertText } from 'utils/exec_commands';
 
 import type { GlobalState } from 'types/store';
 import type { PostDraft } from 'types/store/draft';
@@ -72,12 +79,15 @@ import EditPostFooter from './edit_post_footer';
 import Footer from './footer';
 import FormattingBar from './formatting_bar';
 import { FormattingBarSpacer, Separator } from './formatting_bar/formatting_bar';
+import { IconContainer } from './formatting_bar/formatting_icon';
 import MessageWithMentionsFooter from './message_with_mentions_footer';
 import SendButton from './send_button';
 import ShowFormat from './show_formatting';
 import TexteditorActions from './texteditor_actions';
 import ToggleFormattingBar from './toggle_formatting_bar';
 import UnifiedLabelsWrapper from './unified_labels_wrapper';
+import VoiceNoteButton from './voice_note_button';
+import VideoNoteButton from './video_note_button';
 import useBurnOnRead from './use_burn_on_read';
 import useEditorEmojiPicker from './use_editor_emoji_picker';
 import useKeyHandler from './use_key_handler';
@@ -318,7 +328,7 @@ const AdvancedTextEditor = ({
 	} = useRewrite(draft, handleDraftChange, textboxRef, focusTextbox, setServerError);
 	const isDisabled = Boolean(readOnlyChannel || (!enableSharedChannelsDMs && isDMOrGMRemote) || rewriteIsProcessing);
 
-	const [attachmentPreview, fileUploadJSX] = useUploadFiles(
+	const [attachmentPreview, fileUploadJSX, fileUploadRef] = useUploadFiles(
 		draft,
 		rootId,
 		channelId,
@@ -847,8 +857,39 @@ const AdvancedTextEditor = ({
 								/>
 								<Separator />
 								{fileUploadJSX}
-								{emojiPicker}
-								{sendButton}
+								{emojiPicker}							<WithTooltip
+									title={formatMessage({ id: 'create_post.mention', defaultMessage: 'Mention someone' })}
+								>
+									<IconContainer
+										id='mentionButton'
+										disabled={isDisabled || showPreview}
+										onClick={(e) => {
+											e.preventDefault();
+											e.stopPropagation();
+											const textbox = document.getElementById(textboxId) as HTMLTextAreaElement | undefined;
+											if (textbox) { focusAndInsertText(textbox, '@'); }
+										}}
+										aria-label={formatMessage({ id: 'create_post.mention', defaultMessage: 'Mention someone' })}
+										type='button'
+									>
+										<AtIcon
+											size={18}
+											color='currentColor'
+										/>
+									</IconContainer>
+								</WithTooltip>
+								{!isInEditMode && (
+									<VoiceNoteButton
+										fileUploadRef={fileUploadRef}
+										disabled={isDisabled || showPreview}
+									/>
+								)}
+								{!isInEditMode && (
+									<VideoNoteButton
+										fileUploadRef={fileUploadRef}
+										disabled={isDisabled || showPreview}
+									/>
+								)}								{sendButton}
 							</TexteditorActions>
 						)}
 					</div>

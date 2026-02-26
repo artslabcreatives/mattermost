@@ -35,7 +35,7 @@ const useUploadFiles = (
 	focusTextbox: (forceFocust?: boolean) => void,
 	setServerError: (err: (ServerError & { submittedMessage?: string }) | null) => void,
 	isPostBeingEdited?: boolean,
-): [React.ReactNode, React.ReactNode] => {
+): [React.ReactNode, React.ReactNode, React.RefObject<FileUploadClass>] => {
 	const locale = useSelector(getCurrentLocale);
 
 	const [uploadsProgressPercent, setUploadsProgressPercent] = useState<{ [clientID: string]: FilePreviewInfo }>({});
@@ -176,7 +176,7 @@ const useUploadFiles = (
 		/>
 	);
 
-	return [attachmentPreview, fileUploadJSX];
+	return [attachmentPreview, fileUploadJSX, fileUploadRef];
 };
 
 export default useUploadFiles;
