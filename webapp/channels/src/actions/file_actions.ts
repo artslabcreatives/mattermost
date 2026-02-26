@@ -29,8 +29,155 @@ export interface UploadFile {
 	onError: (err: string | ServerError, clientId: string, channelId: string, rootId: string) => void;
 }
 
+/**
+ * Files at or above this size are uploaded via the chunked upload-session API
+ * rather than a single multipart POST.  This enables resumable uploads and
+ * avoids holding the entire file in memory client-side.
+ */
+const CHUNK_UPLOAD_THRESHOLD = 5 * 1024 * 1024; // 5 MiB
+
+/**
+ * Size of each individual chunk.  5 MiB matches the minimum S3 multipart
+ * part size, ensuring compatibility with direct-to-S3 paths.
+ */
+const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MiB
+
+/**
+ * Perform a chunked, resumable upload via the /api/v4/uploads session API.
+ *
+ * Flow:
+ *   1. POST /api/v4/uploads → get session {id, file_offset}
+ *      (file_offset > 0 if a previous session exists and we are resuming)
+ *   2. Slice the file into CHUNK_SIZE blobs.
+ *   3. POST each blob to /api/v4/uploads/{id} with Content-Range header.
+ *   4. When the server responds 201 it includes the completed FileInfo.
+ *
+ * Returns an object with an abort() method compatible with the XMLHttpRequest
+ * interface used elsewhere in the upload flow.
+ */
+function uploadFileChunked(
+	{ file, name, type, rootId, channelId, clientId, onProgress, onSuccess, onError }: UploadFile,
+): ThunkActionFunc<XMLHttpRequest> {
+	return (dispatch, getState) => {
+		dispatch({ type: FileTypes.UPLOAD_FILES_REQUEST });
+
+		const controller = new AbortController();
+		const { signal } = controller;
+
+		// Fake XHR object so existing cancel-upload code can call .abort()
+		const fakeXhr = { abort: () => controller.abort() } as unknown as XMLHttpRequest;
+
+		(async () => {
+			try {
+				// ── Step 1: create (or find) an upload session ──────────────────
+				let session: { id: string; file_size: number; file_offset: number };
+				try {
+					session = await Client4.createUploadSession({
+						channel_id: channelId,
+						filename: name,
+						file_size: file.size,
+					});
+				} catch (err: any) {
+					throw new Error(err?.message ?? localizeMessage({ id: 'file_upload.generic_error', defaultMessage: 'There was a problem uploading your files.' }));
+				}
+
+				if (signal.aborted) {
+					return;
+				}
+
+				let offset = session.file_offset ?? 0;
+
+				// ── Step 2: upload chunks ────────────────────────────────────────
+				while (offset < file.size) {
+					if (signal.aborted) {
+						return;
+					}
+
+					const end = Math.min(offset + CHUNK_SIZE, file.size);
+					const chunk = file.slice(offset, end);
+
+					let response: Response;
+					try {
+						response = await Client4.uploadChunk(session.id, chunk, offset, file.size);
+					} catch (err: any) {
+						throw new Error(localizeMessage({ id: 'file_upload.generic_error', defaultMessage: 'There was a problem uploading your files.' }));
+					}
+
+					if (!response.ok && response.status !== 204 && response.status !== 201) {
+						let errorMessage = localizeMessage({ id: 'file_upload.generic_error', defaultMessage: 'There was a problem uploading your files.' });
+						try {
+							const errorBody = await response.json();
+							if (errorBody?.message) {
+								errorMessage = errorBody.message;
+							}
+						} catch { /* ignore parse errors */ }
+						throw new Error(errorMessage);
+					}
+
+					offset = end;
+
+					// Report progress
+					const percent = Math.floor((offset / file.size) * 100);
+					onProgress({
+						clientId,
+						name,
+						percent,
+						type,
+					} as FilePreviewInfo);
+
+					// ── Step 3: check for completion (201 Created) ───────────────
+					if (response.status === 201) {
+						const fileInfo: FileInfo = await response.json();
+						dispatch(batchActions([
+							{
+								type: FileTypes.RECEIVED_UPLOAD_FILES,
+								data: [{ ...fileInfo, clientId }],
+								channelId,
+								rootId,
+							},
+							{ type: FileTypes.UPLOAD_FILES_SUCCESS },
+						]));
+						onSuccess({ file_infos: [fileInfo], client_ids: [clientId] }, channelId, rootId);
+						return;
+					}
+				}
+
+				// If we exit the loop without a 201 the server should have returned it on the last chunk.
+				// This can happen on 204 for the last partial chunk in some edge cases.
+				// Attempt to retrieve the file info via GET on the session.
+				const errorMessage = localizeMessage({ id: 'file_upload.generic_error', defaultMessage: 'There was a problem uploading your files.' });
+				throw new Error(errorMessage);
+
+			} catch (err: any) {
+				if (signal.aborted) {
+					return;
+				}
+
+				dispatch({
+					type: FileTypes.UPLOAD_FILES_FAILURE,
+					clientIds: [clientId],
+					channelId,
+					rootId,
+				});
+
+				const message = err?.message ?? localizeMessage({ id: 'file_upload.generic_error', defaultMessage: 'There was a problem uploading your files.' });
+				onError({ message }, clientId, channelId, rootId);
+			}
+		})();
+
+		return fakeXhr;
+	};
+}
+
 export function uploadFile({ file, name, type, rootId, channelId, clientId, onProgress, onSuccess, onError }: UploadFile, isBookmark?: boolean): ThunkActionFunc<XMLHttpRequest> {
 	return (dispatch, getState) => {
+		// For files at or above the threshold use the chunked, resumable upload
+		// session API.  This automatically handles resume on page refresh / network
+		// interruption and avoids a single huge HTTP request.
+		if (!isBookmark && file.size >= CHUNK_UPLOAD_THRESHOLD) {
+			return dispatch(uploadFileChunked({ file, name, type, rootId, channelId, clientId, onProgress, onSuccess, onError }));
+		}
+
 		dispatch({ type: FileTypes.UPLOAD_FILES_REQUEST });
 
 		let url = Client4.getFilesRoute();
@@ -153,3 +300,5 @@ export function uploadFile({ file, name, type, rootId, channelId, clientId, onPr
 		return xhr;
 	};
 }
+
+

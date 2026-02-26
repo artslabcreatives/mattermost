@@ -7,6 +7,7 @@ import { sortFileInfos } from 'mattermost-redux/utils/file_utils';
 
 import FileAttachment from 'components/file_attachment';
 import FilePreviewModal from 'components/file_preview_modal';
+import MultiImageView from 'components/multi_image_view/multi_image_view';
 import SingleImageView from 'components/single_image_view';
 
 import { FileTypes, ModalIdentifiers } from 'utils/constants';
@@ -44,6 +45,7 @@ export default function FileAttachmentList(props: Props) {
 		return null;
 	}
 
+	// ── Single image: full-width inline preview ──────────────────────────
 	if (fileInfos && fileInfos.length === 1 && !fileInfos[0].archived) {
 		const fileType = getFileType(fileInfos[0].extension);
 
@@ -65,6 +67,27 @@ export default function FileAttachmentList(props: Props) {
 		);
 	}
 
+	// ── Multiple images only: photo grid ─────────────────────────────────
+	// When every non-archived attachment is an image (or SVG), show them in
+	// an inline photo grid instead of the compact attachment list.
+	const nonArchivedInfos = sortedFileInfos.filter((fi) => !fi.archived);
+	const allImages =
+		nonArchivedInfos.length > 1 &&
+		nonArchivedInfos.every((fi) => {
+			const ft = getFileType(fi.extension);
+			return ft === FileTypes.IMAGE || (ft === FileTypes.SVG && enableSVGs);
+		});
+
+	if (allImages && !compactDisplay) {
+		return (
+			<MultiImageView
+				fileInfos={sortedFileInfos}
+				onImageClick={handleImageClick}
+			/>
+		);
+	}
+
+	// ── Mixed or non-image attachments: standard list ─────────────────────
 	const postFiles = [];
 	if (sortedFileInfos && sortedFileInfos.length > 0) {
 		for (let i = 0; i < sortedFileInfos.length; i++) {

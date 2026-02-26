@@ -1,0 +1,101 @@
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+$tile-gap: 4px;
+$max-height: 320px;
+$border-radius: 4px;
+
+.multi-image-view {
+	border-radius: $border-radius;
+	display: grid;
+	gap: $tile-gap;
+	max-height: $max-height;
+	max-width: 400px;
+	overflow: hidden;
+
+	// ── 2 images: side by side ────────────────────────────────────────────
+	&--2 {
+		grid-template-columns: 1fr 1fr;
+		grid-template-rows: $max-height;
+	}
+
+	// ── 3 images: one large left, two stacked right ───────────────────────
+	&--3 {
+		grid-template-columns: 2fr 1fr;
+		grid-template-rows: calc(#{$max-height} / 2) calc(#{$max-height} / 2);
+
+		.multi-image-view__tile:first-child {
+			grid-row: span 2;
+		}
+	}
+
+	// ── 4+ images: 2×2 grid ──────────────────────────────────────────────
+	&--4 {
+		grid-template-columns: 1fr 1fr;
+		grid-template-rows: calc(#{$max-height} / 2) calc(#{$max-height} / 2);
+	}
+
+	// ── Tiles ──────────────────────────────────────────────────────────────
+	&__tile {
+		cursor: pointer;
+		display: block;
+		min-height: 80px;
+		overflow: hidden;
+		position: relative;
+
+		&:hover .multi-image-view__thumb {
+			filter: brightness(0.85);
+		}
+
+		// Round the outermost corners of the grid.
+		&:first-child {
+			border-top-left-radius: $border-radius;
+		}
+
+		&:nth-child(2) {
+			border-top-right-radius: $border-radius;
+		}
+	}
+
+	&__tile:last-child {
+		border-bottom-right-radius: $border-radius;
+	}
+
+	&--2 &__tile:first-child {
+		border-bottom-left-radius: $border-radius;
+	}
+
+	&--3 &__tile:first-child {
+		border-bottom-left-radius: $border-radius;
+	}
+
+	&--4 &__tile:nth-child(3) {
+		border-bottom-left-radius: $border-radius;
+	}
+
+	&__thumb {
+		height: 100%;
+		transition: filter 0.15s ease;
+		width: 100%;
+	}
+
+	&__overlay {
+		align-items: center;
+		background: rgba(0, 0, 0, 0.45);
+		display: flex;
+		height: 100%;
+		justify-content: center;
+		left: 0;
+		position: absolute;
+		top: 0;
+		width: 100%;
+	}
+
+	&__more {
+		color: #fff;
+		font-size: 24px;
+		font-weight: 600;
+		letter-spacing: 0.5px;
+		text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+	}
+}

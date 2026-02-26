@@ -797,6 +797,29 @@ func (b *S3FileBackend) GeneratePublicLink(path string) (string, time.Duration, 
 	return req.String(), b.presignExpires, nil
 }
 
+// PresignedPutObject returns a presigned PUT URL that allows a client to
+// upload a file directly to the S3 bucket without routing through the
+// Mattermost server.  The URL is valid for the given duration.
+func (b *S3FileBackend) PresignedPutObject(path, contentType string, expires time.Duration) (string, error) {
+	prefixed := filepath.Join(b.pathPrefix, path)
+
+	ctx, cancel := context.WithTimeout(context.Background(), b.timeout)
+	defer cancel()
+
+	// Build the request headers that must be sent alongside the presigned PUT.
+	reqParams := make(url.Values)
+	if contentType != "" {
+		reqParams.Set("Content-Type", contentType)
+	}
+
+	req, err := b.client.PresignedPutObject(ctx, b.bucket, prefixed, expires)
+	if err != nil {
+		return "", errors.Wrapf(err, "unable to generate presigned PUT URL for %s", path)
+	}
+
+	return req.String(), nil
+}
+
 func (b *S3FileBackend) lookupOriginalPath(s string) (bool, error) {
 	exists, err := b._fileExists(filepath.Join(b.pathPrefix, s))
 	if err != nil {

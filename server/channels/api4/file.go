@@ -42,6 +42,10 @@ func (api *API) InitFile() {
 	api.BaseRoutes.Files.Handle("/search", api.APISessionRequiredDisableWhenBusy(searchFilesInAllTeams)).Methods(http.MethodPost)
 
 	api.BaseRoutes.PublicFile.Handle("", api.APIHandler(getPublicFile)).Methods(http.MethodGet, http.MethodHead)
+
+	// Direct-to-S3 presigned upload endpoints.
+	api.BaseRoutes.Files.Handle("/upload-url", api.APISessionRequired(generatePresignedUploadURL, handlerParamFileAPI)).Methods(http.MethodPost)
+	api.BaseRoutes.Files.Handle("/complete-upload", api.APISessionRequired(completePresignedUpload, handlerParamFileAPI)).Methods(http.MethodPost)
 }
 
 func parseMultipartRequestHeader(req *http.Request) (boundary string, err error) {
@@ -903,5 +907,104 @@ func setInaccessibleFileHeader(w http.ResponseWriter, appErr *model.AppError) {
 	// File is inaccessible due to cloud plan's limit.
 	if appErr.Id == "app.file.cloud.get.app_error" {
 		w.Header().Set(model.HeaderFirstInaccessibleFileTime, "1")
+	}
+}
+
+// generatePresignedUploadURL returns a short-lived presigned PUT URL that the
+// browser can use to upload a file directly to S3 / DigitalOcean Spaces.
+//
+//   POST /api/v4/files/upload-url
+//   Body: { "channel_id": "...", "filename": "photo.jpg", "content_type": "image/jpeg" }
+func generatePresignedUploadURL(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !*c.App.Config().FileSettings.EnableFileAttachments {
+		c.Err = model.NewAppError("generatePresignedUploadURL",
+			"api.file.attachments.disabled.app_error", nil, "", http.StatusForbidden)
+		return
+	}
+
+	var req struct {
+		ChannelID   string `json:"channel_id"`
+		Filename    string `json:"filename"`
+		ContentType string `json:"content_type"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		c.SetInvalidParamWithErr("body", err)
+		return
+	}
+	if req.ChannelID == "" {
+		c.SetInvalidParam("channel_id")
+		return
+	}
+	if req.Filename == "" {
+		c.SetInvalidParam("filename")
+		return
+	}
+
+	if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), req.ChannelID, model.PermissionUploadFile) {
+		c.SetPermissionError(model.PermissionUploadFile)
+		return
+	}
+
+	userID := c.AppContext.Session().UserId
+	info, err := c.App.GeneratePresignedUploadURL(c.AppContext, req.ChannelID, userID, req.Filename, req.ContentType)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(info); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
+}
+
+// completePresignedUpload is called after the client successfully PUT a file
+// directly to the object store.  It creates the FileInfo record and schedules
+// async image processing.
+//
+//   POST /api/v4/files/complete-upload
+//   Body: { "file_id": "...", "channel_id": "...", "filename": "...", "key": "...", "file_size": 123456 }
+func completePresignedUpload(c *Context, w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		FileID    string `json:"file_id"`
+		ChannelID string `json:"channel_id"`
+		Filename  string `json:"filename"`
+		Key       string `json:"key"`
+		FileSize  int64  `json:"file_size"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		c.SetInvalidParamWithErr("body", err)
+		return
+	}
+	for _, p := range []struct{ n, v string }{
+		{"file_id", req.FileID},
+		{"channel_id", req.ChannelID},
+		{"filename", req.Filename},
+		{"key", req.Key},
+	} {
+		if p.v == "" {
+			c.SetInvalidParam(p.n)
+			return
+		}
+	}
+
+	if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), req.ChannelID, model.PermissionUploadFile) {
+		c.SetPermissionError(model.PermissionUploadFile)
+		return
+	}
+
+	userID := c.AppContext.Session().UserId
+	info, err := c.App.CompleteDirectUpload(c.AppContext, req.ChannelID, userID, req.FileID, req.Filename, req.Key, req.FileSize)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(&model.FileUploadResponse{
+		FileInfos: []*model.FileInfo{info},
+		ClientIds: []string{},
+	}); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
 	}
 }

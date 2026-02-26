@@ -47,6 +47,16 @@ type FileBackendWithLinkGenerator interface {
 	GeneratePublicLink(path string) (string, time.Duration, error)
 }
 
+// FileBackendWithPresignedPut is implemented by object-store backends (e.g.
+// S3, DigitalOcean Spaces) that can generate a presigned PUT URL so the
+// browser can upload files directly to the store without routing through the
+// Mattermost server.
+type FileBackendWithPresignedPut interface {
+	// PresignedPutObject returns a presigned PUT URL for the given path and
+	// content type that is valid for the supplied duration.
+	PresignedPutObject(path, contentType string, expires time.Duration) (string, error)
+}
+
 type FileBackendSettings struct {
 	DriverName                         string
 	Directory                          string

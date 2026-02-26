@@ -592,6 +592,127 @@ func GeneratePublicLinkHash(fileID, salt string) string {
 	return base64.RawURLEncoding.EncodeToString(hash.Sum(nil))
 }
 
+// PresignedUploadURLInfo holds the presigned URL and metadata returned to the
+// client so it can upload a file directly to the object store.
+type PresignedUploadURLInfo struct {
+	FileID    string `json:"file_id"`
+	UploadURL string `json:"upload_url"`
+	Key       string `json:"key"`
+}
+
+// GeneratePresignedUploadURL returns a short-lived presigned PUT URL that lets
+// the browser upload the file directly to S3/DigitalOcean Spaces without
+// proxying through the Mattermost server.  Supported only when using the S3
+// file backend.
+func (a *App) GeneratePresignedUploadURL(rctx request.CTX, channelID, userID, filename, contentType string) (*PresignedUploadURLInfo, *model.AppError) {
+	backend, ok := a.FileBackend().(filestore.FileBackendWithPresignedPut)
+	if !ok {
+		return nil, model.NewAppError("GeneratePresignedUploadURL",
+			"api.file.presign.unsupported.app_error", nil, "file backend does not support presigned PUTs", http.StatusNotImplemented)
+	}
+
+	fileID := model.NewId()
+	safeFilename := filepath.Base(filename)
+	now := time.Now()
+	key := now.Format("20060102") +
+		"/teams/noteam" +
+		"/channels/" + filepath.Base(channelID) +
+		"/users/" + filepath.Base(userID) +
+		"/" + fileID + "/" + safeFilename
+
+	presignURL, presignErr := backend.PresignedPutObject(key, contentType, 30*time.Minute)
+	if presignErr != nil {
+		return nil, model.NewAppError("GeneratePresignedUploadURL",
+			"api.file.presign.generate.app_error", nil, "", http.StatusInternalServerError).Wrap(presignErr)
+	}
+
+	return &PresignedUploadURLInfo{
+		FileID:    fileID,
+		UploadURL: presignURL,
+		Key:       key,
+	}, nil
+}
+
+// CompleteDirectUpload is called after the client has uploaded a file directly
+// to the object store using a presigned URL.  It creates a FileInfo record and
+// schedules asynchronous image post-processing.
+func (a *App) CompleteDirectUpload(rctx request.CTX, channelID, userID, fileID, filename, key string, fileSize int64) (*model.FileInfo, *model.AppError) {
+	// Verify the object actually landed in the store.
+	exists, aErr := a.FileExists(key)
+	if aErr != nil {
+		return nil, aErr
+	}
+	if !exists {
+		return nil, model.NewAppError("CompleteDirectUpload",
+			"api.file.complete_upload.not_found.app_error", nil, "file not found in object store", http.StatusNotFound)
+	}
+
+	safeFilename := filepath.Base(filename)
+	now := time.Now()
+
+	info := model.NewInfo(safeFilename)
+	info.Id = fileID
+	info.CreatorId = filepath.Base(userID)
+	info.ChannelId = filepath.Base(channelID)
+	info.CreateAt = now.UnixNano() / int64(time.Millisecond)
+	info.UpdateAt = info.CreateAt
+	info.Path = key
+	info.Size = fileSize
+
+	if info.IsImage() && !info.IsSvg() {
+		nameWithoutExt := safeFilename
+		if idx := strings.LastIndex(safeFilename, "."); idx > 0 {
+			nameWithoutExt = safeFilename[:idx]
+		}
+		pathPrefix := strings.TrimSuffix(key, safeFilename)
+		info.HasPreviewImage = true
+		info.PreviewPath = pathPrefix + nameWithoutExt + "_preview." + getFileExtFromMimeType(info.MimeType)
+		info.ThumbnailPath = pathPrefix + nameWithoutExt + "_thumb." + getFileExtFromMimeType(info.MimeType)
+	}
+
+	if _, saveErr := a.Srv().Store().FileInfo().Save(rctx, info); saveErr != nil {
+		var appErr *model.AppError
+		if errors.As(saveErr, &appErr) {
+			return nil, appErr
+		}
+		return nil, model.NewAppError("CompleteDirectUpload", "app.file_info.save.app_error", nil, "", http.StatusInternalServerError).Wrap(saveErr)
+	}
+
+	// Schedule async thumbnail / preview generation for images.
+	if info.IsImage() && !info.IsSvg() {
+		infoCopy := *info
+		safeFilenameCopy := safeFilename
+		a.Srv().Go(func() {
+			bgFile, bgAerr := a.FileReader(infoCopy.Path)
+			if bgAerr != nil {
+				rctx.Logger().Error("CompleteDirectUpload: async image processing failed to open file",
+					mlog.String("path", infoCopy.Path), mlog.Err(bgAerr))
+				return
+			}
+			defer bgFile.Close()
+
+			bgTask := &UploadFileTask{
+				Logger:     rctx.Logger(),
+				Name:       safeFilenameCopy,
+				fileinfo:   &infoCopy,
+				writeFile:  a.WriteFile,
+				imgDecoder: a.ch.imgDecoder,
+				imgEncoder: a.ch.imgEncoder,
+			}
+			bgTask.postprocessImage(bgFile)
+
+			if infoCopy.MiniPreview != nil {
+				if _, upsertErr := a.Srv().Store().FileInfo().Upsert(rctx, &infoCopy); upsertErr != nil {
+					rctx.Logger().Error("CompleteDirectUpload: failed to upsert mini preview",
+						mlog.String("file_id", infoCopy.Id), mlog.Err(upsertErr))
+				}
+			}
+		})
+	}
+
+	return info, nil
+}
+
 // UploadFile uploads a single file in form of a completely constructed byte array for a channel.
 func (a *App) UploadFile(rctx request.CTX, data []byte, channelID string, filename string) (*model.FileInfo, *model.AppError) {
 	return a.UploadFileForUserAndTeam(rctx, data, channelID, filename, "", "")
@@ -836,15 +957,9 @@ func (a *App) UploadFileX(rctx request.CTX, channelID, name string, input io.Rea
 		return nil, aerr
 	}
 
-	if !t.Raw && t.fileinfo.IsImage() {
-		file, aerr = a.FileReader(t.fileinfo.Path)
-		if aerr != nil {
-			return nil, aerr
-		}
-		defer file.Close()
-		t.postprocessImage(file)
-	}
-
+	// Save to the database first so the client receives the FileInfo immediately
+	// and can attach the file to a message without waiting for image processing.
+	// Thumbnail and preview generation runs asynchronously below.
 	if _, err := t.saveToDatabase(rctx, t.fileinfo); err != nil {
 		var appErr *model.AppError
 		switch {
@@ -853,6 +968,53 @@ func (a *App) UploadFileX(rctx request.CTX, channelID, name string, input io.Rea
 		default:
 			return nil, model.NewAppError("UploadFileX", "app.file_info.save.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
 		}
+	}
+
+	// Asynchronously generate image thumbnails, previews, and mini-previews.
+	// This allows the upload response to be returned immediately so users can
+	// send messages as soon as the file is stored, regardless of image size.
+	if !t.Raw && t.fileinfo.IsImage() {
+		bgName := t.Name
+		bgDecoded := t.decoded
+		bgImageType := t.imageType
+		bgImageOrientation := t.imageOrientation
+		bgFileinfoCopy := *t.fileinfo
+		bgWriteFile := t.writeFile
+		bgImgDecoder := t.imgDecoder
+		bgImgEncoder := t.imgEncoder
+		bgLogger := rctx.Logger()
+		a.Srv().Go(func() {
+			bgFile, bgAerr := a.FileReader(bgFileinfoCopy.Path)
+			if bgAerr != nil {
+				bgLogger.Error("Async image processing: failed to open file",
+					mlog.String("path", bgFileinfoCopy.Path),
+					mlog.Err(bgAerr))
+				return
+			}
+			defer bgFile.Close()
+
+			bgTask := &UploadFileTask{
+				Logger:           bgLogger,
+				Name:             bgName,
+				fileinfo:         &bgFileinfoCopy,
+				decoded:          bgDecoded,
+				imageType:        bgImageType,
+				imageOrientation: bgImageOrientation,
+				writeFile:        bgWriteFile,
+				imgDecoder:       bgImgDecoder,
+				imgEncoder:       bgImgEncoder,
+			}
+			bgTask.postprocessImage(bgFile)
+
+			// Persist the generated mini preview back to the database.
+			if bgFileinfoCopy.MiniPreview != nil {
+				if _, upsertErr := a.Srv().Store().FileInfo().Upsert(rctx, &bgFileinfoCopy); upsertErr != nil {
+					bgLogger.Error("Async image processing: failed to upsert mini preview",
+						mlog.String("file_id", bgFileinfoCopy.Id),
+						mlog.Err(upsertErr))
+				}
+			}
+		})
 	}
 
 	if *a.Config().FileSettings.ExtractContent && t.ExtractContent {

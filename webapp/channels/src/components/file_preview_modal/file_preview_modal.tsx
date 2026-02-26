@@ -15,6 +15,7 @@ import ArchivedPreview from 'components/archived_preview';
 import AudioVideoPreview from 'components/audio_video_preview';
 import CodePreview, { hasSupportedLanguage } from 'components/code_preview';
 import FileInfoPreview from 'components/file_info_preview';
+import OfficePreview from 'components/office_preview/office_preview';
 import LoadingImagePreview from 'components/loading_image_preview';
 import type { Props as PDFPreviewComponentProps } from 'components/pdf_preview';
 
@@ -375,6 +376,15 @@ export default class FilePreviewModal extends React.PureComponent<Props, State> 
 							handleZoomIn={this.handleZoomIn}
 							handleZoomOut={this.handleZoomOut}
 							handleZoomReset={this.handleZoomReset}
+						/>
+					);
+				} else if (fileType === FileTypes.WORD || fileType === FileTypes.SPREADSHEET || fileType === FileTypes.PRESENTATION) {
+					// Render Office documents using the Microsoft Office Online embedded viewer.
+					// This requires public links to be enabled so the viewer can fetch the file.
+					content = (
+						<OfficePreview
+							fileInfo={fileInfo as FileInfo}
+							enablePublicLink={this.props.enablePublicLink}
 						/>
 					);
 				} else if (hasSupportedLanguage(fileInfo)) {
