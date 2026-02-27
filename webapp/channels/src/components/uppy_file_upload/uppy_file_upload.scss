@@ -2,25 +2,30 @@
 // See LICENSE.txt for license information.
 
 .UppyFileUpload {
-    position: relative;
-    display: inline-block;
+	position: relative;
+	display: inline-block;
 
-    &__panel {
-        position: absolute;
-        bottom: calc(100% + 8px);
-        left: 0;
-        z-index: 100;
-        min-width: 400px;
-        border-radius: 4px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+	&__panel--hidden {
+		display: none !important;
+	}
 
-        // Ensure the Uppy Dashboard fills the container
-        .uppy-Dashboard {
-            width: 100% !important;
-        }
+	&__panel {
+		// Fixed positioning keeps the panel inside the viewport regardless
+		// of where in the page the composer button lives.
+		position: fixed;
+		bottom: 80px;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 1000;
+		width: 460px;
+		max-width: calc(100vw - 32px);
+		border-radius: 4px;
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
 
-        .uppy-Dashboard-inner {
-            width: 100% !important;
-        }
-    }
+		// Ensure the Uppy Dashboard fills the container
+		.uppy-Dashboard,
+		.uppy-Dashboard-inner {
+			width: 100% !important;
+		}
+	}
 }

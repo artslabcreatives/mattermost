@@ -102,11 +102,15 @@ const useUploadFiles = (
 	}, [locale, handleDraftChange, storedDrafts]);
 
 	// Called by UppyFileUpload when direct-to-S3 uploads complete.
-	// Passes an empty clientIds array since Uppy manages its own progress UI.
+	// We bypass handleFileUploadComplete here because that function silently
+	// exits when no draft exists yet (user hasn't typed anything).  Instead
+	// we look up — or create — the draft directly and merge the new file infos.
 	const handleUppyFilesUploaded = useCallback((fileInfos: FileInfo[]) => {
-		handleFileUploadComplete(fileInfos, [], channelId, postId || undefined);
-	}, [channelId, postId, handleFileUploadComplete]);
-
+		const key = postId || channelId;
+		const existing = storedDrafts.current[key] ?? { message: '', fileInfos: [], uploadsInProgress: [] };
+		const newFileInfos = sortFileInfos([...existing.fileInfos, ...fileInfos], locale);
+		handleDraftChange({ ...existing, fileInfos: newFileInfos }, { instant: true, show: true });
+	}, [channelId, postId, storedDrafts, locale, handleDraftChange]);
 	const handleUploadStart = useCallback((clientIds: string[]) => {
 		const uploadsInProgress = [...draft.uploadsInProgress, ...clientIds];
 

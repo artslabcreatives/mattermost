@@ -47,6 +47,7 @@ echo ""
 
 (
   cd "$REPO_ROOT/webapp"
+  npm install --workspace=channels > /tmp/webapp-build.log 2>&1
   npm run build --workspace=channels > /tmp/webapp-build.log 2>&1
   echo "✓ Webapp build complete"
 ) &
@@ -115,3 +116,5 @@ echo "================================"
 echo "  Deploy complete!"
 echo "================================"
 sudo docker compose -f docker-compose.prod.yml ps
+
+sudo chmod 777 "$REPO_ROOT/volumes/app/mattermost/plugins" -R
