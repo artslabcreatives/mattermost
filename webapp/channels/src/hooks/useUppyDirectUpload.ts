@@ -256,7 +256,7 @@ export function useUppyDirectUpload(
     }, []);
 
     return {
-        uppy: uppyRef.current,
+        uppy: uppyRef.current!,
         uploading: uploadingRef.current,
         startUpload,
     };
