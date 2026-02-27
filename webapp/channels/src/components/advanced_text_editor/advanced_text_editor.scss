@@ -250,3 +250,8 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+// Used to keep a component in the React tree (for ref access) while hiding its visual output.
+.FileUpload--hidden {
+    display: none;
+}
