@@ -620,7 +620,8 @@ func (a *App) GeneratePresignedUploadURL(rctx request.CTX, channelID, userID, fi
 		"/users/" + filepath.Base(userID) +
 		"/" + fileID + "/" + safeFilename
 
-	presignURL, presignErr := backend.PresignedPutObject(key, contentType, 30*time.Minute)
+	// Presigned URLs expire in ≤5 minutes for security.
+	presignURL, presignErr := backend.PresignedPutObject(key, contentType, 5*time.Minute)
 	if presignErr != nil {
 		return nil, model.NewAppError("GeneratePresignedUploadURL",
 			"api.file.presign.generate.app_error", nil, "", http.StatusInternalServerError).Wrap(presignErr)
@@ -631,6 +632,105 @@ func (a *App) GeneratePresignedUploadURL(rctx request.CTX, channelID, userID, fi
 		UploadURL: presignURL,
 		Key:       key,
 	}, nil
+}
+
+// CreateDirectUploadSession creates a session-based direct-to-S3 upload record.
+// It generates a presigned PUT URL and stores the session in memory.
+// The session is automatically considered expired after DirectUploadSessionTTLSeconds.
+func (a *App) CreateDirectUploadSession(rctx request.CTX, channelID, userID, filename, contentType string) (*model.DirectUploadSession, *model.AppError) {
+	info, err := a.GeneratePresignedUploadURL(rctx, channelID, userID, filename, contentType)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	session := &model.DirectUploadSession{
+		UploadID:    info.FileID,
+		FileID:      info.FileID,
+		ChannelID:   channelID,
+		UserID:      userID,
+		Filename:    filepath.Base(filename),
+		ContentType: contentType,
+		ObjectKey:   info.Key,
+		UploadURL:   info.UploadURL,
+		State:       model.DirectUploadStateCreated,
+		CreatedAt:   model.GetMillisForTime(now),
+		ExpiresAt:   model.GetMillisForTime(now.Add(model.DirectUploadSessionTTLSeconds * time.Second)),
+	}
+
+	a.ch.directUploadSessionsMut.Lock()
+	a.ch.directUploadSessions[session.UploadID] = session
+	a.ch.directUploadSessionsMut.Unlock()
+
+	return session, nil
+}
+
+// GetDirectUploadSession retrieves a direct upload session by its upload ID.
+func (a *App) GetDirectUploadSession(uploadID string) (*model.DirectUploadSession, *model.AppError) {
+	a.ch.directUploadSessionsMut.RLock()
+	session, ok := a.ch.directUploadSessions[uploadID]
+	a.ch.directUploadSessionsMut.RUnlock()
+	if !ok {
+		return nil, model.NewAppError("GetDirectUploadSession",
+			"api.file.direct_session.not_found.app_error", nil, "upload_id="+uploadID, http.StatusNotFound)
+	}
+
+	// Check expiry
+	if model.GetMillis() > session.ExpiresAt {
+		a.ch.directUploadSessionsMut.Lock()
+		if s, stillPresent := a.ch.directUploadSessions[uploadID]; stillPresent {
+			s.State = model.DirectUploadStateExpired
+		}
+		a.ch.directUploadSessionsMut.Unlock()
+		return nil, model.NewAppError("GetDirectUploadSession",
+			"api.file.direct_session.expired.app_error", nil, "upload_id="+uploadID, http.StatusGone)
+	}
+
+	return session, nil
+}
+
+// AbortDirectUploadSession marks a session as aborted and removes it from memory.
+func (a *App) AbortDirectUploadSession(uploadID, userID string) *model.AppError {
+	session, err := a.GetDirectUploadSession(uploadID)
+	if err != nil {
+		return err
+	}
+
+	if session.UserID != userID {
+		return model.NewAppError("AbortDirectUploadSession",
+			"api.file.direct_session.forbidden.app_error", nil, "", http.StatusForbidden)
+	}
+
+	a.ch.directUploadSessionsMut.Lock()
+	delete(a.ch.directUploadSessions, uploadID)
+	a.ch.directUploadSessionsMut.Unlock()
+
+	return nil
+}
+
+// CompleteDirectUploadSession finalises a session-based upload and creates a FileInfo record.
+func (a *App) CompleteDirectUploadSession(rctx request.CTX, uploadID, userID string, fileSize int64) (*model.FileInfo, *model.AppError) {
+	session, err := a.GetDirectUploadSession(uploadID)
+	if err != nil {
+		return nil, err
+	}
+
+	if session.UserID != userID {
+		return nil, model.NewAppError("CompleteDirectUploadSession",
+			"api.file.direct_session.forbidden.app_error", nil, "", http.StatusForbidden)
+	}
+
+	info, completeErr := a.CompleteDirectUpload(rctx, session.ChannelID, userID, session.FileID, session.Filename, session.ObjectKey, fileSize)
+	if completeErr != nil {
+		return nil, completeErr
+	}
+
+	// Mark session as registered and clean up
+	a.ch.directUploadSessionsMut.Lock()
+	delete(a.ch.directUploadSessions, uploadID)
+	a.ch.directUploadSessionsMut.Unlock()
+
+	return info, nil
 }
 
 // CompleteDirectUpload is called after the client has uploaded a file directly

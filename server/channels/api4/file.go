@@ -43,9 +43,14 @@ func (api *API) InitFile() {
 
 	api.BaseRoutes.PublicFile.Handle("", api.APIHandler(getPublicFile)).Methods(http.MethodGet, http.MethodHead)
 
-	// Direct-to-S3 presigned upload endpoints.
+	// Direct-to-S3 presigned upload endpoints (legacy paths).
 	api.BaseRoutes.Files.Handle("/upload-url", api.APISessionRequired(generatePresignedUploadURL, handlerParamFileAPI)).Methods(http.MethodPost)
 	api.BaseRoutes.Files.Handle("/complete-upload", api.APISessionRequired(completePresignedUpload, handlerParamFileAPI)).Methods(http.MethodPost)
+
+	// Session-based direct-to-S3 upload endpoints.
+	api.BaseRoutes.DirectUploads.Handle("/session", api.APISessionRequired(createDirectUploadSession, handlerParamFileAPI)).Methods(http.MethodPost)
+	api.BaseRoutes.DirectUploads.Handle("/complete", api.APISessionRequired(completeDirectUploadSession, handlerParamFileAPI)).Methods(http.MethodPost)
+	api.BaseRoutes.DirectUploadSession.Handle("", api.APISessionRequired(abortDirectUploadSession, handlerParamFileAPI)).Methods(http.MethodDelete)
 }
 
 func parseMultipartRequestHeader(req *http.Request) (boundary string, err error) {
@@ -1007,4 +1012,105 @@ func completePresignedUpload(c *Context, w http.ResponseWriter, r *http.Request)
 	}); err != nil {
 		c.Logger.Warn("Error while writing response", mlog.Err(err))
 	}
+}
+
+// createDirectUploadSession creates a session-based direct-to-S3 upload.
+//
+//POST /api/v4/files/direct/session
+//Body: { "channel_id": "...", "filename": "photo.jpg", "content_type": "image/jpeg" }
+func createDirectUploadSession(c *Context, w http.ResponseWriter, r *http.Request) {
+if !*c.App.Config().FileSettings.EnableFileAttachments {
+c.Err = model.NewAppError("createDirectUploadSession",
+"api.file.attachments.disabled.app_error", nil, "", http.StatusForbidden)
+return
+}
+if c.App.Config().FileSettings.EnableDirectUploads == nil || !*c.App.Config().FileSettings.EnableDirectUploads {
+c.Err = model.NewAppError("createDirectUploadSession",
+"api.file.direct_uploads.disabled.app_error", nil, "", http.StatusNotImplemented)
+return
+}
+
+var req model.DirectUploadCreateRequest
+if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+c.SetInvalidParamWithErr("body", err)
+return
+}
+if req.ChannelID == "" {
+c.SetInvalidParam("channel_id")
+return
+}
+if req.Filename == "" {
+c.SetInvalidParam("filename")
+return
+}
+
+if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), req.ChannelID, model.PermissionUploadFile) {
+c.SetPermissionError(model.PermissionUploadFile)
+return
+}
+
+userID := c.AppContext.Session().UserId
+session, err := c.App.CreateDirectUploadSession(c.AppContext, req.ChannelID, userID, req.Filename, req.ContentType)
+if err != nil {
+c.Err = err
+return
+}
+
+w.WriteHeader(http.StatusCreated)
+if err := json.NewEncoder(w).Encode(session); err != nil {
+c.Logger.Warn("Error while writing response", mlog.Err(err))
+}
+}
+
+// completeDirectUploadSession finalises a session-based direct upload and registers the FileInfo.
+//
+//POST /api/v4/files/direct/complete
+//Body: { "upload_id": "...", "file_id": "...", "object_key": "...", "file_size": 123456 }
+func completeDirectUploadSession(c *Context, w http.ResponseWriter, r *http.Request) {
+var req model.DirectUploadCompleteRequest
+if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+c.SetInvalidParamWithErr("body", err)
+return
+}
+if req.UploadID == "" {
+c.SetInvalidParam("upload_id")
+return
+}
+if req.FileSize <= 0 {
+c.SetInvalidParam("file_size")
+return
+}
+
+userID := c.AppContext.Session().UserId
+info, err := c.App.CompleteDirectUploadSession(c.AppContext, req.UploadID, userID, req.FileSize)
+if err != nil {
+c.Err = err
+return
+}
+
+w.WriteHeader(http.StatusCreated)
+if err := json.NewEncoder(w).Encode(&model.FileUploadResponse{
+FileInfos: []*model.FileInfo{info},
+ClientIds: []string{},
+}); err != nil {
+c.Logger.Warn("Error while writing response", mlog.Err(err))
+}
+}
+
+// abortDirectUploadSession aborts an in-progress direct upload session.
+//
+//DELETE /api/v4/files/direct/session/{upload_id}
+func abortDirectUploadSession(c *Context, w http.ResponseWriter, r *http.Request) {
+c.RequireUploadId()
+if c.Err != nil {
+return
+}
+
+userID := c.AppContext.Session().UserId
+if err := c.App.AbortDirectUploadSession(c.Params.UploadId, userID); err != nil {
+c.Err = err
+return
+}
+
+ReturnStatusOK(w)
 }

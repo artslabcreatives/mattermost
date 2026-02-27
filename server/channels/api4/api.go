@@ -62,6 +62,10 @@ type Routes struct {
 	Files *mux.Router // 'api/v4/files'
 	File  *mux.Router // 'api/v4/files/{file_id:[A-Za-z0-9]+}'
 
+	// DirectUploads holds routes under 'api/v4/files/direct'.
+	DirectUploads       *mux.Router // 'api/v4/files/direct'
+	DirectUploadSession *mux.Router // 'api/v4/files/direct/session/{upload_id:[A-Za-z0-9]+}'
+
 	Uploads *mux.Router // 'api/v4/uploads'
 	Upload  *mux.Router // 'api/v4/uploads/{upload_id:[A-Za-z0-9]+}'
 
@@ -226,6 +230,8 @@ func Init(srv *app.Server) (*API, error) {
 
 	api.BaseRoutes.Files = api.BaseRoutes.APIRoot.PathPrefix("/files").Subrouter()
 	api.BaseRoutes.File = api.BaseRoutes.Files.PathPrefix("/{file_id:[A-Za-z0-9]+}").Subrouter()
+	api.BaseRoutes.DirectUploads = api.BaseRoutes.Files.PathPrefix("/direct").Subrouter()
+	api.BaseRoutes.DirectUploadSession = api.BaseRoutes.DirectUploads.PathPrefix("/session/{upload_id:[A-Za-z0-9]+}").Subrouter()
 	api.BaseRoutes.PublicFile = api.BaseRoutes.Root.PathPrefix("/files/{file_id:[A-Za-z0-9]+}/public").Subrouter()
 
 	api.BaseRoutes.Uploads = api.BaseRoutes.APIRoot.PathPrefix("/uploads").Subrouter()

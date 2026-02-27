@@ -1794,6 +1794,7 @@ type FileSettings struct {
 	EnableFileAttachments              *bool   `access:"site_file_sharing_and_downloads"`
 	EnableMobileUpload                 *bool   `access:"site_file_sharing_and_downloads"`
 	EnableMobileDownload               *bool   `access:"site_file_sharing_and_downloads"`
+	EnableDirectUploads                *bool   `access:"site_file_sharing_and_downloads"`
 	MaxFileSize                        *int64  `access:"environment_file_storage,cloud_restrictable"`
 	MaxImageResolution                 *int64  `access:"environment_file_storage,cloud_restrictable"`
 	MaxImageDecoderConcurrency         *int64  `access:"environment_file_storage,cloud_restrictable"`
@@ -1848,6 +1849,10 @@ func (s *FileSettings) SetDefaults(isUpdate bool) {
 
 	if s.EnableMobileDownload == nil {
 		s.EnableMobileDownload = NewPointer(true)
+	}
+
+	if s.EnableDirectUploads == nil {
+		s.EnableDirectUploads = NewPointer(false)
 	}
 
 	if s.MaxFileSize == nil {

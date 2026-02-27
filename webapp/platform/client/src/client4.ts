@@ -2701,6 +2701,7 @@ export default class Client4 {
 	/**
 	 * Request a presigned PUT URL for direct browser → S3 upload.
 	 * Only available when the S3 file backend is configured.
+	 * @deprecated Use createDirectUploadSession instead.
 	 */
 	createPresignedUploadURL = (params: { channel_id: string; filename: string; content_type: string }) => {
 		return this.doFetch<{ file_id: string; upload_url: string; key: string }>(
@@ -2712,11 +2713,55 @@ export default class Client4 {
 	/**
 	 * Notify the server that a direct-to-S3 upload has completed.
 	 * The server creates the FileInfo record and schedules image processing.
+	 * @deprecated Use completeDirectUploadSession instead.
 	 */
 	completeDirectUpload = (params: { file_id: string; channel_id: string; filename: string; key: string; file_size: number }) => {
 		return this.doFetch<{ file_infos: Array<{ id: string;[key: string]: unknown }>; client_ids: string[] }>(
 			`${this.getFilesRoute()}/complete-upload`,
 			{ method: 'post', body: JSON.stringify(params) },
+		);
+	};
+
+	// Session-based direct-to-S3 upload routes (preferred)
+
+	/**
+	 * Create a server-managed direct upload session.
+	 * Returns a presigned PUT URL the browser can use to upload directly to S3/DO Spaces.
+	 * Requires `EnableDirectUploads` to be enabled in server config.
+	 */
+	createDirectUploadSession = (params: { channel_id: string; filename: string; content_type: string }) => {
+		return this.doFetch<{
+			upload_id: string;
+			file_id: string;
+			upload_url: string;
+			object_key: string;
+			state: string;
+			created_at: number;
+			expires_at: number;
+		}>(
+			`${this.getFilesRoute()}/direct/session`,
+			{ method: 'post', body: JSON.stringify(params) },
+		);
+	};
+
+	/**
+	 * Finalise a direct upload session.
+	 * The server verifies the object exists and registers a FileInfo record.
+	 */
+	completeDirectUploadSession = (params: { upload_id: string; file_id: string; object_key: string; file_size: number }) => {
+		return this.doFetch<{ file_infos: Array<{ id: string;[key: string]: unknown }>; client_ids: string[] }>(
+			`${this.getFilesRoute()}/direct/complete`,
+			{ method: 'post', body: JSON.stringify(params) },
+		);
+	};
+
+	/**
+	 * Abort an in-progress direct upload session.
+	 */
+	abortDirectUploadSession = (uploadId: string) => {
+		return this.doFetch<{ status: string }>(
+			`${this.getFilesRoute()}/direct/session/${encodeURIComponent(uploadId)}`,
+			{ method: 'delete' },
 		);
 	};
 

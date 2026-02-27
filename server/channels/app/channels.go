@@ -74,6 +74,11 @@ type Channels struct {
 	uploadLockMapMut sync.Mutex
 	uploadLockMap    map[string]bool
 
+	// directUploadSessionsMut guards directUploadSessions.
+	directUploadSessionsMut sync.RWMutex
+	// directUploadSessions stores in-memory direct-to-S3 upload sessions keyed by UploadID.
+	directUploadSessions map[string]*model.DirectUploadSession
+
 	imgDecoder *imaging.Decoder
 	imgEncoder *imaging.Encoder
 
@@ -92,10 +97,11 @@ type Channels struct {
 
 func NewChannels(s *Server) (*Channels, error) {
 	ch := &Channels{
-		srv:               s,
-		imageProxy:        imageproxy.MakeImageProxy(s.platform, s.httpService, s.Log()),
-		uploadLockMap:     map[string]bool{},
-		filestore:         s.FileBackend(),
+		srv:                  s,
+		imageProxy:           imageproxy.MakeImageProxy(s.platform, s.httpService, s.Log()),
+		uploadLockMap:        map[string]bool{},
+		directUploadSessions: map[string]*model.DirectUploadSession{},
+		filestore:            s.FileBackend(),
 		exportFilestore:   s.ExportFileBackend(),
 		cfgSvc:            s.Platform(),
 		interruptQuitChan: make(chan struct{}),
