@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useCallback, useRef, useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {useSelector} from 'react-redux';
 
 import type {ServerError} from '@mattermost/types/errors';
@@ -13,11 +13,11 @@ import {getCurrentLocale} from 'selectors/i18n';
 
 import FilePreview from 'components/file_preview';
 import type {FilePreviewInfo} from 'components/file_preview/file_preview';
-import FileUpload from 'components/file_upload';
-import type {FileUpload as FileUploadClass, TextEditorLocationType} from 'components/file_upload/file_upload';
 import type TextboxClass from 'components/textbox/textbox';
 
 import type {PostDraft} from 'types/store/draft';
+
+import useUppyDirectUpload from './useUppyDirectUpload';
 
 const getFileCount = (draft: PostDraft) => {
     return draft.fileInfos.length + draft.uploadsInProgress.length;
@@ -39,16 +39,6 @@ const useUploadFiles = (
     const locale = useSelector(getCurrentLocale);
 
     const [uploadsProgressPercent, setUploadsProgressPercent] = useState<{ [clientID: string]: FilePreviewInfo }>({});
-
-    const fileUploadRef = useRef<FileUploadClass>(null);
-
-    const handleFileUploadChange = useCallback(() => {
-        focusTextbox();
-    }, [focusTextbox]);
-
-    const getFileUploadTarget = useCallback(() => {
-        return textboxRef.current?.getInputBox();
-    }, [textboxRef]);
 
     const handleUploadProgress = useCallback((filePreviewInfo: FilePreviewInfo) => {
         setUploadsProgressPercent((prev) => ({
@@ -126,8 +116,6 @@ const useUploadFiles = (
             if (index >= 0) {
                 modifiedDraft.uploadsInProgress = [...draft.uploadsInProgress];
                 modifiedDraft.uploadsInProgress.splice(index, 1);
-
-                fileUploadRef.current?.cancelUpload(clientId);
             } else {
                 // No modification
                 return;
@@ -138,8 +126,8 @@ const useUploadFiles = (
         }
 
         handleDraftChange(modifiedDraft, {instant: true});
-        handleFileUploadChange();
-    }, [draft, fileUploadRef, handleDraftChange, handleUploadError, handleFileUploadChange]);
+        focusTextbox();
+    }, [draft, handleDraftChange, handleUploadError, focusTextbox]);
 
     let attachmentPreview = null;
     if (!isDisabled && (draft.fileInfos.length > 0 || draft.uploadsInProgress.length > 0)) {
@@ -153,28 +141,17 @@ const useUploadFiles = (
         );
     }
 
-    let postType: TextEditorLocationType = 'post';
-    if (isPostBeingEdited) {
-        postType = 'edit_post';
-    } else if (postId) {
-        postType = isThreadView ? 'thread' : 'comment';
-    }
+    const uppyUploadJSX = useUppyDirectUpload({
+        channelId,
+        rootId: postId,
+        fileCount: getFileCount(draft),
+        onUploadStart: handleUploadStart,
+        onFileUpload: handleFileUploadComplete,
+        onUploadError: handleUploadError,
+        onUploadProgress: handleUploadProgress,
+    });
 
-    const fileUploadJSX = isDisabled ? null : (
-        <FileUpload
-            ref={fileUploadRef}
-            fileCount={getFileCount(draft)}
-            getTarget={getFileUploadTarget}
-            onFileUploadChange={handleFileUploadChange}
-            onUploadStart={handleUploadStart}
-            onFileUpload={handleFileUploadComplete}
-            onUploadError={handleUploadError}
-            onUploadProgress={handleUploadProgress}
-            rootId={postId}
-            channelId={channelId}
-            postType={postType}
-        />
-    );
+    const fileUploadJSX = isDisabled ? null : uppyUploadJSX;
 
     return [attachmentPreview, fileUploadJSX];
 };
