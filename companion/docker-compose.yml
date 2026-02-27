@@ -1,0 +1,48 @@
+services:
+  companion:
+    image: transloadit/companion:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Companion listens on this port inside the container.
+      COMPANION_PORT: "3020"
+      # Self-hosted Companion URL — used when Companion builds OAuth redirect URIs.
+      # Must match the public URL configured in each OAuth app's allowed-redirect list.
+      COMPANION_SELF_ENDPOINT: "${COMPANION_SELF_ENDPOINT:-http://localhost:3020}"
+      # Enable streaming uploads so files go directly to DO Spaces without
+      # being buffered on the Companion server.
+      COMPANION_STREAMING_UPLOAD: "true"
+      # Strictly allow uploads only to the configured Spaces bucket.
+      COMPANION_UPLOAD_URLS: "${COMPANION_UPLOAD_URLS}"
+      # S3 / DigitalOcean Spaces credentials
+      COMPANION_AWS_KEY: "${COMPANION_AWS_KEY}"
+      COMPANION_AWS_SECRET: "${COMPANION_AWS_SECRET}"
+      COMPANION_AWS_BUCKET: "${COMPANION_AWS_BUCKET}"
+      COMPANION_AWS_REGION: "${COMPANION_AWS_REGION}"
+      COMPANION_AWS_ENDPOINT: "${COMPANION_AWS_ENDPOINT}"
+      COMPANION_AWS_USE_ACCELERATE_ENDPOINT: "false"
+      # CORS
+      COMPANION_CLIENT_ORIGINS: "${COMPANION_CLIENT_ORIGINS}"
+      # Signing secret
+      COMPANION_SECRET: "${COMPANION_SECRET}"
+      # Uncomment to enable Redis session store for horizontal scaling.
+      # COMPANION_REDIS_URL: "${COMPANION_REDIS_URL}"
+    ports:
+      - "3020:3020"
+    networks:
+      - mattermost_net
+    # Mount a writable tmp directory for any transient data.
+    tmpfs:
+      - /tmp
+
+  # Optional: Redis for Companion session scaling.
+  # redis:
+  #   image: redis:7-alpine
+  #   restart: unless-stopped
+  #   networks:
+  #     - mattermost_net
+
+networks:
+  mattermost_net:
+    external: true
+    name: mattermost_mattermost_net
