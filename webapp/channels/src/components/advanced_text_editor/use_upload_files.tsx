@@ -8,6 +8,7 @@ import type { ServerError } from '@mattermost/types/errors';
 import type { FileInfo } from '@mattermost/types/files';
 
 import { sortFileInfos } from 'mattermost-redux/utils/file_utils';
+import { getConfig } from 'mattermost-redux/selectors/entities/general';
 
 import { getCurrentLocale } from 'selectors/i18n';
 
@@ -15,8 +16,10 @@ import FilePreview from 'components/file_preview';
 import type { FilePreviewInfo } from 'components/file_preview/file_preview';
 import FileUpload from 'components/file_upload';
 import type { FileUpload as FileUploadClass, TextEditorLocationType } from 'components/file_upload/file_upload';
+import UppyFileUpload from 'components/uppy_file_upload';
 import type TextboxClass from 'components/textbox/textbox';
 
+import type { GlobalState } from 'types/store';
 import type { PostDraft } from 'types/store/draft';
 
 const getFileCount = (draft: PostDraft) => {
@@ -37,6 +40,7 @@ const useUploadFiles = (
 	isPostBeingEdited?: boolean,
 ): [React.ReactNode, React.ReactNode, React.RefObject<FileUploadClass>] => {
 	const locale = useSelector(getCurrentLocale);
+	const enableDirectUploads = useSelector((state: GlobalState) => getConfig(state).EnableDirectUploads === 'true');
 
 	const [uploadsProgressPercent, setUploadsProgressPercent] = useState<{ [clientID: string]: FilePreviewInfo }>({});
 
@@ -96,6 +100,12 @@ const useUploadFiles = (
 			return updated;
 		});
 	}, [locale, handleDraftChange, storedDrafts]);
+
+	// Called by UppyFileUpload when direct-to-S3 uploads complete.
+	// Passes an empty clientIds array since Uppy manages its own progress UI.
+	const handleUppyFilesUploaded = useCallback((fileInfos: FileInfo[]) => {
+		handleFileUploadComplete(fileInfos, [], channelId, postId || undefined);
+	}, [channelId, postId, handleFileUploadComplete]);
 
 	const handleUploadStart = useCallback((clientIds: string[]) => {
 		const uploadsInProgress = [...draft.uploadsInProgress, ...clientIds];
@@ -201,20 +211,56 @@ const useUploadFiles = (
 		postType = isThreadView ? 'thread' : 'comment';
 	}
 
-	const fileUploadJSX = isDisabled ? null : (
-		<FileUpload
-			ref={fileUploadRef}
-			fileCount={getFileCount(draft)}
-			getTarget={getFileUploadTarget}
-			onFileUploadChange={handleFileUploadChange}
-			onUploadStart={handleUploadStart} onUploadQueued={handleUploadQueued} onFileUpload={handleFileUploadComplete}
-			onUploadError={handleUploadError}
-			onUploadProgress={handleUploadProgress}
-			rootId={postId}
-			channelId={channelId}
-			postType={postType}
-		/>
-	);
+	let fileUploadJSX: React.ReactNode = null;
+	if (!isDisabled) {
+		if (enableDirectUploads) {
+			fileUploadJSX = (
+				<>
+					{/* Hidden FileUpload keeps the ref alive so VoiceNoteButton/VideoNoteButton
+					    can still record and upload audio/video via the legacy path. */}
+					<span className='FileUpload--hidden'>
+						<FileUpload
+							ref={fileUploadRef}
+							fileCount={getFileCount(draft)}
+							getTarget={getFileUploadTarget}
+							onFileUploadChange={handleFileUploadChange}
+							onUploadStart={handleUploadStart}
+							onUploadQueued={handleUploadQueued}
+							onFileUpload={handleFileUploadComplete}
+							onUploadError={handleUploadError}
+							onUploadProgress={handleUploadProgress}
+							rootId={postId}
+							channelId={channelId}
+							postType={postType}
+						/>
+					</span>
+					{/* Visible Uppy Dashboard — replaces the legacy attachment button. */}
+					<UppyFileUpload
+						channelId={channelId}
+						onFilesUploaded={handleUppyFilesUploaded}
+						onUploadError={(err) => setServerError(err)}
+					/>
+				</>
+			);
+		} else {
+			fileUploadJSX = (
+				<FileUpload
+					ref={fileUploadRef}
+					fileCount={getFileCount(draft)}
+					getTarget={getFileUploadTarget}
+					onFileUploadChange={handleFileUploadChange}
+					onUploadStart={handleUploadStart}
+					onUploadQueued={handleUploadQueued}
+					onFileUpload={handleFileUploadComplete}
+					onUploadError={handleUploadError}
+					onUploadProgress={handleUploadProgress}
+					rootId={postId}
+					channelId={channelId}
+					postType={postType}
+				/>
+			);
+		}
+	}
 
 	return [attachmentPreview, fileUploadJSX, fileUploadRef];
 };

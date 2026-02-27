@@ -15,9 +15,16 @@
  * All files added to the Uppy instance are PUT directly to S3/DO Spaces
  * using presigned URLs.  On success the FileInfo IDs are resolved so the
  * post composer can attach them as normal.
+ *
+ * The hook is event-driven: upload-success fires direct/complete for each
+ * file, and the complete event calls onComplete.  This means both the Uppy
+ * Dashboard's native "Upload" button and the programmatic startUpload()
+ * function follow the same code path.
  */
 
 import { useEffect, useRef, useCallback } from 'react';
+
+import type { FileInfo } from '@mattermost/types/files';
 
 import Uppy from '@uppy/core';
 import AwsS3 from '@uppy/aws-s3';
@@ -33,6 +40,7 @@ interface DirectUploadMeta {
     upload_id?: string;
     file_id?: string;
     object_key?: string;
+    direct_complete_done?: boolean;
     [key: string]: unknown;
 }
 
@@ -40,8 +48,8 @@ export interface UppyDirectUploadOptions {
     /** ID of the channel the files belong to. */
     channelId: string;
 
-    /** Called once all pending uploads have finished with the resulting FileInfo IDs. */
-    onComplete?: (fileIds: string[]) => void;
+    /** Called once all pending uploads have finished with the resulting FileInfo objects. */
+    onComplete?: (fileInfos: FileInfo[]) => void;
 
     /** Called if an error occurs during upload. */
     onError?: (error: Error) => void;
@@ -56,9 +64,9 @@ export interface UppyDirectUploadResult {
 
     /**
      * Kick off the upload of all files currently staged in Uppy.
-     * Resolves with the registered FileInfo IDs.
+     * Resolves once all uploads and direct/complete calls have finished.
      */
-    startUpload: () => Promise<string[]>;
+    startUpload: () => Promise<FileInfo[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -77,30 +85,44 @@ interface PresignedSessionResponse {
 
 /**
  * FileInfo-shaped payload returned by POST /api/v4/files/direct/complete.
+ * Matches the FileUploadResponse model from the server.
  */
 interface DirectCompleteResponse {
-    file_infos: Array<{ id: string }>;
+    file_infos: FileInfo[];
 }
 
 export function useUppyDirectUpload(
     options: UppyDirectUploadOptions,
 ): UppyDirectUploadResult {
-    const { channelId, onComplete, onError } = options;
+    // Store callbacks in refs so event handlers always see the latest values.
+    const channelIdRef = useRef(options.channelId);
+    const onCompleteRef = useRef(options.onComplete);
+    const onErrorRef = useRef(options.onError);
+    useEffect(() => {
+        channelIdRef.current = options.channelId;
+        onCompleteRef.current = options.onComplete;
+        onErrorRef.current = options.onError;
+    });
 
     // Uppy is mutable — keep it in a ref so it survives re-renders.
     const uppyRef = useRef<Uppy | null>(null);
     const uploadingRef = useRef(false);
 
+    // Track in-flight direct/complete promises so we can await them all before
+    // calling onComplete.  This avoids a race where the Uppy 'complete' event
+    // fires before the async doFetch calls have resolved.
+    const pendingCompletionPromsRef = useRef<Array<Promise<FileInfo[]>>>([]);
+
     if (!uppyRef.current) {
-        uppyRef.current = new Uppy({
+        const uppy = new Uppy({
             autoProceed: false,
             restrictions: {
-                // Allow up to 5 concurrent uploads per the spec.
+                // Maximum files per upload session (matches Mattermost server default).
                 maxNumberOfFiles: 5,
             },
         });
 
-        uppyRef.current.use(AwsS3, {
+        uppy.use(AwsS3, {
             // Force simple (non-multipart) PUT uploads for presigned URL flow.
             shouldUseMultipart: false,
 
@@ -119,7 +141,7 @@ export function useUppyDirectUpload(
                     {
                         method: 'post',
                         body: JSON.stringify({
-                            channel_id: channelId,
+                            channel_id: channelIdRef.current,
                             filename,
                             content_type: contentType,
                         }),
@@ -142,6 +164,67 @@ export function useUppyDirectUpload(
                 };
             },
         });
+
+        // For each file that reaches S3 successfully, issue the Mattermost
+        // direct/complete call.  Each call is stored as a Promise so the
+        // 'complete' handler can await them all before notifying the caller.
+        uppy.on('upload-success', (file) => {
+            if (!file) {
+                return;
+            }
+            const meta = (file.meta ?? {}) as DirectUploadMeta;
+            const { upload_id: uploadId, file_id: fileId, object_key: objectKey } = meta;
+
+            if (!uploadId || !fileId || !objectKey || meta.direct_complete_done) {
+                return;
+            }
+
+            // Mark as done to avoid double-completion on retry.
+            meta.direct_complete_done = true;
+
+            const completionPromise = Client4.doFetch<DirectCompleteResponse>(
+                `${Client4.getFilesRoute()}/direct/complete`,
+                {
+                    method: 'post',
+                    body: JSON.stringify({
+                        upload_id: uploadId,
+                        file_id: fileId,
+                        object_key: objectKey,
+                        file_size: (file as {size?: number}).size ?? 0,
+                    }),
+                },
+            ).then((complete) => complete.file_infos ?? [] as FileInfo[]).catch((err: unknown) => {
+                onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
+                return [] as FileInfo[];
+            });
+
+            pendingCompletionPromsRef.current.push(completionPromise);
+        });
+
+        // Wait for all direct/complete calls to finish before calling onComplete.
+        uppy.on('complete', (result) => {
+            uploadingRef.current = false;
+
+            if (result.failed.length > 0 && result.successful.length === 0) {
+                const firstFailure = result.failed[0];
+                const err = new Error(
+                    `Upload failed for "${(firstFailure as {name?: string}).name ?? 'unknown'}": ${(firstFailure as {error?: string}).error ?? 'unknown error'}`,
+                );
+                onErrorRef.current?.(err);
+                pendingCompletionPromsRef.current = [];
+                return;
+            }
+
+            const proms = pendingCompletionPromsRef.current;
+            pendingCompletionPromsRef.current = [];
+
+            Promise.all(proms).then((allResults) => {
+                const infos = allResults.flat();
+                onCompleteRef.current?.(infos);
+            });
+        });
+
+        uppyRef.current = uppy;
     }
 
     // Cleanup Uppy on unmount.
@@ -152,61 +235,25 @@ export function useUppyDirectUpload(
         };
     }, []);
 
-    const startUpload = useCallback(async (): Promise<string[]> => {
+    const startUpload = useCallback(async (): Promise<FileInfo[]> => {
         const uppy = uppyRef.current!;
         uploadingRef.current = true;
+        pendingCompletionPromsRef.current = [];
 
-        try {
-            const result = await uppy.upload();
+        const result = await uppy.upload();
 
-            if (result.failed.length > 0) {
-                const firstFailure = result.failed[0];
-                const err = new Error(
-                    `Upload failed for file "${(firstFailure as {name?: string}).name ?? 'unknown'}": ${(firstFailure as {error?: string}).error ?? 'unknown error'}`,
-                );
-                onError?.(err);
-                throw err;
-            }
-
-            // For each successful file, call the "complete" endpoint so
-            // Mattermost registers a FileInfo record.
-            const fileIds: string[] = [];
-
-            for (const file of result.successful) {
-                const meta = (file as {meta?: DirectUploadMeta}).meta ?? {};
-                const { upload_id: uploadId, file_id: fileId, object_key: objectKey } = meta;
-
-                if (!uploadId || !fileId || !objectKey) {
-                    // Should not happen — skip gracefully.
-                    continue;
-                }
-
-                const complete = await Client4.doFetch<DirectCompleteResponse>(
-                    `${Client4.getFilesRoute()}/direct/complete`,
-                    {
-                        method: 'post',
-                        body: JSON.stringify({
-                            upload_id: uploadId,
-                            file_id: fileId,
-                            object_key: objectKey,
-                            file_size: (file as {size?: number}).size ?? 0,
-                        }),
-                    },
-                );
-
-                const ids = complete.file_infos?.map((fi: {id: string}) => fi.id) ?? [];
-                fileIds.push(...ids);
-            }
-
-            onComplete?.(fileIds);
-            return fileIds;
-        } finally {
-            uploadingRef.current = false;
+        if (result.failed.length > 0 && result.successful.length === 0) {
+            const firstFailure = result.failed[0];
+            const err = new Error(
+                `Upload failed for "${(firstFailure as {name?: string}).name ?? 'unknown'}": ${(firstFailure as {error?: string}).error ?? 'unknown error'}`,
+            );
+            throw err;
         }
-        // Client4 is a stable module-level singleton and does not need to be
-        // listed in the dependency array.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [channelId, onComplete, onError]);
+
+        // Await all in-flight direct/complete calls before returning.
+        const allResults = await Promise.all(pendingCompletionPromsRef.current);
+        return allResults.flat();
+    }, []);
 
     return {
         uppy: uppyRef.current,

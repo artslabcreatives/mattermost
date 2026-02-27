@@ -74,6 +74,7 @@ func GenerateClientConfig(c *model.Config, telemetryID string, license *model.Li
 	props["ShowFullName"] = strconv.FormatBool(*c.PrivacySettings.ShowFullName)
 
 	props["EnableFileAttachments"] = strconv.FormatBool(*c.FileSettings.EnableFileAttachments)
+	props["EnableDirectUploads"] = strconv.FormatBool(*c.FileSettings.EnableDirectUploads)
 	props["EnablePublicLink"] = strconv.FormatBool(*c.FileSettings.EnablePublicLink)
 
 	props["AvailableLocales"] = *c.LocalizationSettings.AvailableLocales
