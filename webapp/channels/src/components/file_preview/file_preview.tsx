@@ -19,12 +19,16 @@ type UploadInfo = {
 	name: string;
 	percent?: number;
 	type?: string;
+	chunkIndex?: number;
+	chunkTotal?: number;
+	failed?: boolean;
 }
 export type FilePreviewInfo = FileInfo & UploadInfo;
 
 type Props = {
 	enableSVGs: boolean;
 	onRemove?: (id: string) => void;
+	onRetry?: (clientId: string) => void;
 	fileInfos: FilePreviewInfo[];
 	uploadsInProgress?: string[];
 	uploadsProgressPercent?: { [clientID: string]: FilePreviewInfo };
@@ -131,6 +135,7 @@ export default class FilePreview extends React.PureComponent<Props> {
 							clientId={clientId}
 							fileInfo={fileInfo}
 							handleRemove={this.handleRemove}
+							onRetry={this.props.onRetry}
 						/>,
 					);
 				}

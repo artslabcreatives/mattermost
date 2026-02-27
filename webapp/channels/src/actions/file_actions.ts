@@ -87,7 +87,8 @@ function uploadFileChunked(
 
 				let offset = session.file_offset ?? 0;
 
-				// ── Step 2: upload chunks ────────────────────────────────────────
+				const chunkTotal = Math.ceil(file.size / CHUNK_SIZE);
+				let chunkIndex = Math.floor(offset / CHUNK_SIZE);
 				while (offset < file.size) {
 					if (signal.aborted) {
 						return;
@@ -115,6 +116,7 @@ function uploadFileChunked(
 					}
 
 					offset = end;
+					chunkIndex += 1;
 
 					// Report progress
 					const percent = Math.floor((offset / file.size) * 100);
@@ -123,6 +125,8 @@ function uploadFileChunked(
 						name,
 						percent,
 						type,
+						chunkIndex: chunkIndex - 1,
+						chunkTotal,
 					} as FilePreviewInfo);
 
 					// ── Step 3: check for completion (201 Created) ───────────────
@@ -152,6 +156,14 @@ function uploadFileChunked(
 				if (signal.aborted) {
 					return;
 				}
+
+				// Mark the file preview as failed so the UI can show a retry button
+				onProgress({
+					clientId,
+					name,
+					type,
+					failed: true,
+				} as FilePreviewInfo);
 
 				dispatch({
 					type: FileTypes.UPLOAD_FILES_FAILURE,

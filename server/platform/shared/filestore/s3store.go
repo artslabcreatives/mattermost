@@ -540,23 +540,27 @@ func (b *S3FileBackend) AppendFile(fr io.Reader, path string) (int64, error) {
 		return 0, errors.Wrapf(err2, "unable to find the file %s to append the data", path)
 	}
 
+	// Read the new data once so we can use it for either approach
+	newData, err := io.ReadAll(fr)
+	if err != nil {
+		return 0, errors.Wrapf(err, "unable to read new data for append to %s", path)
+	}
+	newDataReader := bytes.NewReader(newData)
+
 	contentType := getContentType(filepath.Ext(fp))
 
+	// Try the efficient ComposeObject approach first
 	options := s3PutOptions(b.encrypt, contentType, b.uploadPartSize, b.storageClass)
 	sse := options.ServerSideEncryption
 	partName := fp + ".part"
 	ctx2, cancel2 := context.WithTimeout(context.Background(), b.timeout)
 	defer cancel2()
-	objSize := -1
+	objSize := int64(len(newData))
 	if b.isCloud {
 		options.DisableContentSha256 = true
 	}
-	// We pass an object size only in situations where bifrost is not
-	// used. Bifrost needs to run in HTTPS, which is not yet deployed.
-	if buf, ok := fr.(*bytes.Buffer); ok && !b.isCloud {
-		objSize = buf.Len()
-	}
-	info, err := b.client.PutObject(ctx2, b.bucket, partName, fr, int64(objSize), options)
+	
+	info, err := b.client.PutObject(ctx2, b.bucket, partName, newDataReader, objSize, options)
 	if err != nil {
 		return 0, errors.Wrapf(err, "unable append the data in the file %s", path)
 	}
@@ -581,11 +585,49 @@ func (b *S3FileBackend) AppendFile(fr io.Reader, path string) (int64, error) {
 	}
 	ctx3, cancel3 := context.WithTimeout(context.Background(), b.timeout)
 	defer cancel3()
-	_, err = b.client.ComposeObject(ctx3, dstOpts, src1Opts, src2Opts)
-	if err != nil {
-		return 0, errors.Wrapf(err, "unable append the data in the file %s", path)
+	_, composeErr := b.client.ComposeObject(ctx3, dstOpts, src1Opts, src2Opts)
+	if composeErr != nil {
+		// If ComposeObject fails with precondition errors, fall back to download/upload approach
+		if strings.Contains(composeErr.Error(), "preconditions") || strings.Contains(composeErr.Error(), "bad time format") {
+			return b.appendFileFallback(newData, fp, options)
+		}
+		return 0, errors.Wrapf(composeErr, "unable append the data in the file %s", path)
 	}
 	return info.Size, nil
+}
+
+// appendFileFallback implements append by downloading, combining in memory, and re-uploading
+// This is used as a fallback when ComposeObject fails due to conditional header issues
+func (b *S3FileBackend) appendFileFallback(newData []byte, fp string, options s3.PutObjectOptions) (int64, error) {
+	// Get existing file
+	ctx1, cancel1 := context.WithTimeout(context.Background(), b.timeout)
+	defer cancel1()
+	existingFile, err := b.client.GetObject(ctx1, b.bucket, fp, s3.GetObjectOptions{})
+	if err != nil {
+		return 0, errors.Wrapf(err, "unable to get existing file for append fallback")
+	}
+	defer existingFile.Close()
+
+	// Read existing content
+	existingData, err := io.ReadAll(existingFile)
+	if err != nil {
+		return 0, errors.Wrapf(err, "unable to read existing file for append fallback")
+	}
+
+	// Combine the data
+	combinedData := append(existingData, newData...)
+	combinedReader := bytes.NewReader(combinedData)
+
+	// Upload the combined file
+	ctx2, cancel2 := context.WithTimeout(context.Background(), b.timeout)
+	defer cancel2()
+	
+	_, err = b.client.PutObject(ctx2, b.bucket, fp, combinedReader, int64(len(combinedData)), options)
+	if err != nil {
+		return 0, errors.Wrapf(err, "unable to upload combined file in fallback")
+	}
+
+	return int64(len(newData)), nil
 }
 
 func (b *S3FileBackend) RemoveFile(path string) error {

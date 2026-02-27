@@ -130,6 +130,12 @@ export type Props = {
 	onUploadStart: (clientIds: string[], channelId: string) => void;
 
 	/**
+	 * Optional callback fired once per file right when its upload is queued.
+	 * Used by consumers to store the File reference for potential retry.
+	 */
+	onUploadQueued?: (clientId: string, file: File, name: string, type: string) => void;
+
+	/**
 	 * Type of the object which the uploaded file is attached to
 	 */
 	postType: TextEditorLocationType;
@@ -331,6 +337,7 @@ export class FileUpload extends PureComponent<Props, State> {
 				onError: this.fileUploadFail,
 			});
 
+			this.props.onUploadQueued?.(clientId, sortedFiles[i], sortedFiles[i].name, sortedFiles[i].type);
 			this.setState({ requests: { ...this.state.requests, [clientId]: request } });
 			clientIds.push(clientId);
 
@@ -572,6 +579,24 @@ export class FileUpload extends PureComponent<Props, State> {
 			Reflect.deleteProperty(requests, clientId);
 			this.setState({ requests });
 		}
+	};
+
+	retryUpload = (clientId: string, file: File, name: string, type: string) => {
+		const { channelId, rootId } = this.props;
+
+		const request = this.props.actions.uploadFile({
+			file,
+			name,
+			type,
+			rootId: rootId || '',
+			channelId,
+			clientId,
+			onProgress: this.props.onUploadProgress,
+			onSuccess: this.fileUploadSuccess,
+			onError: this.fileUploadFail,
+		});
+
+		this.setState({ requests: { ...this.state.requests, [clientId]: request } });
 	};
 
 	handleMaxUploadReached = (e: MouseEvent<HTMLInputElement>) => {
