@@ -19,6 +19,7 @@ import {useIntl} from 'react-intl';
 import type {FileInfo} from '@mattermost/types/files';
 import {PaperclipIcon} from '@mattermost/compass-icons/components';
 
+import type Uppy from '@uppy/core';
 import Dashboard from '@uppy/dashboard';
 import '@uppy/core/dist/style.min.css';
 import '@uppy/dashboard/dist/style.min.css';
@@ -49,21 +50,25 @@ const UppyFileUpload = ({
     const [panelOpen, setPanelOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const dashboardMountedRef = useRef(false);
+    const uppyRef = useRef<Uppy | null>(null);
 
     const handleComplete = useCallback((fileInfos: FileInfo[]) => {
         if (fileInfos.length > 0) {
             onFilesUploaded(fileInfos);
         }
         // Reset Uppy file list so the next panel open starts fresh.
-        uppy.reset();
+        uppyRef.current?.reset();
         setPanelOpen(false);
-    }, [onFilesUploaded, uppy]);
+    }, [onFilesUploaded]);
 
     const {uppy} = useUppyDirectUpload({
         channelId,
         onComplete: handleComplete,
         onError: onUploadError,
     });
+
+    // Keep the ref in sync so handleComplete can call reset() on the Uppy instance.
+    uppyRef.current = uppy;
 
     // Mount the Uppy Dashboard into the container div once it is in the DOM.
     useEffect(() => {
