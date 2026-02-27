@@ -224,6 +224,17 @@ func (api *API) finaliseTusUpload(state *tusdState, event tushandler.HookEvent, 
 		return
 	}
 
+	// Validate IDs to prevent path traversal in the object-store key.
+	// Mattermost IDs are 26-character alphanumeric strings.
+	if !model.IsValidId(rec.channelID) || !model.IsValidId(rec.userID) {
+		logger.Warn("tus: invalid channel/user ID in upload metadata",
+			mlog.String("upload_id", event.Upload.ID),
+			mlog.String("channel_id", rec.channelID),
+			mlog.String("user_id", rec.userID),
+		)
+		return
+	}
+
 	// Staged file path as written by tusd's filestore.
 	stagedPath := filepath.Join(state.tusDir, event.Upload.ID)
 
