@@ -63,7 +63,13 @@ declare module '@uppy/core' {
         on(event: string, handler: (...args: any[]) => void): this;
         off(event: string, handler: (...args: any[]) => void): this;
         setMeta(data: Record<string, unknown>): void;
+        setFileMeta(fileID: string, data: Record<string, unknown>): void;
         reset(): void;
+        clear(): void;
+        cancelAll(): void;
+        pauseAll(): void;
+        resumeAll(): void;
+        retryAll(): Promise<UploadResult>;
     }
 }
 
@@ -162,5 +168,46 @@ declare module '@uppy/companion-client' {
         companionUrl: string;
         companionHeaders?: Record<string, string>;
         companionCookiesRule?: 'include' | 'same-origin' | 'omit';
+    }
+}
+
+declare module '@uppy/tus' {
+    import type Uppy from '@uppy/core';
+    import type { UppyFile, PluginOptions } from '@uppy/core';
+
+    export interface TusOptions extends PluginOptions {
+        endpoint: string;
+        headers?: Record<string, string> | ((file: UppyFile) => Record<string, string>);
+        chunkSize?: number;
+        retryDelays?: number[] | null;
+        limit?: number;
+        withCredentials?: boolean;
+        onBeforeRequest?: (req: unknown, file: UppyFile) => void | Promise<void>;
+        onAfterResponse?: (req: unknown, res: unknown) => void | Promise<void>;
+        onShouldRetry?: (err: unknown, retryAttempt: number, options: TusOptions, next: () => void) => boolean;
+        removeFingerprintOnSuccess?: boolean;
+        allowedMetaFields?: string[] | null;
+        fieldName?: string;
+    }
+
+    export default class Tus {
+        constructor(uppy: Uppy, opts?: TusOptions);
+    }
+}
+
+declare module '@uppy/golden-retriever' {
+    import type Uppy from '@uppy/core';
+    import type { PluginOptions } from '@uppy/core';
+
+    export interface GoldenRetrieverOptions extends PluginOptions {
+        serviceWorker?: boolean;
+        indexedDB?: {
+            maxFileSize?: number;
+            maxTotalSize?: number;
+        };
+    }
+
+    export default class GoldenRetriever {
+        constructor(uppy: Uppy, opts?: GoldenRetrieverOptions);
     }
 }

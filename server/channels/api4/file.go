@@ -51,6 +51,9 @@ func (api *API) InitFile() {
 	api.BaseRoutes.DirectUploads.Handle("/session", api.APISessionRequired(createDirectUploadSession, handlerParamFileAPI)).Methods(http.MethodPost)
 	api.BaseRoutes.DirectUploads.Handle("/complete", api.APISessionRequired(completeDirectUploadSession, handlerParamFileAPI)).Methods(http.MethodPost)
 	api.BaseRoutes.DirectUploadSession.Handle("", api.APISessionRequired(abortDirectUploadSession, handlerParamFileAPI)).Methods(http.MethodDelete)
+
+	// TUS resumable-upload endpoint.
+	api.InitTusUpload()
 }
 
 func parseMultipartRequestHeader(req *http.Request) (boundary string, err error) {
