@@ -121,16 +121,70 @@ func (api *API) InitTusUpload() {
 	}()
 
 	// Mount the tusd HTTP handler with Mattermost auth.
-	// The /fileinfo sub-path is intercepted here and handled by tusFileInfoHandler.
-	tusWithAuth := api.tusAuthMiddleware(h)
+	//
+	// tusd's internal mux (handler.go, NewHandler) does:
+	//
+	//   path := strings.Trim(r.URL.Path, "/")
+	//   switch path {
+	//   case "":   → creation endpoint (POST only)
+	//   default:   → upload-specific operations (PATCH / HEAD / DELETE / GET)
+	//   }
+	//
+	// If we pass the full request path ("/api/v4/files/tus/"), trimming
+	// produces "api/v4/files/tus" (non-empty), so tusd routes POST into the
+	// upload-specific default case where POST is not allowed → 405.
+	//
+	// Fix: strip the base prefix BEFORE handing the request to tusd so it
+	// sees "" for the creation POST and "{upload_id}" for subsequent ops.
+	tusStripped := http.StripPrefix(strings.TrimRight(tusdBasePath, "/"), h)
+	tusWithAuth := api.tusAuthMiddleware(tusStripped)
 	api.BaseRoutes.Files.PathPrefix("/tus").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Intercept GET /api/v4/files/tus/fileinfo/{upload_id}
+		// Intercept GET /api/v4/files/tus/fileinfo/{upload_id} before stripping.
 		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/v4/files/tus/fileinfo/") {
 			api.tusFileInfoHandler(state, w, r)
 			return
 		}
-		tusWithAuth.ServeHTTP(w, r)
+		// Behind an SSL-terminating reverse proxy (nginx → Mattermost over plain
+		// HTTP), tusd builds the upload Location URL using the incoming HTTP
+		// scheme.  That produces "http://" Location headers even though the
+		// browser connected over HTTPS, causing the browser to block all
+		// follow-up PATCH/HEAD requests as mixed active content.
+		//
+		// Fix: wrap the ResponseWriter so any Location header that starts with
+		// "http://" is rewritten to "https://" when the original request carried
+		// X-Forwarded-Proto: https (set by nginx).
+		var rw http.ResponseWriter = w
+		if r.Header.Get("X-Forwarded-Proto") == "https" {
+			rw = &httpsLocationWriter{ResponseWriter: w}
+		}
+		tusWithAuth.ServeHTTP(rw, r)
 	})
+}
+
+// httpsLocationWriter wraps an http.ResponseWriter and rewrites any
+// "Location: http://" header to "Location: https://" before the response
+// headers are flushed.  This corrects the TUS upload URL when Mattermost
+// sits behind an SSL-terminating reverse proxy.
+type httpsLocationWriter struct {
+	http.ResponseWriter
+	wroteHeader bool
+}
+
+func (w *httpsLocationWriter) WriteHeader(status int) {
+	if !w.wroteHeader {
+		w.wroteHeader = true
+		if loc := w.ResponseWriter.Header().Get("Location"); strings.HasPrefix(loc, "http://") {
+			w.ResponseWriter.Header().Set("Location", "https://"+loc[len("http://"):])
+		}
+	}
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *httpsLocationWriter) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(b)
 }
 
 // tusFileInfoHandler handles GET /api/v4/files/tus/fileinfo/{upload_id}.
