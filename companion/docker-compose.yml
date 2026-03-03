@@ -45,4 +45,4 @@ services:
 networks:
   mattermost_net:
     external: true
-    name: mattermost_mattermost_net
+    name: mattermost-network

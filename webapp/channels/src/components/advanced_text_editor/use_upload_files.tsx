@@ -17,6 +17,7 @@ import type { FilePreviewInfo } from 'components/file_preview/file_preview';
 import FileUpload from 'components/file_upload';
 import type { FileUpload as FileUploadClass, TextEditorLocationType } from 'components/file_upload/file_upload';
 import UppyFileUpload from 'components/uppy_file_upload';
+import type { UppyFileUploadHandle, RestoredFileInfo } from 'components/uppy_file_upload';
 import type TextboxClass from 'components/textbox/textbox';
 
 import type { GlobalState } from 'types/store';
@@ -49,6 +50,11 @@ const useUploadFiles = (
 	const pendingUploadFiles = useRef<Record<string, { file: File; name: string; type: string }>>({});
 
 	const fileUploadRef = useRef<FileUploadClass>(null);
+	const uppyFileUploadRef = useRef<UppyFileUploadHandle>(null);
+
+	// Set of Uppy file IDs currently tracked in the draft's uploadsInProgress.
+	// These are distinct from legacy clientIds — they're managed by Uppy.
+	const uppyPendingIds = useRef<Set<string>>(new Set());
 
 	const handleFileUploadChange = useCallback(() => {
 		focusTextbox();
@@ -101,15 +107,107 @@ const useUploadFiles = (
 		});
 	}, [locale, handleDraftChange, storedDrafts]);
 
+	// Called by GoldenRetriever (via UppyFileUpload) when interrupted uploads
+	// are restored from IndexedDB on page load.  We add each file to the draft's
+	// uploadsInProgress so the FilePreview strip shows "Uploading…" with a ✕ button,
+	// giving the user a visible prompt to re-open the Uppy panel and resume.
+	const handleUppyFilesRestored = useCallback((files: RestoredFileInfo[]) => {
+		if (files.length === 0) {
+			return;
+		}
+
+		const newIds = files.map((f) => f.id);
+		newIds.forEach((id) => uppyPendingIds.current.add(id));
+
+		// Build progress entries so FileProgressPreview can render them.
+		setUploadsProgressPercent((prev) => {
+			const updated = { ...prev };
+			files.forEach((f) => {
+				updated[f.id] = {
+					name: f.name || 'Uploading…',
+					type: f.type,
+					percent: 0,
+					failed: false,
+				} as FilePreviewInfo;
+			});
+			return updated;
+		});
+
+		// Merge into the draft so the file strip appears in the composer.
+		const key = postId || channelId;
+		const existing = storedDrafts.current[key] ?? {
+			message: '',
+			fileInfos: [],
+			uploadsInProgress: [],
+			channelId,
+			rootId: postId,
+			createAt: 0,
+			updateAt: 0,
+		};
+		const mergedProgress = [
+			...existing.uploadsInProgress.filter((id) => !newIds.includes(id)),
+			...newIds,
+		];
+		handleDraftChange(
+			{ ...existing, uploadsInProgress: mergedProgress },
+			{ instant: true, show: true },
+		);
+	}, [channelId, postId, storedDrafts, handleDraftChange]);
+
+	// Called when the user removes a file directly from the Uppy Dashboard panel.
+	const handleUppyFileRemoved = useCallback((uppyFileId: string) => {
+		if (!uppyPendingIds.current.has(uppyFileId)) {
+			return;
+		}
+		uppyPendingIds.current.delete(uppyFileId);
+
+		setUploadsProgressPercent((prev) => {
+			const updated = { ...prev };
+			Reflect.deleteProperty(updated, uppyFileId);
+			return updated;
+		});
+
+		const key = postId || channelId;
+		const existing = storedDrafts.current[key];
+		if (!existing) {
+			return;
+		}
+		const updatedProgress = existing.uploadsInProgress.filter((id) => id !== uppyFileId);
+		handleDraftChange({ ...existing, uploadsInProgress: updatedProgress }, { instant: true });
+	}, [channelId, postId, storedDrafts, handleDraftChange]);
+
 	// Called by UppyFileUpload when direct-to-S3 uploads complete.
 	// We bypass handleFileUploadComplete here because that function silently
 	// exits when no draft exists yet (user hasn't typed anything).  Instead
 	// we look up — or create — the draft directly and merge the new file infos.
 	const handleUppyFilesUploaded = useCallback((fileInfos: FileInfo[]) => {
 		const key = postId || channelId;
-		const existing = storedDrafts.current[key] ?? { message: '', fileInfos: [], uploadsInProgress: [] };
+		const existing = storedDrafts.current[key] ?? {
+			message: '',
+			fileInfos: [],
+			uploadsInProgress: [],
+			channelId,
+			rootId: postId,
+			createAt: 0,
+			updateAt: 0,
+		};
 		const newFileInfos = sortFileInfos([...existing.fileInfos, ...fileInfos], locale);
-		handleDraftChange({ ...existing, fileInfos: newFileInfos }, { instant: true, show: true });
+
+		// Clear all Uppy-tracked IDs from uploadsInProgress since the batch completed.
+		const uppyIds = uppyPendingIds.current;
+		uppyPendingIds.current = new Set();
+		const remainingProgress = existing.uploadsInProgress.filter((id) => !uppyIds.has(id));
+
+		setUploadsProgressPercent((prev) => {
+			const updated = { ...prev };
+			uppyIds.forEach((id) => Reflect.deleteProperty(updated, id));
+			return updated;
+		});
+
+		handleDraftChange(
+			{ ...existing, fileInfos: newFileInfos, uploadsInProgress: remainingProgress },
+			{ instant: true, show: true },
+		);
 	}, [channelId, postId, storedDrafts, locale, handleDraftChange]);
 	const handleUploadStart = useCallback((clientIds: string[]) => {
 		const uploadsInProgress = [...draft.uploadsInProgress, ...clientIds];
@@ -174,7 +272,13 @@ const useUploadFiles = (
 				modifiedDraft.uploadsInProgress = [...draft.uploadsInProgress];
 				modifiedDraft.uploadsInProgress.splice(index, 1);
 
-				fileUploadRef.current?.cancelUpload(clientId);
+				if (uppyPendingIds.current.has(clientId)) {
+					// Uppy-managed upload — tell Uppy to remove the file too.
+					uppyPendingIds.current.delete(clientId);
+					uppyFileUploadRef.current?.removeFile(clientId);
+				} else {
+					fileUploadRef.current?.cancelUpload(clientId);
+				}
 			} else {
 				// No modification
 				return;
@@ -240,8 +344,11 @@ const useUploadFiles = (
 					</span>
 					{/* Visible Uppy Dashboard — replaces the legacy attachment button. */}
 					<UppyFileUpload
+						ref={uppyFileUploadRef}
 						channelId={channelId}
 						onFilesUploaded={handleUppyFilesUploaded}
+						onFilesRestored={handleUppyFilesRestored}
+						onFileRemoved={handleUppyFileRemoved}
 						onUploadError={(err) => setServerError(err)}
 					/>
 				</>

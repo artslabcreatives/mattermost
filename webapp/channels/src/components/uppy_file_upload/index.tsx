@@ -2,20 +2,19 @@
 // See LICENSE.txt for license information.
 
 /**
- * UppyFileUpload renders an Uppy Dashboard panel inside the post composer.
+ * UppyFileUpload renders a full-featured Uppy Dashboard inside the post
+ * composer.  It supports:
  *
- * When the user adds files (drag-and-drop, browse, or paste) and clicks
- * "Upload", files are sent via TUS resumable-upload protocol through the
- * Mattermost server using the useUppyDirectUpload hook.
+ *   Local:   Browse, Webcam, Microphone, Screencast, Image Editor
+ *   Remote:  Google Drive, Dropbox, OneDrive, Box, Unsplash, URL
+ *   Drop:    Drag-and-drop anywhere on the page (via @uppy/drop-target)
+ *   Upload:  TUS resumable upload through /api/v4/files/tus/
+ *   Recover: @uppy/golden-retriever persists state across page reloads
  *
- * TUS provides built-in resumability: uploads survive network interruptions
- * and IP address changes.  The @uppy/golden-retriever plugin stores upload
- * state in IndexedDB so pending uploads survive page refreshes.
- *
- * The component is only rendered when EnableDirectUploads=true on the server.
+ * Rendered only when EnableDirectUploads=true on the server.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 
 import type { FileInfo } from '@mattermost/types/files';
@@ -23,8 +22,24 @@ import { PaperclipIcon } from '@mattermost/compass-icons/components';
 
 import type Uppy from '@uppy/core';
 import Dashboard from '@uppy/dashboard';
+import Webcam from '@uppy/webcam';
+import Audio from '@uppy/audio';
+import ScreenCapture from '@uppy/screen-capture';
+import Url from '@uppy/url';
+import GoogleDrive from '@uppy/google-drive';
+import Dropbox from '@uppy/dropbox';
+import OneDrive from '@uppy/onedrive';
+import Box from '@uppy/box';
+import Unsplash from '@uppy/unsplash';
+import ImageEditor from '@uppy/image-editor';
+import DropTarget from '@uppy/drop-target';
+
 import '@uppy/core/css/style.min.css';
 import '@uppy/dashboard/css/style.min.css';
+import '@uppy/audio/dist/style.min.css';
+import '@uppy/screen-capture/dist/style.min.css';
+import '@uppy/image-editor/dist/style.min.css';
+import '@uppy/url/dist/style.min.css';
 
 import WithTooltip from 'components/with_tooltip';
 import KeyboardShortcutSequence, { KEYBOARD_SHORTCUTS } from 'components/keyboard_shortcuts/keyboard_shortcuts_sequence';
@@ -33,25 +48,64 @@ import { useUppyDirectUpload } from 'hooks/useUppyDirectUpload';
 
 import './uppy_file_upload.scss';
 
+// Public companion URL — nginx proxies /api/companion/ → companion:3020
+const COMPANION_URL = `${window.location.origin}/api/companion`;
+
+export type RestoredFileInfo = {
+	id: string;
+	name: string;
+	type: string;
+	size: number;
+};
+
+export type UppyFileUploadHandle = {
+	/** Remove a file from the Uppy instance (e.g. when the user clicks ✕ in FilePreview). */
+	removeFile: (uppyFileId: string) => void;
+};
+
 export type Props = {
 	channelId: string;
 	disabled?: boolean;
 	onFilesUploaded: (fileInfos: FileInfo[]) => void;
+	/**
+	 * Called once after GoldenRetriever restores previously interrupted uploads.
+	 * Fires at most once per mount, batching all restored files together.
+	 */
+	onFilesRestored?: (files: RestoredFileInfo[]) => void;
+	/**
+	 * Called when the user removes a file from the Uppy Dashboard panel.
+	 * The id is the Uppy file id that was previously reported via onFilesRestored.
+	 */
+	onFileRemoved?: (uppyFileId: string) => void;
 	onUploadStart?: () => void;
 	onUploadError?: (err: Error) => void;
 };
 
-const UppyFileUpload = ({
+const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFileUpload({
 	channelId,
 	disabled,
 	onFilesUploaded,
+	onFilesRestored,
+	onFileRemoved,
 	onUploadStart,
 	onUploadError,
-}: Props) => {
+}, ref) {
 	const { formatMessage } = useIntl();
 	const [panelOpen, setPanelOpen] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const uppyRef = useRef<Uppy | null>(null);
+
+	// Keep callback refs stable so the effect below doesn't need to re-run.
+	const onFilesRestoredRef = useRef(onFilesRestored);
+	const onFileRemovedRef = useRef(onFileRemoved);
+	onFilesRestoredRef.current = onFilesRestored;
+	onFileRemovedRef.current = onFileRemoved;
+
+	useImperativeHandle(ref, () => ({
+		removeFile: (uppyFileId: string) => {
+			uppyRef.current?.removeFile(uppyFileId);
+		},
+	}), []);
 
 	// TUS uploads complete asynchronously on the server side; the client only
 	// knows that bytes were transmitted.  Notify the parent so it knows the
@@ -79,14 +133,68 @@ const UppyFileUpload = ({
 		if (!containerRef.current) {
 			return;
 		}
-		uppy.use(Dashboard, {
-			inline: true,
-			target: containerRef.current,
-			showProgressDetails: true,
-			proudlyDisplayPoweredByUppy: false,
-			theme: 'auto',
-			width: '100%',
-			height: 320,
+
+		uppy
+			.use(Dashboard, {
+				inline: true,
+				target: containerRef.current,
+				showProgressDetails: true,
+				proudlyDisplayPoweredByUppy: false,
+				theme: 'auto',
+				width: '100%',
+				height: 400,
+				plugins: [
+					'Webcam', 'Audio', 'ScreenCapture',
+					'GoogleDrive', 'Dropbox', 'OneDrive', 'Box', 'Unsplash', 'Url',
+					'ImageEditor',
+				],
+			})
+			.use(Webcam, { id: 'Webcam', target: Dashboard })
+			.use(Audio, { id: 'Audio', target: Dashboard })
+			.use(ScreenCapture, { id: 'ScreenCapture', target: Dashboard })
+			.use(GoogleDrive, { id: 'GoogleDrive', companionUrl: COMPANION_URL, target: Dashboard })
+			.use(Dropbox, { id: 'Dropbox', companionUrl: COMPANION_URL, target: Dashboard })
+			.use(OneDrive, { id: 'OneDrive', companionUrl: COMPANION_URL, target: Dashboard })
+			.use(Box, { id: 'Box', companionUrl: COMPANION_URL, target: Dashboard })
+			.use(Unsplash, { id: 'Unsplash', companionUrl: COMPANION_URL, target: Dashboard })
+			.use(Url, { id: 'Url', companionUrl: COMPANION_URL, target: Dashboard })
+			.use(ImageEditor, { id: 'ImageEditor', target: Dashboard })
+			// DropTarget makes the whole page a drop zone.
+			// Files dropped onto the chat area are added to Uppy and the
+			// panel is opened automatically (see file-added handler below).
+			.use(DropTarget, { id: 'DropTarget', target: document.body });
+
+		// Batch-collect files that GoldenRetriever restores from IndexedDB and
+		// notify the parent once after all are queued (setTimeout 0 lets all
+		// file-added events fire before the callback runs).
+		const restoredBatch: RestoredFileInfo[] = [];
+		let restoredTimer: ReturnType<typeof setTimeout> | null = null;
+
+		uppy.on('file-added', (file) => {
+			if ((file as { isRestored?: boolean }).isRestored) {
+				restoredBatch.push({
+					id: file.id,
+					name: file.name ?? '',
+					type: file.type ?? '',
+					size: file.size ?? 0,
+				});
+				if (restoredTimer !== null) {
+					clearTimeout(restoredTimer);
+				}
+				restoredTimer = setTimeout(() => {
+					restoredTimer = null;
+					if (restoredBatch.length > 0) {
+						onFilesRestoredRef.current?.([...restoredBatch]);
+						restoredBatch.length = 0;
+					}
+				}, 0);
+			}
+			setPanelOpen(true);
+			onUploadStart?.();
+		});
+
+		uppy.on('file-removed', (file) => {
+			onFileRemovedRef.current?.(file.id);
 		});
 	}, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -160,7 +268,7 @@ const UppyFileUpload = ({
 			/>
 		</div>
 	);
-};
+});
 
 export default UppyFileUpload;
 

@@ -118,3 +118,4 @@ echo "================================"
 sudo docker compose -f docker-compose.prod.yml ps
 
 sudo chmod 777 "$REPO_ROOT/volumes/app/mattermost/plugins" -R
+sudo chmod 777 ./volumes/app/mattermost/plugins/ -R
