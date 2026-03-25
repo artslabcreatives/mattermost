@@ -75,3 +75,9 @@ export const getSearchFilesResults: (state: GlobalState) => FileSearchResultItem
 	},
 );
 
+export function getPinnedFilesForChannel(state: GlobalState, channelId: string): FileInfo[] {
+	const fileIds = state.entities.files.pinnedFileIdsByChannelId?.[channelId] ?? [];
+	const allFiles = state.entities.files.filesFromSearch;
+	return fileIds.map((id) => allFiles[id]).filter(Boolean) as FileInfo[];
+}
+

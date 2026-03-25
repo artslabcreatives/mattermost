@@ -33,6 +33,7 @@ import { getUserIdFromChannelName } from 'mattermost-redux/utils/channel_utils';
 
 import {
 	showPinnedPosts,
+	showPinnedFiles,
 	showChannelFiles,
 	closeRightHandSide,
 	showChannelMembers,
@@ -113,6 +114,7 @@ function makeMapStateToProps() {
 const mapDispatchToProps = (dispatch: Dispatch) => ({
 	actions: bindActionCreators({
 		showPinnedPosts,
+		showPinnedFiles,
 		showChannelFiles,
 		closeRightHandSide,
 		getCustomEmojisInText,

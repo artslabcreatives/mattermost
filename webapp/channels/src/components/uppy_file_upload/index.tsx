@@ -45,6 +45,7 @@ import WithTooltip from 'components/with_tooltip';
 import KeyboardShortcutSequence, { KEYBOARD_SHORTCUTS } from 'components/keyboard_shortcuts/keyboard_shortcuts_sequence';
 
 import { useUppyDirectUpload } from 'hooks/useUppyDirectUpload';
+import { hasPlainText, createFileFromClipboardDataItem } from 'utils/paste';
 
 import './uppy_file_upload.scss';
 
@@ -67,6 +68,7 @@ export type Props = {
 	channelId: string;
 	disabled?: boolean;
 	onFilesUploaded: (fileInfos: FileInfo[]) => void;
+	onFilesAdded?: (files: RestoredFileInfo[]) => void;
 	/**
 	 * Called once after GoldenRetriever restores previously interrupted uploads.
 	 * Fires at most once per mount, batching all restored files together.
@@ -85,6 +87,7 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 	channelId,
 	disabled,
 	onFilesUploaded,
+	onFilesAdded,
 	onFilesRestored,
 	onFileRemoved,
 	onUploadStart,
@@ -93,11 +96,14 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 	const { formatMessage } = useIntl();
 	const [panelOpen, setPanelOpen] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const wrapperRef = useRef<HTMLDivElement>(null);
 	const uppyRef = useRef<Uppy | null>(null);
 
 	// Keep callback refs stable so the effect below doesn't need to re-run.
+	const onFilesAddedRef = useRef(onFilesAdded);
 	const onFilesRestoredRef = useRef(onFilesRestored);
 	const onFileRemovedRef = useRef(onFileRemoved);
+	onFilesAddedRef.current = onFilesAdded;
 	onFilesRestoredRef.current = onFilesRestored;
 	onFileRemovedRef.current = onFileRemoved;
 
@@ -171,13 +177,15 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 		let restoredTimer: ReturnType<typeof setTimeout> | null = null;
 
 		uppy.on('file-added', (file) => {
+			const queuedFile = {
+				id: file.id,
+				name: file.name ?? '',
+				type: file.type ?? '',
+				size: file.size ?? 0,
+			};
+
 			if ((file as { isRestored?: boolean }).isRestored) {
-				restoredBatch.push({
-					id: file.id,
-					name: file.name ?? '',
-					type: file.type ?? '',
-					size: file.size ?? 0,
-				});
+				restoredBatch.push(queuedFile);
 				if (restoredTimer !== null) {
 					clearTimeout(restoredTimer);
 				}
@@ -188,6 +196,8 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 						restoredBatch.length = 0;
 					}
 				}, 0);
+			} else {
+				onFilesAddedRef.current?.([queuedFile]);
 			}
 			setPanelOpen(true);
 			onUploadStart?.();
@@ -210,13 +220,74 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 		});
 	}, [disabled, onUploadStart]);
 
+	// Handle paste events: when the user pastes files from their file manager
+	// (e.g. Ctrl+C on a file, then Ctrl+V in the composer) route them through
+	// Uppy instead of the legacy FileUpload handler.
+	useEffect(() => {
+		function onPaste(e: ClipboardEvent) {
+			if (!e.clipboardData || !e.clipboardData.items || hasPlainText(e.clipboardData)) {
+				return;
+			}
+
+			const fileItems = Array.from(e.clipboardData.items).filter((item) => item.kind === 'file');
+			if (fileItems.length === 0) {
+				return;
+			}
+
+			const fileNamePrefix = 'Pasted File ';
+			const files = fileItems
+				.map((item) => createFileFromClipboardDataItem(item, fileNamePrefix))
+				.filter((f): f is File => f !== null);
+
+			if (files.length === 0) {
+				return;
+			}
+
+			const uppy = uppyRef.current;
+			if (!uppy) {
+				return;
+			}
+
+			e.preventDefault();
+
+			for (const file of files) {
+				try {
+					uppy.addFile({ name: file.name, type: file.type, data: file });
+				} catch {
+					// addFile throws if the file type is restricted or the file is a duplicate;
+					// silently ignore so other paste-file adds can still proceed.
+				}
+			}
+		}
+
+		document.addEventListener('paste', onPaste);
+		return () => document.removeEventListener('paste', onPaste);
+	}, []);
+
+	// Close the panel when the user clicks outside the component.
+	useEffect(() => {
+		if (!panelOpen) {
+			return undefined;
+		}
+		const handleClickOutside = (e: MouseEvent) => {
+			if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+				setPanelOpen(false);
+			}
+		};
+		document.addEventListener('mousedown', handleClickOutside);
+		return () => document.removeEventListener('mousedown', handleClickOutside);
+	}, [panelOpen]);
+
 	const label = formatMessage({
 		id: 'file_upload.upload_files',
 		defaultMessage: 'Upload files',
 	});
 
 	return (
-		<div className='UppyFileUpload'>
+		<div
+			className='UppyFileUpload'
+			ref={wrapperRef}
+		>
 			<WithTooltip
 				title={
 					<KeyboardShortcutSequence

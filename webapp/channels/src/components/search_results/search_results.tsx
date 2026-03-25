@@ -24,6 +24,8 @@ import SearchHint from 'components/search_hint/search_hint';
 import SearchResultsHeader from 'components/search_results_header';
 import LoadingWrapper from 'components/widgets/loading/loading_wrapper';
 
+import PeopleSearchResultItem from './people_search_results_item';
+
 import { searchHintOptions, DataSearchTypes } from 'utils/constants';
 import { isFileAttachmentsEnabled } from 'utils/file_utils';
 
@@ -65,13 +67,13 @@ const SearchResults: React.FC<Props> = (props: Props): JSX.Element => {
 	useEffect(() => {
 		// reset search type when switching views
 		setSearchType(props.searchType);
-	}, [props.isFlaggedPosts, props.isPinnedPosts, props.isMentionSearch]);
+	}, [props.isFlaggedPosts, props.isPinnedPosts, props.isPinnedFiles, props.isMentionSearch]);
 
 	useEffect(() => {
 		// after the first page of search results, there is no way to
 		// know if the search has more results to return, so we search
 		// for the second page and stop if it yields no results
-		if (props.searchPage === 0 && !props.isChannelFiles && !props.isSearchingTerm) {
+		if (props.searchPage === 0 && !props.isChannelFiles && !props.isPinnedFiles && !props.isSearchingTerm) {
 			setTimeout(() => {
 				props.getMorePostsForSearch();
 				props.getMoreFilesForSearch();
@@ -80,7 +82,7 @@ const SearchResults: React.FC<Props> = (props: Props): JSX.Element => {
 	}, [props.searchPage, props.searchTerms, props.isSearchingTerm]);
 
 	const handleScroll = (): void => {
-		if (!props.isFlaggedPosts && !props.isPinnedPosts && !props.isSearchingTerm && !props.isSearchGettingMore && !props.isChannelFiles) {
+		if (!props.isFlaggedPosts && !props.isPinnedPosts && !props.isPinnedFiles && !props.isSearchingTerm && !props.isSearchGettingMore && !props.isChannelFiles) {
 			const scrollHeight = scrollbars.current?.scrollHeight || 0;
 			const scrollTop = scrollbars.current?.scrollTop || 0;
 			const clientHeight = scrollbars.current?.clientHeight || 0;
@@ -127,6 +129,7 @@ const SearchResults: React.FC<Props> = (props: Props): JSX.Element => {
 		isFlaggedPosts,
 		isSearchingFlaggedPost,
 		isPinnedPosts,
+		isPinnedFiles = false,
 		isChannelFiles,
 		isSearchingPinnedPost,
 		isSideBarExpanded,
@@ -138,12 +141,14 @@ const SearchResults: React.FC<Props> = (props: Props): JSX.Element => {
 		setSearchFilterType,
 	} = props;
 
+	const userResults = props.userResults ?? [];
 	const noResults = (!results || !Array.isArray(results) || results.length === 0);
 	const noFileResults = (!fileResults || !Array.isArray(fileResults) || fileResults.length === 0);
-	const isLoading = isSearchingTerm || isSearchingFlaggedPost || isSearchingPinnedPost || !isOpened;
+	const noUserResults = userResults.length === 0;
+	const isLoading = !isPinnedFiles && (isSearchingTerm || isSearchingFlaggedPost || isSearchingPinnedPost || !isOpened);
 	const isAtEnd = (searchType === DataSearchTypes.MESSAGES_SEARCH_TYPE && isSearchAtEnd) || (searchType === DataSearchTypes.FILES_SEARCH_TYPE && isSearchFilesAtEnd);
-	const showLoadMore = !isAtEnd && !isChannelFiles && !isFlaggedPosts && !isPinnedPosts;
-	const isMessagesSearch = (!isFlaggedPosts && !isMentionSearch && !isCard && !isPinnedPosts && !isChannelFiles);
+	const showLoadMore = !isAtEnd && !isChannelFiles && !isFlaggedPosts && !isPinnedPosts && !isPinnedFiles;
+	const isMessagesSearch = (!isFlaggedPosts && !isMentionSearch && !isCard && !isPinnedPosts && !isChannelFiles && !isPinnedFiles);
 
 	let contentItems;
 	let loadingMorePostsComponent;
@@ -192,6 +197,12 @@ const SearchResults: React.FC<Props> = (props: Props): JSX.Element => {
 			id: 'search_header.pinnedMessages',
 			defaultMessage: 'Pinned messages',
 		});
+	} else if (isPinnedFiles) {
+		noResultsProps.variant = NoResultsVariant.ChannelFiles;
+		titleDescriptor = defineMessage({
+			id: 'search_header.pinnedFiles',
+			defaultMessage: 'Pinned Files',
+		});
 	} else if (isChannelFiles) {
 		if (searchFilterType === 'all') {
 			noResultsProps.variant = NoResultsVariant.ChannelFiles;
@@ -208,7 +219,7 @@ const SearchResults: React.FC<Props> = (props: Props): JSX.Element => {
 			id: 'search_header.title5',
 			defaultMessage: 'Extra Information',
 		});
-	} else if (!searchTerms && noResults && noFileResults) {
+	} else if (!searchTerms && noResults && noFileResults && noUserResults) {
 		titleDescriptor = defineMessage({
 			id: 'search_header.search',
 			defaultMessage: 'Search',
@@ -236,6 +247,51 @@ const SearchResults: React.FC<Props> = (props: Props): JSX.Element => {
 		updateSearchTerms(term);
 	};
 
+	const renderPostResults = (posts: typeof sortedResults) =>
+		posts.map((item: string | Post | FileSearchResultItemType, index: number) => {
+			if (typeof item === 'string' && isDateLine(item)) {
+				const date = getDateForDateLine(item);
+				return (
+					<DateSeparator
+						key={date}
+						date={date}
+					/>
+				);
+			}
+			const post = item as Post;
+			return (
+				<PostSearchResultsItem
+					key={post.id}
+					post={post}
+					matches={props.matches[post.id]}
+					searchTerm={searchTerms}
+					isFlaggedPosts={props.isFlaggedPosts}
+					isMentionSearch={props.isMentionSearch}
+					isPinnedPosts={props.isPinnedPosts}
+					a11yIndex={index}
+				/>
+			);
+		});
+
+	const renderFileResults = (files: FileSearchResultItemType[]) =>
+		files.map((item) => (
+			<FileSearchResultItem
+				key={item.id}
+				channelId={item.channel_id}
+				fileInfo={item}
+				teamName={props.currentTeamName}
+				pluginMenuItems={filesDropdownPluginMenuItems}
+			/>
+		));
+
+	const renderPeopleResults = (users: typeof userResults) =>
+		users.map((user) => (
+			<PeopleSearchResultItem
+				key={user.id}
+				user={user}
+			/>
+		));
+
 	switch (true) {
 		case isLoading:
 			contentItems = (
@@ -246,7 +302,7 @@ const SearchResults: React.FC<Props> = (props: Props): JSX.Element => {
 				</div>
 			);
 			break;
-		case (noResults && !searchTerms && !isMentionSearch && !isPinnedPosts && !isFlaggedPosts && !isChannelFiles):
+		case (noResults && !searchTerms && !isMentionSearch && !isPinnedPosts && !isFlaggedPosts && !isChannelFiles && !isPinnedFiles):
 			contentItems = (
 				<div className='sidebar--right__subheader search__hints a11y__section'>
 					<SearchHint
@@ -256,6 +312,92 @@ const SearchResults: React.FC<Props> = (props: Props): JSX.Element => {
 				</div>
 			);
 			break;
+		case searchType === DataSearchTypes.PEOPLE_SEARCH_TYPE: {
+			if (noUserResults) {
+				contentItems = (
+					<div
+						className={classNames([
+							'sidebar--right__subheader a11y__section',
+							{ 'sidebar-expanded': isSideBarExpanded },
+						])}
+						aria-live='polite'
+					>
+						<NoResultsIndicator
+							style={{ padding: '48px' }}
+							variant={NoResultsVariant.ChannelSearch}
+							titleValues={{ channelName: `${searchTerms}` }}
+						/>
+					</div>
+				);
+			} else {
+				contentItems = (
+					<div className='people-search-results'>
+						{renderPeopleResults(userResults)}
+					</div>
+				);
+			}
+			break;
+		}
+		case searchType === DataSearchTypes.ALL_SEARCH_TYPE: {
+			const hasAnyResults = !noUserResults || !noResults || !noFileResults;
+			if (!hasAnyResults) {
+				contentItems = (
+					<div
+						className={classNames([
+							'sidebar--right__subheader a11y__section',
+							{ 'sidebar-expanded': isSideBarExpanded },
+						])}
+						aria-live='polite'
+					>
+						<NoResultsIndicator
+							style={{ padding: '48px' }}
+							{...noResultsProps}
+						/>
+					</div>
+				);
+			} else {
+				contentItems = (
+					<>
+						{!noUserResults && (
+							<div className='search-results-section'>
+								<div className='search-results-section__header'>
+									<FormattedMessage
+										id='search_bar.people_tab'
+										defaultMessage='People'
+									/>
+								</div>
+								<div className='people-search-results'>
+									{renderPeopleResults(userResults)}
+								</div>
+							</div>
+						)}
+						{!noResults && (
+							<div className='search-results-section'>
+								<div className='search-results-section__header'>
+									<FormattedMessage
+										id='search_bar.messages_tab'
+										defaultMessage='Messages'
+									/>
+								</div>
+								{renderPostResults(sortedResults)}
+							</div>
+						)}
+						{!noFileResults && (
+							<div className='search-results-section'>
+								<div className='search-results-section__header'>
+									<FormattedMessage
+										id='search_bar.files_tab'
+										defaultMessage='Files'
+									/>
+								</div>
+								{renderFileResults(fileResults)}
+							</div>
+						)}
+					</>
+				);
+			}
+			break;
+		}
 		case noResults && (searchType === DataSearchTypes.MESSAGES_SEARCH_TYPE && !isChannelFiles):
 			contentItems = (
 				<div
@@ -272,7 +414,7 @@ const SearchResults: React.FC<Props> = (props: Props): JSX.Element => {
 				</div>
 			);
 			break;
-		case noFileResults && (searchType === DataSearchTypes.FILES_SEARCH_TYPE || isChannelFiles):
+		case noFileResults && (searchType === DataSearchTypes.FILES_SEARCH_TYPE || isChannelFiles || isPinnedFiles):
 			contentItems = (
 				<div
 					className={classNames([
@@ -289,46 +431,12 @@ const SearchResults: React.FC<Props> = (props: Props): JSX.Element => {
 			);
 			break;
 		default:
-			if (searchType === DataSearchTypes.FILES_SEARCH_TYPE || isChannelFiles) {
+			if (searchType === DataSearchTypes.FILES_SEARCH_TYPE || isChannelFiles || isPinnedFiles) {
 				sortedResults = fileResults;
+				contentItems = renderFileResults(sortedResults);
+			} else {
+				contentItems = renderPostResults(sortedResults);
 			}
-
-			contentItems = sortedResults.map((item: string | Post | FileSearchResultItemType, index: number) => {
-				if (searchType === DataSearchTypes.MESSAGES_SEARCH_TYPE && !props.isChannelFiles) {
-					if (typeof item === 'string' && isDateLine(item)) {
-						const date = getDateForDateLine(item);
-						return (
-							<DateSeparator
-								key={date}
-								date={date}
-							/>
-						);
-					}
-
-					const post = item as Post;
-					return (
-						<PostSearchResultsItem
-							key={post.id}
-							post={post}
-							matches={props.matches[post.id]}
-							searchTerm={searchTerms}
-							isFlaggedPosts={props.isFlaggedPosts}
-							isMentionSearch={props.isMentionSearch}
-							isPinnedPosts={props.isPinnedPosts}
-							a11yIndex={index}
-						/>
-					);
-				}
-				return (
-					<FileSearchResultItem
-						key={(item as FileSearchResultItemType).id}
-						channelId={(item as FileSearchResultItemType).channel_id}
-						fileInfo={item as FileSearchResultItemType}
-						teamName={props.currentTeamName}
-						pluginMenuItems={filesDropdownPluginMenuItems}
-					/>
-				);
-			});
 
 			loadingMorePostsComponent = (showLoadMore) ? (
 				<div className='loading-screen'>
@@ -358,8 +466,7 @@ const SearchResults: React.FC<Props> = (props: Props): JSX.Element => {
 					selectedFilter={searchFilterType}
 					isFileAttachmentsEnabled={isFileAttachmentsEnabled(config)}
 					messagesCounter={isSearchAtEnd || props.searchPage === 0 ? `${results.length}` : `${results.length}+`}
-					filesCounter={isSearchFilesAtEnd || props.searchPage === 0 ? `${fileResults.length}` : `${fileResults.length}+`}
-					onChange={setSearchType}
+					filesCounter={isSearchFilesAtEnd || props.searchPage === 0 ? `${fileResults.length}` : `${fileResults.length}+`}				peopleCounter={`${userResults.length}`}					onChange={setSearchType}
 					onFilter={setSearchFilterType}
 					onTeamChange={setSearchTeam}
 					crossTeamSearchEnabled={props.crossTeamSearchEnabled}

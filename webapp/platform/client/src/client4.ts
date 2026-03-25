@@ -2468,6 +2468,13 @@ export default class Client4 {
 		);
 	};
 
+	getPinnedFiles = (channelId: string) => {
+		return this.doFetch<FileInfo[]>(
+			`${this.getChannelRoute(channelId)}/pinned_files`,
+			{ method: 'get' },
+		);
+	};
+
 	markPostAsUnread = (userId: string, postId: string) => {
 		return this.doFetch<ChannelUnread>(
 			`${this.getUserRoute(userId)}/posts/${postId}/set_unread`,
@@ -2492,6 +2499,20 @@ export default class Client4 {
 	unpinPost = (postId: string) => {
 		return this.doFetch<StatusOK>(
 			`${this.getPostRoute(postId)}/unpin`,
+			{ method: 'post' },
+		);
+	};
+
+	pinFile = (fileId: string) => {
+		return this.doFetch<StatusOK>(
+			`${this.getFileRoute(fileId)}/pin`,
+			{ method: 'post' },
+		);
+	};
+
+	unpinFile = (fileId: string) => {
+		return this.doFetch<StatusOK>(
+			`${this.getFileRoute(fileId)}/unpin`,
 			{ method: 'post' },
 		);
 	};

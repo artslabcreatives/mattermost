@@ -29,6 +29,7 @@ import MenuItemPluginItems from '../menu_items/plugins_submenu';
 import MenuItemToggleFavoriteChannel from '../menu_items/toggle_favorite_channel';
 import MenuItemToggleInfo from '../menu_items/toggle_info';
 import MenuItemToggleMuteChannel from '../menu_items/toggle_mute_channel';
+import MenuItemViewPinnedFiles from '../menu_items/view_pinned_files';
 import MenuItemViewPinnedPosts from '../menu_items/view_pinned_posts';
 
 interface Props extends Menu.FirstMenuItemProps {
@@ -64,6 +65,9 @@ const ChannelHeaderGroupMenu = ({ channel, user, isMuted, isMobile, isFavorite, 
 						isFavorite={isFavorite}
 					/>
 					<MenuItemViewPinnedPosts
+						channelID={channel.id}
+					/>
+					<MenuItemViewPinnedFiles
 						channelID={channel.id}
 					/>
 				</>

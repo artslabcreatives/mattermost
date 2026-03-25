@@ -6,6 +6,7 @@ import type { IntlShape } from 'react-intl';
 
 import type { FileInfo } from '@mattermost/types/files';
 import type { Post } from '@mattermost/types/posts';
+import type { UserProfile } from '@mattermost/types/users';
 
 import type { SearchFilterType } from 'components/search/types';
 
@@ -17,6 +18,7 @@ export type OwnProps = {
 	isMentionSearch: boolean;
 	isFlaggedPosts: boolean;
 	isPinnedPosts: boolean;
+	isPinnedFiles: boolean;
 	updateSearchTerms: (terms: string) => void;
 	getMorePostsForSearch: () => void;
 	getMoreFilesForSearch: () => void;
@@ -31,6 +33,7 @@ export type OwnProps = {
 	setSearchFilterType: (filterType: SearchFilterType) => void;
 	updateSearchTeam: (teamId: string) => void;
 	crossTeamSearchEnabled: boolean;
+	userResults?: UserProfile[];
 };
 
 export type StateProps = {

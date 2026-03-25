@@ -1,29 +1,119 @@
 .SearchResults {
-    .messages-or-files {
-        .active {
-            background-color: rgba(var(--buton-bg-rgb), 0.08);
-        }
+	.messages-or-files {
+		.active {
+			background-color: rgba(var(--buton-bg-rgb), 0.08);
+		}
 
-        a {
-            padding: 4px 12px;
-            margin-left: 10px;
-            text-decoration: none;
-        }
-    }
+		a {
+			padding: 4px 12px;
+			margin-left: 10px;
+			text-decoration: none;
+		}
+	}
 
-    .channel-files__header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 7px 14px;
+	.channel-files__header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 7px 14px;
 
-        .channel-files__title {
-            font-size: 14px;
-            font-weight: 600;
-        }
-    }
+		.channel-files__title {
+			font-size: 14px;
+			font-weight: 600;
+		}
+	}
 
-    .channel-files-container {
-        padding-top: 0;
-    }
+	.channel-files-container {
+		padding-top: 0;
+	}
+
+	.search-results-section {
+		padding: 0;
+
+		&__header {
+			padding: 8px 16px 4px;
+			font-size: 12px;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			color: rgba(var(--center-channel-color-rgb), 0.56);
+			border-top: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+		}
+	}
+
+	.people-search-results {
+		padding: 4px 0;
+	}
+}
+
+.people-search-result__item {
+	display: flex;
+	align-items: center;
+	padding: 8px 16px;
+	cursor: pointer;
+	gap: 12px;
+
+	&:hover {
+		background-color: rgba(var(--center-channel-color-rgb), 0.04);
+	}
+
+	&:focus {
+		outline: 2px solid var(--button-bg);
+		outline-offset: -2px;
+	}
+
+	.people-search-result__avatar {
+		flex-shrink: 0;
+
+		.status-wrapper {
+			position: relative;
+			display: inline-block;
+
+			.status {
+				position: absolute;
+				right: -2px;
+				bottom: -2px;
+				width: 10px;
+				height: 10px;
+				border: 2px solid var(--center-channel-bg);
+				border-radius: 50%;
+				background-color: rgba(var(--center-channel-color-rgb), 0.32);
+
+				&--online {
+					background-color: #3db887;
+				}
+
+				&--away {
+					background-color: #ffbc1f;
+				}
+
+				&--dnd {
+					background-color: #f74343;
+				}
+			}
+		}
+	}
+
+	.people-search-result__info {
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+
+	.people-search-result__display-name {
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--center-channel-color);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.people-search-result__username {
+		font-size: 12px;
+		color: rgba(var(--center-channel-color-rgb), 0.64);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 }

@@ -39,6 +39,7 @@ export type Props = {
 	postCardVisible: boolean;
 	searchVisible: boolean;
 	isPinnedPosts: boolean;
+	isPinnedFiles: boolean;
 	isChannelFiles: boolean;
 	isChannelInfo: boolean;
 	isChannelMembers: boolean;
@@ -55,6 +56,7 @@ export type Props = {
 	actions: {
 		setRhsExpanded: (expanded: boolean) => void;
 		showPinnedPosts: (channelId: string) => void;
+		showPinnedFiles: (channelId: string) => void;
 		openRHSSearch: () => void;
 		closeRightHandSide: () => void;
 		openAtPrevious: (previous: Partial<Props> | undefined) => void;
@@ -93,6 +95,7 @@ export default class SidebarRight extends React.PureComponent<Props, State> {
 		this.previous = {
 			searchVisible: this.props.searchVisible,
 			isPinnedPosts: this.props.isPinnedPosts,
+			isPinnedFiles: this.props.isPinnedFiles,
 			isRecentMentions: this.props.isRecentMentions,
 			isSavedPosts: this.props.isSavedPosts,
 			isChannelFiles: this.props.isChannelFiles,
@@ -207,9 +210,13 @@ export default class SidebarRight extends React.PureComponent<Props, State> {
 	componentDidUpdate(prevProps: Props) {
 		this.handleRHSFocus(prevProps);
 
-		const { actions, isChannelFiles, isPinnedPosts, rhsChannel, channel } = this.props;
+		const { actions, isChannelFiles, isPinnedPosts, isPinnedFiles, rhsChannel, channel } = this.props;
 		if (isPinnedPosts && prevProps.isPinnedPosts === isPinnedPosts && rhsChannel && rhsChannel.id !== prevProps.rhsChannel?.id) {
 			actions.showPinnedPosts(rhsChannel.id);
+		}
+
+		if (isPinnedFiles && prevProps.isPinnedFiles === isPinnedFiles && rhsChannel && rhsChannel.id !== prevProps.rhsChannel?.id) {
+			actions.showPinnedFiles(rhsChannel.id);
 		}
 
 		if (isChannelFiles && prevProps.isChannelFiles === isChannelFiles && rhsChannel && rhsChannel.id !== prevProps.rhsChannel?.id) {

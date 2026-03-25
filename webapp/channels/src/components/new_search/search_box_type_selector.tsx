@@ -51,6 +51,8 @@ type Props = {
 const SearchTypeSelector = ({ searchType, setSearchType }: Props) => {
 	const setMessagesSearchType = useCallback(() => setSearchType('messages'), [setSearchType]);
 	const setFilesSearchType = useCallback(() => setSearchType('files'), [setSearchType]);
+	const setPeopleSearchType = useCallback(() => setSearchType('people'), [setSearchType]);
+	const setAllSearchType = useCallback(() => setSearchType('all'), [setSearchType]);
 
 	const searchPluginButtons = useSelector(getSearchButtons);
 
@@ -58,6 +60,16 @@ const SearchTypeSelector = ({ searchType, setSearchType }: Props) => {
 		<SearchTypeSelectorContainer
 			role='radiogroup'
 		>
+			<SearchTypeItem
+				selected={searchType === 'all' || searchType === ''}
+				onClick={setAllSearchType}
+				role='radio'
+			>
+				<FormattedMessage
+					id='search_bar.usage.search_type_all'
+					defaultMessage='All'
+				/>
+			</SearchTypeItem>
 			<SearchTypeItem
 				selected={searchType === 'messages'}
 				onClick={setMessagesSearchType}
@@ -76,6 +88,16 @@ const SearchTypeSelector = ({ searchType, setSearchType }: Props) => {
 				<FormattedMessage
 					id='search_bar.usage.search_type_files'
 					defaultMessage='Files'
+				/>
+			</SearchTypeItem>
+			<SearchTypeItem
+				selected={searchType === 'people'}
+				onClick={setPeopleSearchType}
+				role='radio'
+			>
+				<FormattedMessage
+					id='search_bar.usage.search_type_people'
+					defaultMessage='People'
 				/>
 			</SearchTypeItem>
 			{searchPluginButtons.map(({ component, pluginId }: any) => {

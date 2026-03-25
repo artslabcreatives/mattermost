@@ -57,6 +57,7 @@ type FileInfo struct {
 	Content         string  `json:"-"`
 	RemoteId        *string `json:"remote_id"`
 	Archived        bool    `json:"archived"`
+	IsPinned        bool    `json:"is_pinned"`
 }
 
 func (fi *FileInfo) Auditable() map[string]any {

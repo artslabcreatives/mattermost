@@ -227,6 +227,7 @@ const AdvancedTextEditor = ({
 	const storedDrafts = useRef<Record<string, PostDraft | undefined>>({});
 	const lastBlurAt = useRef(0);
 	const messageStatusRef = useRef<HTMLDivElement | null>(null);
+	const queuedSubmissionRef = useRef<{ schedulingInfo?: SchedulingInfo; options?: CreatePostOptions } | null>(null);
 
 	const [draft, setDraft] = useState(draftFromStore);
 	const [serverError, setServerError] = useState<(ServerError & { submittedMessage?: string }) | null>(null);
@@ -381,7 +382,16 @@ const AdvancedTextEditor = ({
 	);
 
 	const handleSubmitWithErrorHandling = useCallback((submittingDraft?: PostDraft, schedulingInfo?: SchedulingInfo, options?: CreatePostOptions) => {
-		handleSubmit(submittingDraft, schedulingInfo, options);
+		const draftToSubmit = submittingDraft || draft;
+
+		// If uploads are in progress, queue the submission to trigger once uploads complete
+		if (draftToSubmit.uploadsInProgress.length > 0) {
+			queuedSubmissionRef.current = { schedulingInfo, options };
+			return;
+		}
+
+		// No uploads in progress, submit immediately
+		handleSubmit(draftToSubmit, schedulingInfo, options);
 		if (!errorClass) {
 			const messageStatusElement = messageStatusRef.current;
 			const messageStatusInnerText = messageStatusElement?.textContent;
@@ -391,7 +401,7 @@ const AdvancedTextEditor = ({
 				messageStatusElement!.textContent = 'Message Sent';
 			}
 		}
-	}, [errorClass, handleSubmit]);
+	}, [handleSubmit, draft, errorClass]);
 
 	const handleCancel = useCallback(() => {
 		handleDraftChange({
@@ -604,6 +614,26 @@ const AdvancedTextEditor = ({
 		draftRef.current = draft;
 	}, [draft]);
 
+	// Auto-trigger queued submission once all uploads complete (Slack-like behavior)
+	useEffect(() => {
+		if (queuedSubmissionRef.current && draft.uploadsInProgress.length === 0) {
+			const { schedulingInfo, options } = queuedSubmissionRef.current;
+			queuedSubmissionRef.current = null; // Clear the queue
+			handleSubmit(draft, schedulingInfo, options);
+
+			// Show "Message Sent" feedback
+			const messageStatusElement = messageStatusRef.current;
+			if (messageStatusElement) {
+				const messageStatusInnerText = messageStatusElement.textContent;
+				if (messageStatusInnerText === 'Message Sent') {
+					messageStatusElement.textContent = 'Message Sent &nbsp;';
+				} else {
+					messageStatusElement.textContent = 'Message Sent';
+				}
+			}
+		}
+	}, [draft, handleSubmit]);
+
 	const handleSubmitPostAndScheduledMessage = useCallback((schedulingInfo?: SchedulingInfo) => {
 		handleSubmitWithErrorHandling(undefined, schedulingInfo);
 	}, [handleSubmitWithErrorHandling]);
@@ -622,7 +652,14 @@ const AdvancedTextEditor = ({
 		};
 	}, [channelId, rootId]);
 
-	const disableSendButton = Boolean(isDisabled || (!draft.message.trim().length && !draft.fileInfos.length)) || !isValidPersistentNotifications;
+	const hasPendingAttachments = draft.fileInfos.length > 0 || draft.uploadsInProgress.length > 0;
+	const hasQueuedSubmission = Boolean(queuedSubmissionRef.current);
+	const hasMessageContent = Boolean(draft.message.trim().length);
+	const shouldBlockForPersistentNotifications = !isValidPersistentNotifications && hasMessageContent;
+	const disableSendButton = Boolean(
+		isDisabled ||
+		(!hasMessageContent && !hasPendingAttachments && !hasQueuedSubmission),
+	) || shouldBlockForPersistentNotifications;
 	const sendButton = readOnlyChannel || isInEditMode ? null : (
 		<SendButton
 			disabled={disableSendButton}

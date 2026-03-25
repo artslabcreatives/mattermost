@@ -30,6 +30,7 @@ type Props = {
 	selectedFilter: SearchFilterType;
 	messagesCounter: string;
 	filesCounter: string;
+	peopleCounter: string;
 	isFileAttachmentsEnabled: boolean;
 	crossTeamSearchEnabled: boolean;
 	onChange: (value: SearchType) => void;
@@ -39,16 +40,30 @@ type Props = {
 
 type DataSearchLiteral = typeof DataSearchTypes[keyof typeof DataSearchTypes];
 
+const TAB_ORDER: SearchType[] = [
+	DataSearchTypes.ALL_SEARCH_TYPE as SearchType,
+	DataSearchTypes.MESSAGES_SEARCH_TYPE as SearchType,
+	DataSearchTypes.FILES_SEARCH_TYPE as SearchType,
+	DataSearchTypes.PEOPLE_SEARCH_TYPE as SearchType,
+];
+
 export default function MessagesOrFilesSelector(props: Props): JSX.Element {
 	const searchTeam = useSelector((state: GlobalState) => getSearchTeam(state));
 	const myTeams = useSelector(getMyTeams);
 	const hasMoreThanOneTeam = myTeams.length > 1;
 
-	// REFS to the tabs so there is ability to pass the custom A11y focus event
+	const allTabRef = useRef<HTMLButtonElement>(null);
 	const messagesTabRef = useRef<HTMLButtonElement>(null);
 	const filesTabRef = useRef<HTMLButtonElement>(null);
+	const peopleTabRef = useRef<HTMLButtonElement>(null);
 
-	// Enhanced arrow key handling to focus the new select tab and also send the a11y custom event
+	const tabRefs: Record<string, React.RefObject<HTMLButtonElement>> = {
+		[DataSearchTypes.ALL_SEARCH_TYPE]: allTabRef,
+		[DataSearchTypes.MESSAGES_SEARCH_TYPE]: messagesTabRef,
+		[DataSearchTypes.FILES_SEARCH_TYPE]: filesTabRef,
+		[DataSearchTypes.PEOPLE_SEARCH_TYPE]: peopleTabRef,
+	};
+
 	const handleTabKeyDown = (
 		e: React.KeyboardEvent<HTMLButtonElement>,
 		currentTab: DataSearchLiteral,
@@ -56,20 +71,36 @@ export default function MessagesOrFilesSelector(props: Props): JSX.Element {
 		if (Keyboard.isKeyPressed(e, KeyCodes.LEFT) || Keyboard.isKeyPressed(e, KeyCodes.RIGHT)) {
 			e.preventDefault();
 			e.stopPropagation();
-			let nextTab: SearchType;
-			let nextTabRef: React.RefObject<HTMLButtonElement>;
 
-			if (currentTab === DataSearchTypes.MESSAGES_SEARCH_TYPE && props.isFileAttachmentsEnabled) {
-				nextTab = DataSearchTypes.FILES_SEARCH_TYPE;
-				nextTabRef = filesTabRef;
+			const currentIndex = TAB_ORDER.indexOf(currentTab as SearchType);
+			let nextIndex: number;
+			if (Keyboard.isKeyPressed(e, KeyCodes.RIGHT)) {
+				// Skip Files tab if attachments not enabled
+				let candidate = (currentIndex + 1) % TAB_ORDER.length;
+				while (candidate !== currentIndex) {
+					if (TAB_ORDER[candidate] === DataSearchTypes.FILES_SEARCH_TYPE && !props.isFileAttachmentsEnabled) {
+						candidate = (candidate + 1) % TAB_ORDER.length;
+					} else {
+						break;
+					}
+				}
+				nextIndex = candidate;
 			} else {
-				nextTab = DataSearchTypes.MESSAGES_SEARCH_TYPE;
-				nextTabRef = messagesTabRef;
+				let candidate = (currentIndex - 1 + TAB_ORDER.length) % TAB_ORDER.length;
+				while (candidate !== currentIndex) {
+					if (TAB_ORDER[candidate] === DataSearchTypes.FILES_SEARCH_TYPE && !props.isFileAttachmentsEnabled) {
+						candidate = (candidate - 1 + TAB_ORDER.length) % TAB_ORDER.length;
+					} else {
+						break;
+					}
+				}
+				nextIndex = candidate;
 			}
 
+			const nextTab = TAB_ORDER[nextIndex];
+			const nextTabRef = tabRefs[nextTab];
 			props.onChange(nextTab);
 
-			// Dispatch the custom a11y focus event to focus the selected tab
 			if (nextTabRef.current) {
 				setTimeout(() => {
 					document.dispatchEvent(
@@ -86,17 +117,36 @@ export default function MessagesOrFilesSelector(props: Props): JSX.Element {
 		}
 
 		if (Keyboard.isKeyPressed(e, KeyCodes.ENTER)) {
-			props.onChange(currentTab);
+			props.onChange(currentTab as SearchType);
 		}
 	};
+
+	const makeTabClass = (tabType: string) =>
+		props.selected === tabType ? `active tab ${tabType}-tab` : `tab ${tabType}-tab`;
 
 	return (
 		<div className='MessagesOrFilesSelector'>
 			<div
 				className='buttons-container'
 				role='tablist'
-				aria-label='Messages or Files'
+				aria-label='Search result type'
 			>
+				<button
+					ref={allTabRef}
+					role='tab'
+					aria-selected={props.selected === DataSearchTypes.ALL_SEARCH_TYPE ? 'true' : 'false'}
+					tabIndex={props.selected === DataSearchTypes.ALL_SEARCH_TYPE ? 0 : -1}
+					aria-controls='allPanel'
+					id='allTab'
+					onClick={() => props.onChange(DataSearchTypes.ALL_SEARCH_TYPE as SearchType)}
+					onKeyDown={(e) => handleTabKeyDown(e, DataSearchTypes.ALL_SEARCH_TYPE)}
+					className={makeTabClass('all')}
+				>
+					<FormattedMessage
+						id='search_bar.all_tab'
+						defaultMessage='All'
+					/>
+				</button>
 				<button
 					ref={messagesTabRef}
 					role='tab'
@@ -104,9 +154,9 @@ export default function MessagesOrFilesSelector(props: Props): JSX.Element {
 					tabIndex={props.selected === DataSearchTypes.MESSAGES_SEARCH_TYPE ? 0 : -1}
 					aria-controls='messagesPanel'
 					id='messagesTab'
-					onClick={() => props.onChange(DataSearchTypes.MESSAGES_SEARCH_TYPE)}
+					onClick={() => props.onChange(DataSearchTypes.MESSAGES_SEARCH_TYPE as SearchType)}
 					onKeyDown={(e) => handleTabKeyDown(e, DataSearchTypes.MESSAGES_SEARCH_TYPE)}
-					className={props.selected === DataSearchTypes.MESSAGES_SEARCH_TYPE ? 'active tab messages-tab' : 'tab messages-tab'}
+					className={makeTabClass('messages')}
 				>
 					<FormattedMessage
 						id='search_bar.messages_tab'
@@ -122,9 +172,9 @@ export default function MessagesOrFilesSelector(props: Props): JSX.Element {
 						tabIndex={props.selected === DataSearchTypes.FILES_SEARCH_TYPE ? 0 : -1}
 						aria-controls='filesPanel'
 						id='filesTab'
-						onClick={() => props.onChange(DataSearchTypes.FILES_SEARCH_TYPE)}
+						onClick={() => props.onChange(DataSearchTypes.FILES_SEARCH_TYPE as SearchType)}
 						onKeyDown={(e) => handleTabKeyDown(e, DataSearchTypes.FILES_SEARCH_TYPE)}
-						className={props.selected === DataSearchTypes.FILES_SEARCH_TYPE ? 'active tab files-tab' : 'tab files-tab'}
+						className={makeTabClass('files')}
 					>
 						<FormattedMessage
 							id='search_bar.files_tab'
@@ -133,6 +183,23 @@ export default function MessagesOrFilesSelector(props: Props): JSX.Element {
 						<span className='counter'>{props.filesCounter}</span>
 					</button>
 				)}
+				<button
+					ref={peopleTabRef}
+					role='tab'
+					aria-selected={props.selected === DataSearchTypes.PEOPLE_SEARCH_TYPE ? 'true' : 'false'}
+					tabIndex={props.selected === DataSearchTypes.PEOPLE_SEARCH_TYPE ? 0 : -1}
+					aria-controls='peoplePanel'
+					id='peopleTab'
+					onClick={() => props.onChange(DataSearchTypes.PEOPLE_SEARCH_TYPE as SearchType)}
+					onKeyDown={(e) => handleTabKeyDown(e, DataSearchTypes.PEOPLE_SEARCH_TYPE)}
+					className={makeTabClass('people')}
+				>
+					<FormattedMessage
+						id='search_bar.people_tab'
+						defaultMessage='People'
+					/>
+					<span className='counter'>{props.peopleCounter}</span>
+				</button>
 			</div>
 			{props.crossTeamSearchEnabled && hasMoreThanOneTeam && (
 				<div className='team-selector-container'>
@@ -151,3 +218,4 @@ export default function MessagesOrFilesSelector(props: Props): JSX.Element {
 		</div>
 	);
 }
+

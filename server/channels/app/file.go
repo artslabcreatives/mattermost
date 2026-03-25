@@ -2026,3 +2026,39 @@ func (a *App) RemoveFileFromFileStore(rctx request.CTX, path string) {
 		return
 	}
 }
+
+// PinFileInfo marks a file as pinned in a channel. The caller must have already verified
+// that the requesting user has read access to the channel the file belongs to.
+func (a *App) PinFileInfo(rctx request.CTX, fileID string) (*model.FileInfo, *model.AppError) {
+	info, appErr := a.GetFileInfo(rctx, fileID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	if err := a.Srv().Store().FileInfo().PinFileInfo(rctx, fileID); err != nil {
+		return nil, model.NewAppError("PinFileInfo", "app.file_info.pin.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+	info.IsPinned = true
+	return info, nil
+}
+
+// UnpinFileInfo removes the pinned status from a file.
+func (a *App) UnpinFileInfo(rctx request.CTX, fileID string) (*model.FileInfo, *model.AppError) {
+	info, appErr := a.GetFileInfo(rctx, fileID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	if err := a.Srv().Store().FileInfo().UnpinFileInfo(rctx, fileID); err != nil {
+		return nil, model.NewAppError("UnpinFileInfo", "app.file_info.unpin.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+	info.IsPinned = false
+	return info, nil
+}
+
+// GetPinnedFileInfosForChannel returns all pinned files in a channel.
+func (a *App) GetPinnedFileInfosForChannel(rctx request.CTX, channelID string) ([]*model.FileInfo, *model.AppError) {
+	infos, err := a.Srv().Store().FileInfo().GetPinnedFileInfosForChannel(channelID)
+	if err != nil {
+		return nil, model.NewAppError("GetPinnedFileInfosForChannel", "app.file_info.get_pinned.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+	return infos, nil
+}

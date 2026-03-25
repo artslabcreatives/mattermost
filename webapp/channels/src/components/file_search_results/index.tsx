@@ -12,6 +12,7 @@ import { getChannel } from 'mattermost-redux/selectors/entities/channels';
 import { getFeatureFlagValue } from 'mattermost-redux/selectors/entities/general';
 
 import { openModal } from 'actions/views/modals';
+import { pinFile, unpinFile } from 'mattermost-redux/actions/search';
 
 import type { GlobalState } from 'types/store';
 import type { FilesDropdownAction } from 'types/store/plugins';
@@ -41,6 +42,8 @@ function mapDispatchToProps(dispatch: Dispatch) {
 	return {
 		actions: bindActionCreators({
 			openModal,
+			pinFile,
+			unpinFile,
 		}, dispatch),
 	};
 }

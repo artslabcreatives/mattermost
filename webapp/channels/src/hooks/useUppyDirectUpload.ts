@@ -138,6 +138,7 @@ export function useUppyDirectUpload(
 	if (!uppyRef.current) {
 		const uppy = new Uppy({
 			autoProceed: false,
+			allowMultipleUploadBatches: true,
 		});
 
 		// TUS plugin – handles chunked, resumable uploads.
@@ -173,12 +174,21 @@ export function useUppyDirectUpload(
 
 		// Attach channel_id and filename metadata whenever a file is added so
 		// the backend can associate the upload with the right channel/user.
+		// Also automatically start the upload when a file is added (Slack-like behavior).
 		uppy.on('file-added', (file) => {
 			uppy.setFileMeta(file.id, {
 				channel_id: channelIdRef.current,
 				filename: file.name ?? 'upload',
 				filetype: (file as { type?: string }).type ?? 'application/octet-stream',
 			});
+
+			// Auto-start upload if not already uploading
+			if (!uploadingRef.current) {
+				uppy.upload().catch((err) => {
+					// Errors are handled by uppy.on('upload-error') handler below
+					console.error('Auto-upload failed:', err);
+				});
+			}
 		});
 
 		// Track overall upload progress (0-100).

@@ -152,6 +152,7 @@ const state: GlobalState = {
 			files: {},
 			filesFromSearch: {},
 			fileIdsByPostId: {},
+			pinnedFileIdsByChannelId: {},
 		},
 		emojis: {
 			customEmoji: {},

@@ -4,9 +4,12 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useIntl } from 'react-intl';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+
+import type { UserProfile } from '@mattermost/types/users';
 
 import { getCurrentChannelNameForSearchShortcut } from 'mattermost-redux/selectors/entities/channels';
+import { searchProfiles } from 'mattermost-redux/actions/users';
 
 import HeaderIconWrapper from 'components/channel_header/components/header_icon_wrapper';
 import SearchBar from 'components/search_bar/search_bar';
@@ -102,6 +105,7 @@ const Search = ({
 	isMentionSearch,
 	isMobileView,
 	isPinnedPosts,
+	isPinnedFiles,
 	isRhsExpanded,
 	isSearchingTerm,
 	searchTeam,
@@ -118,6 +122,7 @@ const Search = ({
 	isSideBarRightOpen,
 }: Props): JSX.Element => {
 	const intl = useIntl();
+	const dispatch = useDispatch();
 	const currentChannelName = useSelector(getCurrentChannelNameForSearchShortcut);
 
 	// generate intial component state and setters
@@ -130,6 +135,7 @@ const Search = ({
 		determineVisibleSearchHintOptions(searchTerms, searchType),
 	);
 	const [searchFilterType, setSearchFilterType] = useState<SearchFilterType>('all');
+	const [userResults, setUserResults] = useState<UserProfile[]>([]);
 
 	const suggestionProviders = useRef<Provider[]>([
 		new SearchDateProvider(),
@@ -177,6 +183,23 @@ const Search = ({
 			handleFocus();
 		}
 	}, [isMobileView, isSideBarRight]);
+
+	// When the new search UI submits a people or all search, searchType changes in Redux.
+	// Run searchProfiles here so people results appear in the RHS results panel.
+	useEffect(() => {
+		const terms = searchTerms.trim();
+		if ((searchType === 'people' || searchType === 'all') && terms.length >= 2) {
+			(dispatch(searchProfiles(terms) as any) as Promise<any>).then((result: any) => {
+				if (result?.data) {
+					setUserResults(result.data);
+				} else {
+					setUserResults([]);
+				}
+			});
+		} else if (searchType !== 'people' && searchType !== 'all') {
+			setUserResults([]);
+		}
+	}, [searchType, searchTerms]);
 
 	useEffect((): void => {
 		if (!isMobileView) {
@@ -355,6 +378,15 @@ const Search = ({
 		if (!error) {
 			handleSearchOnSuccess();
 		}
+
+		// Fire people search without awaiting — don't block focus restoration on the network call
+		(dispatch(searchProfiles(terms) as any) as Promise<any>).then((result: any) => {
+			if (result?.data) {
+				setUserResults(result.data);
+			} else {
+				setUserResults([]);
+			}
+		});
 	};
 
 	const handleSearchOnSuccess = (): void => {
@@ -371,6 +403,7 @@ const Search = ({
 		updateSearchTerms('');
 		updateSearchTeam(null);
 		updateSearchType('');
+		setUserResults([]);
 	};
 
 	const handleShrink = (): void => {
@@ -546,6 +579,7 @@ const Search = ({
 					isMentionSearch={isMentionSearch}
 					isFlaggedPosts={isFlaggedPosts}
 					isPinnedPosts={isPinnedPosts}
+					isPinnedFiles={isPinnedFiles}
 					isChannelFiles={isChannelFiles}
 					shrink={handleShrink}
 					channelDisplayName={channelDisplayName}
@@ -561,6 +595,7 @@ const Search = ({
 					setSearchType={(value: SearchType) => updateSearchType(value)}
 					searchType={searchType || 'messages'}
 					crossTeamSearchEnabled={crossTeamSearchEnabled}
+					userResults={userResults}
 				/>
 			) : children}
 		</div>

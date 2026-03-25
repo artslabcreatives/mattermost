@@ -37,6 +37,8 @@ func (api *API) InitFile() {
 	api.BaseRoutes.File.Handle("/link", api.APISessionRequired(getFileLink)).Methods(http.MethodGet)
 	api.BaseRoutes.File.Handle("/preview", api.APISessionRequiredTrustRequester(getFilePreview)).Methods(http.MethodGet)
 	api.BaseRoutes.File.Handle("/info", api.APISessionRequired(getFileInfo)).Methods(http.MethodGet)
+	api.BaseRoutes.File.Handle("/pin", api.APISessionRequired(pinFile)).Methods(http.MethodPost)
+	api.BaseRoutes.File.Handle("/unpin", api.APISessionRequired(unpinFile)).Methods(http.MethodPost)
 
 	api.BaseRoutes.Team.Handle("/files/search", api.APISessionRequiredDisableWhenBusy(searchFilesInTeam)).Methods(http.MethodPost)
 	api.BaseRoutes.Files.Handle("/search", api.APISessionRequiredDisableWhenBusy(searchFilesInAllTeams)).Methods(http.MethodPost)
@@ -1116,4 +1118,46 @@ return
 }
 
 ReturnStatusOK(w)
+}
+func saveIsPinnedFile(c *Context, w http.ResponseWriter, isPinned bool) {
+	c.RequireFileId()
+	if c.Err != nil {
+		return
+	}
+
+	info, err := c.App.GetFileInfo(c.AppContext, c.Params.FileId)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	channel, err := c.App.GetChannel(c.AppContext, info.ChannelId)
+	if err != nil {
+		c.Err = err
+		return
+	}
+	if !c.App.SessionHasPermissionToReadChannel(c.AppContext, *c.AppContext.Session(), channel) {
+		c.SetPermissionError(model.PermissionReadChannelContent)
+		return
+	}
+
+	if isPinned {
+		_, err = c.App.PinFileInfo(c.AppContext, c.Params.FileId)
+	} else {
+		_, err = c.App.UnpinFileInfo(c.AppContext, c.Params.FileId)
+	}
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	ReturnStatusOK(w)
+}
+
+func pinFile(c *Context, w http.ResponseWriter, _ *http.Request) {
+	saveIsPinnedFile(c, w, true)
+}
+
+func unpinFile(c *Context, w http.ResponseWriter, _ *http.Request) {
+	saveIsPinnedFile(c, w, false)
 }

@@ -24,6 +24,8 @@ describe('components/file_search_result/FileSearchResultItem', () => {
 		onClick: jest.fn(),
 		actions: {
 			openModal: jest.fn(),
+			pinFile: jest.fn(),
+			unpinFile: jest.fn(),
 		},
 	};
 

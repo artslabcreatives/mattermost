@@ -85,11 +85,15 @@ const SearchBox = forwardRef(
 		const [caretPosition, setCaretPosition] = useState<number>(0);
 		const [searchTerms, setSearchTerms] = useState<string>(initialSearchTerms);
 		const [searchTeam, setSearchTeam] = useState<string>(initialSearchTeam);
-		const [searchType, setSearchType] = useState<string>(initialSearchType || 'messages');
+		const [searchType, setSearchType] = useState<string>(initialSearchType || 'all');
 
 		const hasMoreThanOneTeam = myTeams.length > 1;
 
 		const inputRef = useRef<HTMLInputElement | null>(null);
+		// Tracks whether the user has changed anything since the box opened.
+		// Prevents the auto-search effect from firing immediately on mount
+		// with pre-filled terms (which would close the popup 300ms after opening).
+		const isInitialMount = useRef(true);
 
 		const getCaretPosition = useCallback(() => {
 			return inputRef.current?.selectionEnd || 0;
@@ -143,6 +147,13 @@ const SearchBox = forwardRef(
 
 		// Auto-search with debounce when search terms change
 		useEffect(() => {
+			// Skip on initial mount: pre-filled terms should not auto-submit and
+			// close the popup before the user has a chance to interact.
+			if (isInitialMount.current) {
+				isInitialMount.current = false;
+				return;
+			}
+
 			// Configuration values - TODO: get from config
 			const debounceMs = 300; // Default 300ms
 			const minChars = 3; // Default 3 characters

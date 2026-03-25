@@ -164,6 +164,19 @@ export type Props = {
 	centerChannelPostBeingEdited: boolean;
 	rhsPostBeingEdited: boolean;
 
+	/**
+	 * When true, skip registering drag-and-drop events. Use this when the
+	 * component is kept in the tree for ref access only (e.g. when the Uppy
+	 * uploader is the primary UI and owns all drag handling).
+	 */
+	skipDragEvents?: boolean;
+
+	/**
+	 * When true, skip registering the paste event listener. Use this when
+	 * another uploader (e.g. Uppy) owns paste-to-upload handling.
+	 */
+	skipPasteEvents?: boolean;
+
 	actions: {
 
 		/**
@@ -230,10 +243,14 @@ export class FileUpload extends PureComponent<Props, State> {
 	};
 
 	componentDidMount() {
-		const { containerSelector, overlaySelector } = this.getDragEventDefinition();
-		this.registerDragEvents(containerSelector, overlaySelector);
+		if (!this.props.skipDragEvents) {
+			const { containerSelector, overlaySelector } = this.getDragEventDefinition();
+			this.registerDragEvents(containerSelector, overlaySelector);
+		}
 
-		document.addEventListener('paste', this.pasteUpload);
+		if (!this.props.skipPasteEvents) {
+			document.addEventListener('paste', this.pasteUpload);
+		}
 		document.addEventListener('keydown', this.keyUpload);
 	}
 
@@ -241,8 +258,11 @@ export class FileUpload extends PureComponent<Props, State> {
 		// when a post starts or finishes being edited, we need to
 		// clear existing drag handlers and register fresh ones in the right place.
 		if (
-			prevProps.centerChannelPostBeingEdited !== this.props.centerChannelPostBeingEdited ||
-			prevProps.rhsPostBeingEdited !== this.props.rhsPostBeingEdited
+			!this.props.skipDragEvents &&
+			(
+				prevProps.centerChannelPostBeingEdited !== this.props.centerChannelPostBeingEdited ||
+				prevProps.rhsPostBeingEdited !== this.props.rhsPostBeingEdited
+			)
 		) {
 			this.unbindDragsterEvents?.();
 			const { containerSelector, overlaySelector } = this.getDragEventDefinition();
@@ -251,7 +271,9 @@ export class FileUpload extends PureComponent<Props, State> {
 	}
 
 	componentWillUnmount() {
-		document.removeEventListener('paste', this.pasteUpload);
+		if (!this.props.skipPasteEvents) {
+			document.removeEventListener('paste', this.pasteUpload);
+		}
 		document.removeEventListener('keydown', this.keyUpload);
 
 		this.unbindDragsterEvents?.();

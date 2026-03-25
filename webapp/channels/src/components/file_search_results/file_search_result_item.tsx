@@ -92,6 +92,14 @@ export default class FileSearchResultItem extends React.PureComponent<Props, Sta
 		);
 	};
 
+	private pinFile = () => {
+		this.props.actions.pinFile(this.props.fileInfo.id);
+	};
+
+	private unpinFile = () => {
+		this.props.actions.unpinFile(this.props.fileInfo.id);
+	};
+
 	private showPreview = () => {
 		this.props.actions.openModal({
 			modalId: ModalIdentifiers.FILE_PREVIEW_MODAL,
@@ -178,6 +186,19 @@ export default class FileSearchResultItem extends React.PureComponent<Props, Sta
 										ariaLabel={localizeMessage({ id: 'file_search_result_item.copy_link', defaultMessage: 'Copy link' })}
 										text={localizeMessage({ id: 'file_search_result_item.copy_link', defaultMessage: 'Copy link' })}
 									/>
+									{this.props.fileInfo.is_pinned ? (
+										<Menu.ItemAction
+											onClick={this.unpinFile}
+											ariaLabel={localizeMessage({ id: 'file_search_result_item.unpin_file', defaultMessage: 'Unpin from channel' })}
+											text={localizeMessage({ id: 'file_search_result_item.unpin_file', defaultMessage: 'Unpin from channel' })}
+										/>
+									) : (
+										<Menu.ItemAction
+											onClick={this.pinFile}
+											ariaLabel={localizeMessage({ id: 'file_search_result_item.pin_file', defaultMessage: 'Pin to channel' })}
+											text={localizeMessage({ id: 'file_search_result_item.pin_file', defaultMessage: 'Pin to channel' })}
+										/>
+									)}
 									{this.renderPluginItems()}
 								</Menu>
 							</MenuWrapper>

@@ -768,6 +768,12 @@ type FileInfoStore interface {
 	GetUptoNSizeFileTime(n int64) (int64, error)
 	// RefreshFileStats recomputes the fileinfo materialized views.
 	RefreshFileStats() error
+	// PinFileInfo marks a file as pinned in a channel.
+	PinFileInfo(rctx request.CTX, fileID string) error
+	// UnpinFileInfo removes the pinned status from a file.
+	UnpinFileInfo(rctx request.CTX, fileID string) error
+	// GetPinnedFileInfosForChannel returns all pinned files in a channel.
+	GetPinnedFileInfosForChannel(channelID string) ([]*model.FileInfo, error)
 }
 
 type UploadSessionStore interface {

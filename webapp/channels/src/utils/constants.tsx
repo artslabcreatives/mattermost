@@ -1039,6 +1039,7 @@ export const RHSStates = {
 	SEARCH: 'search',
 	FLAG: 'flag',
 	PIN: 'pin',
+	PINNED_FILES: 'pinned-files',
 	PLUGIN: 'plugin',
 	CHANNEL_FILES: 'channel-files',
 	CHANNEL_INFO: 'channel-info',
@@ -2224,6 +2225,8 @@ export enum ClaimErrors {
 export const DataSearchTypes = {
 	FILES_SEARCH_TYPE: 'files',
 	MESSAGES_SEARCH_TYPE: 'messages',
+	PEOPLE_SEARCH_TYPE: 'people',
+	ALL_SEARCH_TYPE: 'all',
 } as const;
 
 // Currently, the overage user limits are set to 0, which means that the overage active users warning

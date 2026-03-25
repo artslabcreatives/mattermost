@@ -242,7 +242,7 @@ const NewSearch = (): JSX.Element => {
 			dispatch(updateSearchTerms(searchTerms));
 			dispatch(updateSearchTeam(searchTeam));
 
-			if (searchType === '' || searchType === 'messages' || searchType === 'files') {
+			if (searchType === '' || searchType === 'messages' || searchType === 'files' || searchType === 'people' || searchType === 'all') {
 				dispatch(showSearchResults(false));
 			} else {
 				pluginSearch.forEach((pluginData: any) => {
@@ -277,7 +277,7 @@ const NewSearch = (): JSX.Element => {
 				})}
 			>
 				<i className='icon icon-magnify' />
-				{(searchType === 'messages' || searchType === 'files') && (
+				{(searchType === 'messages' || searchType === 'files' || searchType === 'people' || searchType === 'all') && (
 					<SearchTypeBadge data-testid='searchTypeBadge'>
 						{searchType === 'messages' && (
 							<FormattedMessage
@@ -289,6 +289,18 @@ const NewSearch = (): JSX.Element => {
 							<FormattedMessage
 								id='search_bar.search_types.files'
 								defaultMessage='FILES'
+							/>
+						)}
+						{searchType === 'people' && (
+							<FormattedMessage
+								id='search_bar.search_types.people'
+								defaultMessage='PEOPLE'
+							/>
+						)}
+						{searchType === 'all' && (
+							<FormattedMessage
+								id='search_bar.search_types.all'
+								defaultMessage='ALL'
 							/>
 						)}
 						<i

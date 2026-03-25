@@ -8,7 +8,7 @@ import type { FileInfo, FileSearchResultItem } from '@mattermost/types/files';
 import type { Post } from '@mattermost/types/posts';
 
 import type { MMReduxAction } from 'mattermost-redux/action_types';
-import { FileTypes, PostTypes, UserTypes, ChannelBookmarkTypes } from 'mattermost-redux/action_types';
+import { FileTypes, PostTypes, UserTypes, ChannelBookmarkTypes, SearchTypes } from 'mattermost-redux/action_types';
 
 export function files(state: Record<string, FileInfo> = {}, action: MMReduxAction) {
 	switch (action.type) {
@@ -23,6 +23,14 @@ export function files(state: Record<string, FileInfo> = {}, action: MMReduxActio
 			return {
 				...state,
 				...filesById,
+			};
+		}
+
+		case FileTypes.RECEIVED_FILE_INFO: {
+			const file = action.data as FileInfo;
+			return {
+				...state,
+				[file.id]: file,
 			};
 		}
 
@@ -119,6 +127,22 @@ export function filesFromSearch(state: Record<string, FileSearchResultItem> = {}
 				...state,
 				...action.data,
 			};
+		}
+		case SearchTypes.RECEIVED_SEARCH_PINNED_FILES: {
+			const { files: pinnedFiles } = action.data as { files: FileInfo[]; channelId: string };
+			const newFiles = pinnedFiles.reduce<Record<string, FileInfo>>((acc, f) => {
+				acc[f.id] = f;
+				return acc;
+			}, {});
+			return { ...state, ...newFiles };
+		}
+
+		case FileTypes.RECEIVED_FILE_INFO: {
+			const file = action.data as FileInfo;
+			if (state[file.id]) {
+				return { ...state, [file.id]: file };
+			}
+			return state;
 		}
 
 		case UserTypes.LOGOUT_SUCCESS:
@@ -233,9 +257,26 @@ function filePublicLink(state: { link: string } = { link: '' }, action: MMReduxA
 	}
 }
 
+function pinnedFileIdsByChannelId(state: Record<string, string[]> = {}, action: MMReduxAction) {
+	switch (action.type) {
+		case SearchTypes.RECEIVED_SEARCH_PINNED_FILES: {
+			const { files: pinnedFiles, channelId } = action.data as { files: FileInfo[]; channelId: string };
+			return {
+				...state,
+				[channelId]: pinnedFiles.map((f) => f.id),
+			};
+		}
+		case UserTypes.LOGOUT_SUCCESS:
+			return {};
+		default:
+			return state;
+	}
+}
+
 export default combineReducers({
 	files,
 	filesFromSearch,
+	pinnedFileIdsByChannelId,
 	fileIdsByPostId,
 	filePublicLink,
 });

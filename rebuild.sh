@@ -3,6 +3,53 @@ set -eo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+RUN_AS_USER="${SUDO_USER:-$USER}"
+RUN_AS_HOME="$(eval echo "~$RUN_AS_USER")"
+
+create_log_dir() {
+  local base_dir="${TMPDIR:-/tmp}"
+  local log_dir=""
+
+  if log_dir=$(mktemp -d "${base_dir%/}/mattermost-rebuild-XXXXXX" 2>/dev/null); then
+    printf '%s\n' "$log_dir"
+    return 0
+  fi
+
+  log_dir="$REPO_ROOT/.tmp/rebuild-logs"
+  mkdir -p "$log_dir"
+  chmod 700 "$log_dir"
+  printf '%s\n' "$log_dir"
+}
+
+run_as_build_user() {
+  if [ "$(id -un)" = "$RUN_AS_USER" ]; then
+    bash -lc "$1"
+  else
+    sudo -u "$RUN_AS_USER" bash -lc "$1"
+  fi
+}
+
+setup_node_env_cmd() {
+  cat <<EOF
+set -eo pipefail
+export NVM_DIR="${RUN_AS_HOME}/.nvm"
+if [ -s "\$NVM_DIR/nvm.sh" ]; then
+  . "\$NVM_DIR/nvm.sh"
+fi
+cd "$REPO_ROOT/webapp"
+if command -v nvm >/dev/null 2>&1 && [ -f "$REPO_ROOT/.nvmrc" ]; then
+  if ! nvm use >/dev/null 2>&1; then
+    nvm install >/dev/null
+    nvm use >/dev/null
+  fi
+fi
+command -v node >/dev/null 2>&1
+command -v npm >/dev/null 2>&1
+node -v
+npm -v
+EOF
+}
+
 echo "================================"
 echo "  Mattermost Rebuild & Deploy"
 echo "================================"
@@ -41,26 +88,40 @@ echo "✓ Plugins directory set to 777"
 echo ""
 
 # ── Build webapp and server in parallel ─────────────────────────────
+NODE_ENV_CMD="$(setup_node_env_cmd)"
+
+if ! run_as_build_user "$NODE_ENV_CMD" >/dev/null 2>&1; then
+  echo "❌ Node.js/npm are not available for user '$RUN_AS_USER'."
+  echo "   Install nvm + Node $(cat "$REPO_ROOT/.nvmrc" 2>/dev/null || echo "from .nvmrc") or run rebuild with that user's shell environment loaded."
+  exit 1
+fi
+
+LOG_DIR="$(create_log_dir)"
+WEBAPP_LOG="$(mktemp "$LOG_DIR/webapp-build-XXXXXX.log")"
+SERVER_LOG="$(mktemp "$LOG_DIR/server-build-XXXXXX.log")"
+GOWORK_LOG="$(mktemp "$LOG_DIR/gowork-XXXXXX.log")"
+
 echo "[1/4] Building webapp and server in parallel..."
-echo "      Logs: /tmp/webapp-build.log  /tmp/server-build.log"
+echo "      Logs: $WEBAPP_LOG  $SERVER_LOG"
+echo "      Go work setup log: $GOWORK_LOG"
 echo ""
 
 (
-  cd "$REPO_ROOT/webapp"
-  npm install --workspace=channels > /tmp/webapp-build.log 2>&1
-  npm run build --workspace=channels > /tmp/webapp-build.log 2>&1
+  run_as_build_user "$NODE_ENV_CMD
+npm install --workspace=channels
+npm run build --workspace=channels" > "$WEBAPP_LOG" 2>&1
   echo "✓ Webapp build complete"
 ) &
 WEBAPP_PID=$!
 
 (
   cd "$REPO_ROOT/server"
-  make setup-go-work > /tmp/gowork.log 2>&1
+  make setup-go-work > "$GOWORK_LOG" 2>&1
   make build-linux-amd64 \
     BUILD_NUMBER=custom \
     BUILD_TAGS="sourceavailable" \
     BUILD_ENTERPRISE_DIR=./enterprise \
-    > /tmp/server-build.log 2>&1
+    > "$SERVER_LOG" 2>&1
   echo "✓ Server build complete"
 ) &
 SERVER_PID=$!
@@ -73,21 +134,21 @@ wait $WEBAPP_PID || WEBAPP_OK=$?
 wait $SERVER_PID || SERVER_OK=$?
 
 if [ $WEBAPP_OK -ne 0 ]; then
-  echo "❌ Webapp build FAILED — see /tmp/webapp-build.log"
-  tail -20 /tmp/webapp-build.log
+  echo "❌ Webapp build FAILED — see $WEBAPP_LOG"
+  tail -20 "$WEBAPP_LOG"
   exit 1
 fi
 
 if [ $SERVER_OK -ne 0 ]; then
-  echo "❌ Server build FAILED — see /tmp/server-build.log"
-  tail -20 /tmp/server-build.log
+  echo "❌ Server build FAILED — see $SERVER_LOG"
+  tail -20 "$SERVER_LOG"
   exit 1
 fi
 
 echo ""
 echo "[2/4] Building mmctl..."
 cd "$REPO_ROOT/server"
-make mmctl-build >> /tmp/server-build.log 2>&1
+make mmctl-build >> "$SERVER_LOG" 2>&1
 echo "✓ mmctl build complete"
 
 echo ""

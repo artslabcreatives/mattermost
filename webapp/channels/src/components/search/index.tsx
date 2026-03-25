@@ -60,6 +60,7 @@ function mapStateToProps(state: GlobalState) {
 		isMentionSearch: rhsState === RHSStates.MENTION,
 		isFlaggedPosts: rhsState === RHSStates.FLAG,
 		isPinnedPosts: rhsState === RHSStates.PIN,
+		isPinnedFiles: rhsState === RHSStates.PINNED_FILES,
 		isChannelFiles: rhsState === RHSStates.CHANNEL_FILES,
 		isMobileView,
 		crossTeamSearchEnabled,

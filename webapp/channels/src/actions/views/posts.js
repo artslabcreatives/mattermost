@@ -4,12 +4,13 @@
 import { logError } from 'mattermost-redux/actions/errors';
 import * as PostActions from 'mattermost-redux/actions/posts';
 import { Permissions } from 'mattermost-redux/constants';
+import { getChannel } from 'mattermost-redux/selectors/entities/channels';
 import { getLicense } from 'mattermost-redux/selectors/entities/general';
 import { getAssociatedGroupsForReferenceByMention } from 'mattermost-redux/selectors/entities/groups';
 import { isCustomGroupsEnabled } from 'mattermost-redux/selectors/entities/preferences';
 import { haveIChannelPermission, haveICurrentChannelPermission } from 'mattermost-redux/selectors/entities/roles';
 import { getCurrentTeam } from 'mattermost-redux/selectors/entities/teams';
-import { getCurrentUserId } from 'mattermost-redux/selectors/entities/users';
+import { getCurrentUserId, getUser } from 'mattermost-redux/selectors/entities/users';
 
 import { getPermalinkURL } from 'selectors/urls';
 
@@ -51,6 +52,12 @@ export function forwardPost(post, channel, message = '') {
 		const useCustomGroupMentions = isCustomGroupsEnabled(state) && haveICurrentChannelPermission(state, Permissions.USE_GROUP_MENTIONS);
 		const groupsWithAllowReference = useLDAPGroupMentions || useCustomGroupMentions ? getAssociatedGroupsForReferenceByMention(state, currentTeam.id, channelId) : null;
 
+		// Build the embedded attachment from the original post content
+		const originalAuthor = getUser(state, post.user_id);
+		const originalChannel = getChannel(state, post.channel_id);
+		const authorName = originalAuthor ? `@${originalAuthor.username}` : 'Unknown';
+		const footerChannel = originalChannel?.display_name ? `~${originalChannel.display_name}` : '';
+
 		let newPost = {};
 
 		newPost.channel_id = channelId;
@@ -58,12 +65,20 @@ export function forwardPost(post, channel, message = '') {
 		const time = getTimestamp();
 		const userId = currentUserId;
 
-		newPost.message = message ? `${message}\n${permaLink}` : permaLink;
+		// User's comment becomes the message; original content lives in the attachment
+		newPost.message = message || '';
 		newPost.pending_post_id = `${userId}:${time}`;
 		newPost.user_id = userId;
 		newPost.create_at = time;
 		newPost.metadata = {};
-		newPost.props = {};
+		newPost.props = {
+			attachments: [{
+				author_name: authorName,
+				text: post.message || '',
+				footer: footerChannel ? `Originally posted in ${footerChannel}` : '',
+				title_link: permaLink,
+			}],
+		};
 
 		if (!useChannelMentions && containsAtChannel(newPost.message, { checkAllMentions: true })) {
 			newPost.props.mentionHighlightDisabled = true;

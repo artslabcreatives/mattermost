@@ -111,7 +111,7 @@ const useUploadFiles = (
 	// are restored from IndexedDB on page load.  We add each file to the draft's
 	// uploadsInProgress so the FilePreview strip shows "Uploading…" with a ✕ button,
 	// giving the user a visible prompt to re-open the Uppy panel and resume.
-	const handleUppyFilesRestored = useCallback((files: RestoredFileInfo[]) => {
+	const mergeUppyFilesIntoDraft = useCallback((files: RestoredFileInfo[]) => {
 		if (files.length === 0) {
 			return;
 		}
@@ -153,6 +153,15 @@ const useUploadFiles = (
 			{ instant: true, show: true },
 		);
 	}, [channelId, postId, storedDrafts, handleDraftChange]);
+
+	const handleUppyFilesAdded = useCallback((files: RestoredFileInfo[]) => {
+		mergeUppyFilesIntoDraft(files);
+		focusTextbox();
+	}, [mergeUppyFilesIntoDraft, focusTextbox]);
+
+	const handleUppyFilesRestored = useCallback((files: RestoredFileInfo[]) => {
+		mergeUppyFilesIntoDraft(files);
+	}, [mergeUppyFilesIntoDraft]);
 
 	// Called when the user removes a file directly from the Uppy Dashboard panel.
 	const handleUppyFileRemoved = useCallback((uppyFileId: string) => {
@@ -325,7 +334,8 @@ const useUploadFiles = (
 			fileUploadJSX = (
 				<>
 					{/* Hidden FileUpload keeps the ref alive so VoiceNoteButton/VideoNoteButton
-					    can still record and upload audio/video via the legacy path. */}
+				    can still record and upload audio/video via the legacy path.
+				    skipDragEvents prevents it from intercepting drag-and-drop — Uppy owns that. */}
 					<span className='FileUpload--hidden'>
 						<FileUpload
 							ref={fileUploadRef}
@@ -340,12 +350,13 @@ const useUploadFiles = (
 							rootId={postId}
 							channelId={channelId}
 							postType={postType}
-						/>
+							skipDragEvents={true} skipPasteEvents={true} />
 					</span>
 					{/* Visible Uppy Dashboard — replaces the legacy attachment button. */}
 					<UppyFileUpload
 						ref={uppyFileUploadRef}
 						channelId={channelId}
+						onFilesAdded={handleUppyFilesAdded}
 						onFilesUploaded={handleUppyFilesUploaded}
 						onFilesRestored={handleUppyFilesRestored}
 						onFileRemoved={handleUppyFileRemoved}

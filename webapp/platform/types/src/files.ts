@@ -19,11 +19,13 @@ export type FileInfo = {
     post_id?: string;
     mini_preview?: string;
     archived: boolean;
+    is_pinned?: boolean;
     link?: string;
 };
 export type FilesState = {
     files: Record<string, FileInfo>;
     filesFromSearch: Record<string, FileSearchResultItem>;
+    pinnedFileIdsByChannelId: Record<string, string[]>;
     fileIdsByPostId: Record<string, string[]>;
     filePublicLink?: {link: string};
 };

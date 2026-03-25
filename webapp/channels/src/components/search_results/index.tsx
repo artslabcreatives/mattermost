@@ -6,7 +6,7 @@ import { connect } from 'react-redux';
 import type { FileSearchResultItem } from '@mattermost/types/files';
 import type { Post } from '@mattermost/types/posts';
 
-import { getSearchFilesResults } from 'mattermost-redux/selectors/entities/files';
+import { getSearchFilesResults, getPinnedFilesForChannel } from 'mattermost-redux/selectors/entities/files';
 import { getSearchMatches, getSearchResults } from 'mattermost-redux/selectors/entities/posts';
 import { getCurrentTeam } from 'mattermost-redux/selectors/entities/teams';
 import { makeAddDateSeparatorsForSearchResults } from 'mattermost-redux/utils/post_list';
@@ -19,6 +19,7 @@ import {
 	getIsSearchingPinnedPost,
 	getIsSearchGettingMore,
 	getCurrentSearchForSearchTeam,
+	getSelectedChannelId,
 } from 'selectors/rhs';
 
 import type { GlobalState } from 'types/store';
@@ -45,6 +46,30 @@ function makeMapStateToProps() {
 		}
 
 		const newFilesResults = getSearchFilesResults(state);
+
+		// When showing pinned files, use pinned files for the channel instead
+		if (ownProps.isPinnedFiles) {
+			const channelId = getSelectedChannelId(state);
+			const pinnedFiles = channelId ? getPinnedFilesForChannel(state, channelId) : [];
+			const currentSearch = (getCurrentSearchForSearchTeam(state) as unknown as Record<string, any>) || {};
+			const currentTeamName = getCurrentTeam(state)?.name ?? '';
+			const resultsWithDateSeparators = addDateSeparatorsForSearchResults(state, results);
+			return {
+				results: resultsWithDateSeparators,
+				fileResults: pinnedFiles as FileSearchResultItem[],
+				matches: getSearchMatches(state),
+				searchTerms: getSearchResultsTerms(state),
+				searchSelectedType: getSearchResultsType(state),
+				isSearchingTerm: getIsSearchingTerm(state),
+				isSearchingFlaggedPost: getIsSearchingFlaggedPost(state),
+				isSearchingPinnedPost: getIsSearchingPinnedPost(state),
+				isSearchGettingMore: getIsSearchGettingMore(state),
+				isSearchAtEnd: currentSearch.isEnd,
+				isSearchFilesAtEnd: currentSearch.isFilesEnd,
+				searchPage: currentSearch.params?.page,
+				currentTeamName,
+			};
+		}
 
 		// Cache files and channels
 		if (newFilesResults && newFilesResults !== fileResults) {

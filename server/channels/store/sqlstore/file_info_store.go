@@ -42,6 +42,7 @@ type fileInfoWithChannelID struct {
 	Content         string
 	RemoteId        *string
 	Archived        bool
+	IsPinned        bool
 }
 
 func (fi fileInfoWithChannelID) ToModel() *model.FileInfo {
@@ -66,6 +67,7 @@ func (fi fileInfoWithChannelID) ToModel() *model.FileInfo {
 		MiniPreview:     fi.MiniPreview,
 		Content:         fi.Content,
 		RemoteId:        fi.RemoteId,
+		IsPinned:        fi.IsPinned,
 	}
 }
 
@@ -106,6 +108,7 @@ func newSqlFileInfoStore(sqlStore *SqlStore, metrics einterfaces.MetricsInterfac
 		"Coalesce(FileInfo.Content, '') AS Content",
 		"Coalesce(FileInfo.RemoteId, '') AS RemoteId",
 		"FileInfo.Archived",
+		"FileInfo.IsPinned",
 	}
 
 	return s
@@ -120,10 +123,10 @@ func (fs SqlFileInfoStore) Save(rctx request.CTX, info *model.FileInfo) (*model.
 	query := `
 		INSERT INTO FileInfo
 		(Id, CreatorId, PostId, ChannelId, CreateAt, UpdateAt, DeleteAt, Path, ThumbnailPath, PreviewPath,
-			Name, Extension, Size, MimeType, Width, Height, HasPreviewImage, MiniPreview, Content, RemoteId)
+			Name, Extension, Size, MimeType, Width, Height, HasPreviewImage, MiniPreview, Content, RemoteId, IsPinned)
 		VALUES
 		(:Id, :CreatorId, :PostId, :ChannelId, :CreateAt, :UpdateAt, :DeleteAt, :Path, :ThumbnailPath, :PreviewPath,
-			:Name, :Extension, :Size, :MimeType, :Width, :Height, :HasPreviewImage, :MiniPreview, :Content, :RemoteId)
+			:Name, :Extension, :Size, :MimeType, :Width, :Height, :HasPreviewImage, :MiniPreview, :Content, :RemoteId, :IsPinned)
 	`
 
 	if _, err := fs.GetMaster().NamedExec(query, info); err != nil {
@@ -189,6 +192,7 @@ func (fs SqlFileInfoStore) Upsert(rctx request.CTX, info *model.FileInfo) (*mode
 			"MiniPreview":     info.MiniPreview,
 			"Content":         info.Content,
 			"RemoteId":        info.RemoteId,
+			"IsPinned":        info.IsPinned,
 		}).
 		Where(sq.Eq{"Id": info.Id}).
 		ToSql()
@@ -824,4 +828,63 @@ func (fs SqlFileInfoStore) RefreshFileStats() error {
 	}
 
 	return nil
+}
+
+func (fs SqlFileInfoStore) PinFileInfo(rctx request.CTX, fileID string) error {
+	queryString, args, err := fs.getQueryBuilder().
+		Update("FileInfo").
+		Set("IsPinned", true).
+		Set("UpdateAt", model.GetMillis()).
+		Where(sq.Eq{"Id": fileID, "DeleteAt": 0}).
+		ToSql()
+	if err != nil {
+		return errors.Wrap(err, "file_info_pin_tosql")
+	}
+	if _, err := fs.GetMaster().Exec(queryString, args...); err != nil {
+		return errors.Wrapf(err, "failed to pin FileInfo with id=%s", fileID)
+	}
+	return nil
+}
+
+func (fs SqlFileInfoStore) UnpinFileInfo(rctx request.CTX, fileID string) error {
+	queryString, args, err := fs.getQueryBuilder().
+		Update("FileInfo").
+		Set("IsPinned", false).
+		Set("UpdateAt", model.GetMillis()).
+		Where(sq.Eq{"Id": fileID, "DeleteAt": 0}).
+		ToSql()
+	if err != nil {
+		return errors.Wrap(err, "file_info_unpin_tosql")
+	}
+	if _, err := fs.GetMaster().Exec(queryString, args...); err != nil {
+		return errors.Wrapf(err, "failed to unpin FileInfo with id=%s", fileID)
+	}
+	return nil
+}
+
+func (fs SqlFileInfoStore) GetPinnedFileInfosForChannel(channelID string) ([]*model.FileInfo, error) {
+	queryString, args, err := fs.getQueryBuilder().
+		Select(fs.queryFields...).
+		From("FileInfo").
+		Where(sq.Eq{
+			"FileInfo.ChannelId": channelID,
+			"FileInfo.IsPinned":  true,
+			"FileInfo.DeleteAt":  0,
+		}).
+		OrderBy("FileInfo.CreateAt ASC").
+		ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "file_info_get_pinned_tosql")
+	}
+
+	items := []fileInfoWithChannelID{}
+	if err := fs.GetReplica().Select(&items, queryString, args...); err != nil {
+		return nil, errors.Wrapf(err, "failed to get pinned FileInfos for channel=%s", channelID)
+	}
+
+	infos := make([]*model.FileInfo, 0, len(items))
+	for _, item := range items {
+		infos = append(infos, item.ToModel())
+	}
+	return infos, nil
 }

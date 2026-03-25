@@ -33,6 +33,7 @@ export type StateProps = {
 	isMentionSearch: boolean;
 	isFlaggedPosts: boolean;
 	isPinnedPosts: boolean;
+	isPinnedFiles: boolean;
 	isChannelFiles: boolean;
 	currentChannel?: Channel;
 	isMobileView: boolean;

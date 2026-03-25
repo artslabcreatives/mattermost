@@ -7,7 +7,7 @@ import type { FileSearchResults, FileSearchResultItem } from '@mattermost/types/
 import type { PostList, PostSearchResults } from '@mattermost/types/posts';
 import type { SearchParameter } from '@mattermost/types/search';
 
-import { SearchTypes } from 'mattermost-redux/action_types';
+import { FileTypes, SearchTypes } from 'mattermost-redux/action_types';
 import { Client4 } from 'mattermost-redux/client';
 import { getCurrentUserId } from 'mattermost-redux/selectors/entities/users';
 import type { ActionResult, ActionFuncAsync, ThunkActionFunc } from 'mattermost-redux/types/actions';
@@ -294,6 +294,73 @@ export function getPinnedPosts(channelId: string): ActionFuncAsync {
 		], 'SEARCH_PINNED_POSTS_BATCH'));
 
 		return { data: result };
+	};
+}
+
+export function getPinnedFiles(channelId: string): ActionFuncAsync {
+	return async (dispatch, getState) => {
+		dispatch({ type: SearchTypes.SEARCH_PINNED_FILES_REQUEST });
+
+		let result;
+		try {
+			result = await Client4.getPinnedFiles(channelId);
+		} catch (error) {
+			forceLogoutIfNecessary(error, dispatch, getState);
+			dispatch({ type: SearchTypes.SEARCH_PINNED_FILES_FAILURE, error });
+			return { error };
+		}
+
+		dispatch(batchActions([
+			{
+				type: SearchTypes.RECEIVED_SEARCH_PINNED_FILES,
+				data: { files: result, channelId },
+			},
+			{
+				type: SearchTypes.SEARCH_PINNED_FILES_SUCCESS,
+			},
+		], 'SEARCH_PINNED_FILES_BATCH'));
+
+		return { data: result };
+	};
+}
+
+export function pinFile(fileId: string): ActionFuncAsync {
+	return async (dispatch, getState) => {
+		try {
+			await Client4.pinFile(fileId);
+		} catch (error) {
+			forceLogoutIfNecessary(error, dispatch, getState);
+			dispatch(logError(error));
+			return { error };
+		}
+
+		const state = getState();
+		const existingFile = state.entities.files.files[fileId];
+		if (existingFile) {
+			dispatch({ type: FileTypes.RECEIVED_FILE_INFO, data: { ...existingFile, is_pinned: true } });
+		}
+
+		return { data: true };
+	};
+}
+
+export function unpinFile(fileId: string): ActionFuncAsync {
+	return async (dispatch, getState) => {
+		try {
+			await Client4.unpinFile(fileId);
+		} catch (error) {
+			forceLogoutIfNecessary(error, dispatch, getState);
+			dispatch(logError(error));
+			return { error };
+		}
+
+		const state = getState();
+		const existingFile = state.entities.files.files[fileId];
+		if (existingFile) {
+			dispatch({ type: FileTypes.RECEIVED_FILE_INFO, data: { ...existingFile, is_pinned: false } });
+		}
+
+		return { data: true };
 	};
 }
 
