@@ -114,6 +114,8 @@ services:
       - MM_LOGSETTINGS_ENABLEFILE=${MM_LOGSETTINGS_ENABLEFILE:-true}
     ports:
       - "8065:8065"
+      - "8443:8443/udp"
+      - "8443:8443/tcp"
     depends_on:
       typesense:
         condition: service_healthy

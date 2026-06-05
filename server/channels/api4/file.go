@@ -641,12 +641,30 @@ func getFileThumbnail(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	if info.ThumbnailPath == "" {
+		if info.IsImage() {
+			fileReader, err := c.App.FileReader(info.Path)
+			if err != nil {
+				c.Err = err
+				c.Err.StatusCode = http.StatusNotFound
+				return
+			}
+			defer fileReader.Close()
+			web.WriteFileResponse(info.Name, info.MimeType, 0, time.Unix(0, info.UpdateAt*int64(1000*1000)), *c.App.Config().ServiceSettings.WebserverMode, fileReader, forceDownload, w, r)
+			return
+		}
 		c.Err = model.NewAppError("getFileThumbnail", "api.file.get_file_thumbnail.no_thumbnail.app_error", nil, "file_id="+info.Id, http.StatusBadRequest)
 		return
 	}
 
 	fileReader, err := c.App.FileReader(info.ThumbnailPath)
 	if err != nil {
+		if info.IsImage() {
+			originalReader, origErr := c.App.FileReader(info.Path)
+			if origErr == nil {
+				web.WriteFileResponse(info.Name, info.MimeType, 0, time.Unix(0, info.UpdateAt*int64(1000*1000)), *c.App.Config().ServiceSettings.WebserverMode, originalReader, forceDownload, w, r)
+				return
+			}
+		}
 		c.Err = err
 		c.Err.StatusCode = http.StatusNotFound
 		return
@@ -741,12 +759,30 @@ func getFilePreview(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	if info.PreviewPath == "" {
+		if info.IsImage() {
+			fileReader, err := c.App.FileReader(info.Path)
+			if err != nil {
+				c.Err = err
+				c.Err.StatusCode = http.StatusNotFound
+				return
+			}
+			defer fileReader.Close()
+			web.WriteFileResponse(info.Name, info.MimeType, 0, time.Unix(0, info.UpdateAt*int64(1000*1000)), *c.App.Config().ServiceSettings.WebserverMode, fileReader, forceDownload, w, r)
+			return
+		}
 		c.Err = model.NewAppError("getFilePreview", "api.file.get_file_preview.no_preview.app_error", nil, "file_id="+info.Id, http.StatusBadRequest)
 		return
 	}
 
 	fileReader, err := c.App.FileReader(info.PreviewPath)
 	if err != nil {
+		if info.IsImage() {
+			originalReader, origErr := c.App.FileReader(info.Path)
+			if origErr == nil {
+				web.WriteFileResponse(info.Name, info.MimeType, 0, time.Unix(0, info.UpdateAt*int64(1000*1000)), *c.App.Config().ServiceSettings.WebserverMode, originalReader, forceDownload, w, r)
+				return
+			}
+		}
 		c.Err = err
 		c.Err.StatusCode = http.StatusNotFound
 		return

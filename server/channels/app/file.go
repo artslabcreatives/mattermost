@@ -752,8 +752,14 @@ func (a *App) CompleteDirectUpload(rctx request.CTX, channelID, userID, fileID, 
 
 	info := model.NewInfo(safeFilename)
 	info.Id = fileID
-	info.CreatorId = filepath.Base(userID)
-	info.ChannelId = filepath.Base(channelID)
+	info.CreatorId = userID
+	if userID != "" {
+		info.CreatorId = filepath.Base(userID)
+	}
+	info.ChannelId = channelID
+	if channelID != "" {
+		info.ChannelId = filepath.Base(channelID)
+	}
 	info.CreateAt = now.UnixNano() / int64(time.Millisecond)
 	info.UpdateAt = info.CreateAt
 	info.Path = key
@@ -801,9 +807,9 @@ func (a *App) CompleteDirectUpload(rctx request.CTX, channelID, userID, fileID, 
 			}
 			bgTask.postprocessImage(bgFile)
 
-			if infoCopy.MiniPreview != nil {
+			if infoCopy.MiniPreview != nil || !infoCopy.HasPreviewImage {
 				if _, upsertErr := a.Srv().Store().FileInfo().Upsert(rctx, &infoCopy); upsertErr != nil {
-					rctx.Logger().Error("CompleteDirectUpload: failed to upsert mini preview",
+					rctx.Logger().Error("CompleteDirectUpload: failed to upsert file info after postprocessing",
 						mlog.String("file_id", infoCopy.Id), mlog.Err(upsertErr))
 				}
 			}
@@ -1217,7 +1223,15 @@ func (t *UploadFileTask) postprocessImage(file io.Reader) {
 		var release func()
 		decoded, imgType, release, err = t.imgDecoder.DecodeMemBounded(file)
 		if err != nil {
-			t.Logger.Error("Unable to decode image", mlog.Err(err))
+			t.Logger.Warn("Unable to decode image for thumbnail generation (format may not be supported)",
+				mlog.String("name", t.fileinfo.Name),
+				mlog.String("mime_type", t.fileinfo.MimeType),
+				mlog.Err(err))
+			// Mark the FileInfo as having no preview so the frontend
+			// doesn't try to load a non-existent thumbnail/preview file.
+			t.fileinfo.HasPreviewImage = false
+			t.fileinfo.ThumbnailPath = ""
+			t.fileinfo.PreviewPath = ""
 			return
 		}
 		defer release()

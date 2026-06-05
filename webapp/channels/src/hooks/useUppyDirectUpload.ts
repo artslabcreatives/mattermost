@@ -34,6 +34,7 @@ import Tus from '@uppy/tus';
 import GoldenRetriever from '@uppy/golden-retriever';
 
 import { Client4 } from 'mattermost-redux/client';
+import Constants from 'utils/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,10 +98,17 @@ function tusUploadIdFromUrl(uploadUrl: string): string {
  */
 async function fetchTusFileInfo(uploadId: string, maxRetries = 20, retryIntervalMs = 1500): Promise<FileInfo> {
 	for (let i = 0; i < maxRetries; i++) {
-		const resp = await Client4.doFetch<FileInfo>(
+		const resp = await fetch(
 			`${Client4.getUrl()}/api/v4/files/tus/fileinfo/${uploadId}`,
-			{ method: 'get' },
-		).catch(() => null);
+			Client4.getOptions({ method: 'get' }),
+		)
+			.then((r) => {
+				if (!r.ok) {
+					throw new Error('Not found');
+				}
+				return r.json() as Promise<FileInfo>;
+			})
+			.catch(() => null);
 
 		if (resp) {
 			return resp;
@@ -139,6 +147,9 @@ export function useUppyDirectUpload(
 		const uppy = new Uppy({
 			autoProceed: false,
 			allowMultipleUploadBatches: true,
+			restrictions: {
+				maxNumberOfFiles: Constants.MAX_UPLOAD_FILES,
+			},
 		});
 
 		// TUS plugin – handles chunked, resumable uploads.
@@ -176,14 +187,28 @@ export function useUppyDirectUpload(
 		// the backend can associate the upload with the right channel/user.
 		// Also automatically start the upload when a file is added (Slack-like behavior).
 		uppy.on('file-added', (file) => {
+			// Robustly determine the filename — file.name can be undefined,
+			// empty, or the literal string "undefined" depending on how the
+			// file was added (drag-drop, paste, DropTarget plugin, etc.).
+			const rawName = file.name;
+			const fileType = (file as { type?: string }).type ?? 'application/octet-stream';
+			let safeName: string;
+			if (rawName && rawName !== 'undefined' && rawName.trim() !== '') {
+				safeName = rawName;
+			} else {
+				// Generate a descriptive fallback: "upload_<timestamp>.<ext>"
+				const ext = fileType.split('/').pop() ?? 'bin';
+				safeName = `upload_${Date.now()}.${ext}`;
+			}
 			uppy.setFileMeta(file.id, {
 				channel_id: channelIdRef.current,
-				filename: file.name ?? 'upload',
-				filetype: (file as { type?: string }).type ?? 'application/octet-stream',
+				filename: safeName,
+				filetype: fileType,
 			});
 
-			// Auto-start upload if not already uploading
-			if (!uploadingRef.current) {
+			// Auto-start upload if not already uploading and we have a channel_id.
+			// If channelId is empty (e.g. a draft DM), we wait until the user creates the channel.
+			if (!uploadingRef.current && channelIdRef.current) {
 				uppy.upload().catch((err) => {
 					// Errors are handled by uppy.on('upload-error') handler below
 					console.error('Auto-upload failed:', err);
@@ -197,6 +222,17 @@ export function useUppyDirectUpload(
 		});
 
 		uppy.on('upload', () => {
+			// Update all files with the latest channelId right before upload starts
+			const currentChannelId = channelIdRef.current;
+			if (currentChannelId) {
+				uppy.getFiles().forEach((f) => {
+					uppy.setFileMeta(f.id, {
+						...f.meta,
+						channel_id: currentChannelId,
+					});
+				});
+			}
+			
 			uploadingRef.current = true;
 			pendingFileInfosRef.current = [];
 			setProgress(0);

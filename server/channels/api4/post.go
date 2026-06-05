@@ -103,6 +103,7 @@ func createPost(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	createPostChecks("Api4.createPost", c, &post)
 	if c.Err != nil {
+		c.Logger.Warn("createPostChecks failed", mlog.Err(c.Err), mlog.Any("file_ids", post.FileIds))
 		return
 	}
 
@@ -119,6 +120,7 @@ func createPost(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	rp, err := c.App.CreatePostAsUser(c.AppContext, c.App.PostWithProxyRemovedFromImageURLs(&post), c.AppContext.Session().Id, setOnlineBool)
 	if err != nil {
+		c.Logger.Warn("CreatePostAsUser failed", mlog.Err(err), mlog.String("detailed", err.DetailedError), mlog.Any("file_ids", post.FileIds))
 		c.Err = err
 		return
 	}

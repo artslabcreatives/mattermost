@@ -10,6 +10,10 @@ import (
 	"strings"
 )
 
+func init() {
+	mime.AddExtensionType(".avif", "image/avif")
+}
+
 const (
 	FileinfoSortByCreated = "CreateAt"
 	FileinfoSortBySize    = "Size"

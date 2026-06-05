@@ -19,6 +19,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -110,13 +112,27 @@ func (api *API) InitTusUpload() {
 	// Goroutine: finalise completed uploads.
 	go func() {
 		for event := range h.CompleteUploads {
-			raw, ok := state.records.LoadAndDelete(event.Upload.ID)
-			if !ok {
-				continue
-			}
-			rec := raw.(tusUploadRecord)
-			// Run in its own goroutine so slow S3 copies don't block the channel.
-			go api.finaliseTusUpload(state, event, rec)
+			// Run in its own goroutine so we don't block the event channel.
+			go func(ev tushandler.HookEvent) {
+				var raw any
+				var ok bool
+				// Retry loading the record for up to 5 seconds to resolve the race condition
+				// where small files complete uploading before the CreatedUploads goroutine
+				// can store the metadata record.
+				for i := 0; i < 50; i++ {
+					raw, ok = state.records.LoadAndDelete(ev.Upload.ID)
+					if ok {
+						break
+					}
+					time.Sleep(100 * time.Millisecond)
+				}
+				if !ok {
+					api.srv.Log().Warn("tus: completed upload has no creation record", mlog.String("upload_id", ev.Upload.ID))
+					return
+				}
+				rec := raw.(tusUploadRecord)
+				api.finaliseTusUpload(state, ev, rec)
+			}(event)
 		}
 	}()
 
@@ -139,6 +155,7 @@ func (api *API) InitTusUpload() {
 	tusStripped := http.StripPrefix(strings.TrimRight(tusdBasePath, "/"), h)
 	tusWithAuth := api.tusAuthMiddleware(tusStripped)
 	api.BaseRoutes.Files.PathPrefix("/tus").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		api.srv.Log().Info("tus: raw request", mlog.String("method", r.Method), mlog.String("path", r.URL.Path))
 		// Intercept GET /api/v4/files/tus/fileinfo/{upload_id} before stripping.
 		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/v4/files/tus/fileinfo/") {
 			api.tusFileInfoHandler(state, w, r)
@@ -211,8 +228,25 @@ func (api *API) tusFileInfoHandler(state *tusdState, w http.ResponseWriter, r *h
 		return
 	}
 
+	logger := api.srv.Log()
+	logger.Info("tus: fileinfo request",
+		mlog.String("upload_id", uploadID),
+		mlog.String("url_path", r.URL.Path),
+	)
+
 	raw, ok := state.completedFiles.Load(uploadID)
 	if !ok {
+		// Log what keys ARE in the map for debugging
+		var keys []string
+		state.completedFiles.Range(func(key, value any) bool {
+			keys = append(keys, key.(string))
+			return true
+		})
+		logger.Warn("tus: fileinfo not found in completedFiles",
+			mlog.String("upload_id", uploadID),
+			mlog.Int("map_size", len(keys)),
+			mlog.String("available_keys", strings.Join(keys, ",")),
+		)
 		// Not yet ready – browser should retry.
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
@@ -227,9 +261,6 @@ func (api *API) tusFileInfoHandler(state *tusdState, w http.ResponseWriter, r *h
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(info)
-
-	// Remove from map so we don't leak memory.
-	state.completedFiles.Delete(uploadID)
 }
 
 // tusAuthMiddleware validates the Mattermost session token that the client
@@ -269,18 +300,22 @@ func (api *API) tusAuthMiddleware(next http.Handler) http.Handler {
 func (api *API) finaliseTusUpload(state *tusdState, event tushandler.HookEvent, rec tusUploadRecord) {
 	logger := api.srv.Log()
 
-	if rec.userID == "" || rec.channelID == "" || rec.filename == "" {
-		logger.Warn("tus: incomplete upload record, skipping",
+	// Treat the literal string "undefined" the same as empty — the webapp
+	// sometimes sends this when file.name is JS-undefined.
+	if rec.filename == "undefined" {
+		rec.filename = ""
+	}
+
+	if rec.userID == "" {
+		logger.Warn("tus: incomplete upload record (no user ID), skipping",
 			mlog.String("upload_id", event.Upload.ID),
-			mlog.String("user_id", rec.userID),
-			mlog.String("channel_id", rec.channelID),
 		)
 		return
 	}
 
 	// Validate IDs to prevent path traversal in the object-store key.
 	// Mattermost IDs are 26-character alphanumeric strings.
-	if !model.IsValidId(rec.channelID) || !model.IsValidId(rec.userID) {
+	if !model.IsValidId(rec.userID) || !model.IsValidId(rec.channelID) {
 		logger.Warn("tus: invalid channel/user ID in upload metadata",
 			mlog.String("upload_id", event.Upload.ID),
 			mlog.String("channel_id", rec.channelID),
@@ -300,12 +335,36 @@ func (api *API) finaliseTusUpload(state *tusdState, event tushandler.HookEvent, 
 	}
 	defer f.Close()
 
+	// If the client sent an empty or extensionless filename, infer a proper
+	// name from the file's actual bytes so that MIME detection, thumbnail
+	// generation, and preview rendering all work correctly.
+	if rec.filename == "" || !strings.Contains(filepath.Base(rec.filename), ".") {
+		inferred := inferFilenameFromFile(f, event.Upload.MetaData["filetype"], logger)
+		if inferred != "" {
+			logger.Info("tus: inferred filename from file content",
+				mlog.String("upload_id", event.Upload.ID),
+				mlog.String("original", rec.filename),
+				mlog.String("inferred", inferred),
+			)
+			rec.filename = inferred
+		} else if rec.filename == "" {
+			rec.filename = fmt.Sprintf("upload_%d", time.Now().UnixMilli())
+		}
+		// Seek back to the start so the file can be read again for the upload.
+		if _, seekErr := f.Seek(0, io.SeekStart); seekErr != nil {
+			logger.Error("tus: failed to seek staged file after sniffing",
+				mlog.String("path", stagedPath), mlog.Err(seekErr))
+			return
+		}
+	}
+
 	// Build the Mattermost object-store key (mirrors the legacy upload path).
 	safeFilename := filepath.Base(rec.filename)
 	fileID := model.NewId()
 	now := time.Now().UnixMilli()
-	objectKey := fmt.Sprintf("teams/noteam/channels/%s/users/%s/%d_%s",
-		rec.channelID, rec.userID, now, safeFilename)
+
+	var objectKey string
+	objectKey = fmt.Sprintf("teams/noteam/channels/%s/users/%s/%d_%s", rec.channelID, rec.userID, now, safeFilename)
 
 	appInst := app.New(app.ServerConnector(api.srv.Channels()))
 
@@ -340,6 +399,11 @@ func (api *API) finaliseTusUpload(state *tusdState, event tushandler.HookEvent, 
 	}
 
 	// Make the FileInfo available for the fileinfo endpoint (TTL ~5 min).
+	logger.Info("tus: storing completed file info",
+		mlog.String("upload_id", event.Upload.ID),
+		mlog.String("file_id", info.Id),
+		mlog.String("channel_id", info.ChannelId),
+	)
 	state.completedFiles.Store(event.Upload.ID, info)
 	time.AfterFunc(5*time.Minute, func() {
 		state.completedFiles.Delete(event.Upload.ID)
@@ -357,5 +421,68 @@ func cleanupTusStaging(stagedPath string, logger *mlog.Logger) {
 				mlog.String("path", p), mlog.Err(rmErr))
 		}
 	}
+}
+
+// inferFilenameFromFile reads up to 512 bytes from f to detect the MIME type
+// using http.DetectContentType, then generates a filename with the correct
+// extension.  If byte-sniffing yields only "application/octet-stream", the
+// clientMIME hint (from TUS metadata "filetype") is used instead.
+// Returns "" if no useful extension can be determined.
+func inferFilenameFromFile(f *os.File, clientMIME string, logger *mlog.Logger) string {
+	buf := make([]byte, 512)
+	n, err := io.ReadFull(f, buf)
+	if err != nil && err != io.ErrUnexpectedEOF && err != io.EOF {
+		logger.Warn("tus: failed to read file header for MIME detection", mlog.Err(err))
+		return ""
+	}
+	if n == 0 {
+		return ""
+	}
+
+	// Manually detect AVIF because http.DetectContentType doesn't support it
+	if n >= 12 && string(buf[4:12]) == "ftypavif" {
+		return fmt.Sprintf("upload_%d.avif", time.Now().UnixMilli())
+	}
+
+	detected := http.DetectContentType(buf[:n])
+
+	// http.DetectContentType returns "application/octet-stream" when it can't
+	// identify the content.  Prefer the client-supplied MIME in that case.
+	mimeType := detected
+	if mimeType == "application/octet-stream" && clientMIME != "" && clientMIME != "application/octet-stream" {
+		mimeType = mimeType // keep detected; but try clientMIME for extension
+		exts, _ := mime.ExtensionsByType(clientMIME)
+		if len(exts) > 0 {
+			mimeType = clientMIME
+		}
+	}
+
+	// Get a file extension for this MIME type.
+	exts, _ := mime.ExtensionsByType(mimeType)
+	if len(exts) == 0 {
+		// Last resort: try the client MIME.
+		if clientMIME != "" {
+			exts, _ = mime.ExtensionsByType(clientMIME)
+		}
+		if len(exts) == 0 {
+			return ""
+		}
+	}
+
+	// Prefer common extensions over obscure ones.
+	ext := exts[0]
+	preferred := map[string]string{
+		"image/jpeg": ".jpg",
+		"image/png":  ".png",
+		"image/gif":  ".gif",
+		"image/webp": ".webp",
+		"video/mp4":  ".mp4",
+		"audio/mpeg": ".mp3",
+	}
+	if p, ok := preferred[mimeType]; ok {
+		ext = p
+	}
+
+	return fmt.Sprintf("upload_%d%s", time.Now().UnixMilli(), ext)
 }
 
