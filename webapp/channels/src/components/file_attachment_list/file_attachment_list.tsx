@@ -45,11 +45,11 @@ export default function FileAttachmentList(props: Props) {
 		return null;
 	}
 
-	// ── Single image: full-width inline preview ──────────────────────────
+	// ── Single image/video: full-width inline preview ──────────────────────────
 	if (fileInfos && fileInfos.length === 1 && !fileInfos[0].archived) {
 		const fileType = getFileType(fileInfos[0].extension);
 
-		if (fileType === FileTypes.IMAGE || (fileType === FileTypes.SVG && enableSVGs)) {
+		if (fileType === FileTypes.IMAGE || (fileType === FileTypes.SVG && enableSVGs) || fileType === FileTypes.VIDEO) {
 			return (
 				<SingleImageView
 					fileInfo={fileInfos[0]}

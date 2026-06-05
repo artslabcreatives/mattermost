@@ -74,12 +74,32 @@ const FileThumbnail = ({
 			);
 		} else if (type === FileTypes.VIDEO) {
 			return (
-				<video
-					className='post-image normal'
-					src={getFileUrl(id)}
-					preload='metadata'
-					style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-				/>
+				<div style={{ position: 'relative', width: '100%', height: '100%' }}>
+					<video
+						className='post-image normal'
+						src={getFileUrl(id)}
+						preload='metadata'
+						style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+					/>
+					<div style={{
+						position: 'absolute',
+						top: '50%',
+						left: '50%',
+						transform: 'translate(-50%, -50%)',
+						backgroundColor: 'rgba(0, 0, 0, 0.6)',
+						borderRadius: '4px',
+						width: '24px',
+						height: '24px',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						pointerEvents: 'none',
+					}}>
+						<svg width='12' height='12' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+							<path d='M8 5V19L19 12L8 5Z' fill='white' />
+						</svg>
+					</div>
+				</div>
 			);
 		}
 	}
