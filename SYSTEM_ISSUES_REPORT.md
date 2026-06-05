@@ -13,12 +13,14 @@ Based on the actual system logs and configuration files in the repository, here 
 * **Current Status:** 
   1. The Nginx reverse proxy configuration (`/etc/nginx/sites-available/collab-mattermost-staging.conf`) was updated to enable HTTP/2 (`listen 443 ssl http2;`) and keep-alive connections (`proxy_set_header Connection "";`) to support multiplexed uploads.
   2. A backend race condition in `tus_handler.go` was fixed. Previously, when multiple small files were uploaded, they finished uploading so quickly (in milliseconds) that the server's TUS upload completion loop ran *before* the upload creation loop could write the metadata record to memory. This caused the completed uploads to be silently ignored, resulting in `404 Not Found` errors when the browser polled `/api/v4/files/tus/fileinfo/{id}`. We added a retry mechanism to safely wait for the creation record to yield successful finalization.
+  3. We resolved a premature cache eviction bug where a single browser read of a finished upload's fileinfo deleted it from the server's cache. If the client retried due to temporary network interrupts, it received a `404 Not Found` error. We changed the eviction method to keep records in memory for a safe 5-minute TTL.
+  4. The routing prefix check for the `/api/v4/files/tus/fileinfo/{id}` endpoint was corrected to match the full path, ensuring requests are properly intercepted by the custom fileinfo handler rather than falling back to `tusd`.
 * **Exact Error in Logs:**
   ```json
   {"level":"warn","msg":"ERROR BodyReadError method=PATCH ... error=\"ERR_UPLOAD_INTERRUPTED: upload has been interrupted by another request for this upload resource\""}
   ```
   *You also had recurring:* `404 Not Found` when fetching `/api/v4/files/tus/fileinfo/{upload_id}`
-* **Why it happened:** In addition to the HTTP/1.1 connection bottlenecks, there was a concurrency race condition in the Go server's TUS integration. Since the `CreatedUploads` (creation) and `CompleteUploads` (completion) events were processed concurrently in independent goroutines, small files finished uploading before the server stored their metadata. Without the metadata (like the channel ID and owner), the server discarded the completed upload, causing the browser's requests to poll the files to fail with 404, ultimately blocking the post from being created.
+* **Why it happened:** In addition to the HTTP/1.1 connection bottlenecks, there was a concurrency race condition in the Go server's TUS integration. Since the `CreatedUploads` (creation) and `CompleteUploads` (completion) events were processed concurrently in independent goroutines, small files finished uploading before the server stored their metadata. Without the metadata (like the channel ID and owner), the server discarded the completed upload, causing the browser's requests to poll the files to fail with 404, ultimately blocking the post from being created. Additionally, premature eviction and routing mismatches repeatedly broke client attempts to resolve file metadata.
 
 ### 3. Takes time to upload images
 ❌ **[UNFIXED]**
@@ -35,3 +37,9 @@ Based on the actual system logs and configuration files in the repository, here 
 * **Previous Cause:** A broken WebSocket connection caused by the `MM_SITEURL` configuration mismatch.
 * **Why it happened:** For web browsers (on desktop or mobile) to show a notification, they rely on a live, continuous WebSocket connection to the server to instantly receive "New Message" events. Because your `.env` file incorrectly set `MM_SITEURL=http://localhost:8065` while users connected via the external domain, the WebSocket was blocked for security reasons. Without an active WebSocket, the browser never received the real-time ping required to trigger the native notification popup.
 * *(Note: Since you are using the web version exclusively, you do **not** need a Push Notification Server or Firebase. Browser notifications will work automatically now that the WebSocket issue is fixed.)*
+
+### 5. Broken image previews for modern image formats (like AVIF)
+✅ **[FIXED]**
+* **Current Status:** The backend image post-processing pipeline was updated to catch decoding failures (e.g. when trying to generate previews for formats like AVIF that the Go standard library cannot natively decode). Instead of creating invalid preview records, the backend now explicitly clears `HasPreviewImage`, `ThumbnailPath`, and `PreviewPath`, allowing the frontend to fall back to native browser rendering or generic icons.
+* **Why it happened:** The server optimistically set `HasPreviewImage = true` and generated invalid thumbnail paths for all images. When a format like AVIF failed to decode, the database still referenced non-existent thumbnail files, causing broken image icons in the chat UI.
+
