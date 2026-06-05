@@ -72,6 +72,15 @@ const FileThumbnail = ({
 					src={getFileUrl(id)}
 				/>
 			);
+		} else if (type === FileTypes.VIDEO) {
+			return (
+				<video
+					className='post-image normal'
+					src={getFileUrl(id)}
+					preload='metadata'
+					style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+				/>
+			);
 		}
 	}
 

@@ -12,6 +12,7 @@ import (
 
 func init() {
 	mime.AddExtensionType(".avif", "image/avif")
+	mime.AddExtensionType(".mkv", "video/x-matroska")
 }
 
 const (

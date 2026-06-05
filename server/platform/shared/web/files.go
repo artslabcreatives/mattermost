@@ -33,8 +33,18 @@ var MediaContentTypes = [...]string{
 	"video/avi",
 	"video/mpeg",
 	"video/mp4",
+	"video/webm",
+	"video/ogg",
+	"video/quicktime",
+	"video/x-matroska",
 	"audio/mpeg",
 	"audio/wav",
+	"audio/ogg",
+	"audio/webm",
+	"audio/mp4",
+	"audio/x-m4a",
+	"audio/aac",
+	"audio/flac",
 }
 
 // WriteFileResponse copies the io.ReadSeeker `fileReader` to the ResponseWriter `w`. Use this when you have a
