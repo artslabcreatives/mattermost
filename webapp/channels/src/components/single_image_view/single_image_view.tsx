@@ -49,8 +49,9 @@ export default class SingleImageView extends React.PureComponent<Props, State> {
 
 	constructor(props: Props) {
 		super(props);
+		const fileType = props.fileInfo ? getFileType(props.fileInfo.extension) : '';
 		this.state = {
-			loaded: false,
+			loaded: fileType === FileTypes.VIDEO,
 			dimensions: {
 				width: props.fileInfo?.width || 0,
 				height: props.fileInfo?.height || 0,
@@ -119,6 +120,7 @@ export default class SingleImageView extends React.PureComponent<Props, State> {
 			return <></>;
 		}
 
+		const fileType = getFileType(fileInfo.extension);
 		const { has_preview_image: hasPreviewImage, id } = fileInfo;
 		const fileURL = getFileUrl(id);
 		const previewURL = hasPreviewImage ? getFilePreviewUrl(id) : fileURL;
@@ -129,6 +131,7 @@ export default class SingleImageView extends React.PureComponent<Props, State> {
 		const hasDisproportionateHeight = previewHeight / previewWidth > DISPROPORTIONATE_HEIGHT_RATIO;
 		let minPreviewClass = '';
 		if (
+			fileType !== FileTypes.VIDEO &&
 			(previewWidth < PREVIEW_IMAGE_MIN_DIMENSION ||
 				previewHeight < PREVIEW_IMAGE_MIN_DIMENSION) && !hasDisproportionateHeight
 		) {
@@ -189,7 +192,6 @@ export default class SingleImageView extends React.PureComponent<Props, State> {
 		let fadeInClass = '';
 		let permalinkClass = '';
 
-		const fileType = getFileType(fileInfo.extension);
 		let styleIfSvgWithDimensions = {};
 		let imageContainerStyle = {};
 		let svgClass = '';
