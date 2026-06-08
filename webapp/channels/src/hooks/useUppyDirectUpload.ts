@@ -30,7 +30,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import type { FileInfo } from '@mattermost/types/files';
 
 import Uppy from '@uppy/core';
-import Tus from '@uppy/tus';
+import AwsS3 from '@uppy/aws-s3';
 import GoldenRetriever from '@uppy/golden-retriever';
 
 import { Client4 } from 'mattermost-redux/client';
@@ -72,55 +72,6 @@ export interface UppyDirectUploadResult {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Extract the TUS upload ID from a tusd upload URL.
- * e.g. "https://mm.example.com/api/v4/files/tus/abc123" → "abc123"
- */
-function tusUploadIdFromUrl(uploadUrl: string): string {
-	try {
-		const url = new URL(uploadUrl, window.location.origin);
-		const parts = url.pathname.split('/').filter(Boolean);
-		return parts[parts.length - 1] ?? '';
-	} catch {
-		return '';
-	}
-}
-
-/**
- * Poll GET /api/v4/files/tus/fileinfo/{upload_id} until the server has
- * finalised the upload and created the FileInfo record.
- *
- * The server processes the upload asynchronously so this function retries
- * up to maxRetries times with retryIntervalMs between each attempt.
- */
-async function fetchTusFileInfo(uploadId: string, maxRetries = 20, retryIntervalMs = 1500): Promise<FileInfo> {
-	for (let i = 0; i < maxRetries; i++) {
-		const resp = await fetch(
-			`${Client4.getUrl()}/api/v4/files/tus/fileinfo/${uploadId}`,
-			Client4.getOptions({ method: 'get' }),
-		)
-			.then((r) => {
-				if (!r.ok) {
-					throw new Error('Not found');
-				}
-				return r.json() as Promise<FileInfo>;
-			})
-			.catch(() => null);
-
-		if (resp) {
-			return resp;
-		}
-
-		// Wait before retrying.
-		await new Promise<void>((res) => setTimeout(res, retryIntervalMs));
-	}
-	throw new Error(`Timed out waiting for FileInfo for TUS upload ${uploadId}`);
-}
-
-// ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
@@ -152,25 +103,32 @@ export function useUppyDirectUpload(
 			},
 		});
 
-		// TUS plugin – handles chunked, resumable uploads.
-		// The endpoint must match the tusd handler mounted in the Go backend.
-		uppy.use(Tus, {
-			endpoint: `${Client4.getUrl()}/api/v4/files/tus/`,
-			// Pass the Mattermost session token as a Bearer header so the
-			// backend's auth middleware can validate the request.
-			headers: {
-				Authorization: `Bearer ${Client4.getToken()}`,
+		// Direct-to-S3 plugin – handles direct uploads to S3 using presigned PUT URLs.
+		uppy.use(AwsS3, {
+			shouldUseMultipart: false, // Use single PUT upload (supports up to 5 GB)
+			getUploadParameters: async (file) => {
+				const data = await Client4.createDirectUploadSession({
+					channel_id: channelIdRef.current,
+					filename: (file.meta?.filename as string) || file.name || 'file',
+					content_type: (file.meta?.filetype as string) || file.type || 'application/octet-stream',
+				});
+				
+				// Store metadata on the file object to associate with upload-success
+				file.meta = {
+					...file.meta,
+					upload_id: data.upload_id,
+					file_id: data.file_id,
+					object_key: data.object_key,
+				};
+
+				return {
+					method: 'PUT',
+					url: data.upload_url,
+					headers: {
+						'Content-Type': file.type || 'application/octet-stream',
+					},
+				};
 			},
-			// Retry with exponential back-off on transient network failures.
-			retryDelays: [0, 1000, 3000, 5000],
-			// 5 MiB chunks – a good default for most connections.
-			chunkSize: 5 * 1024 * 1024,
-			// Remove the fingerprint from IndexedDB once TUS confirms
-			// the upload is complete, so the file won't reappear in the
-			// Dashboard on the next page load.
-			removeFingerprintOnSuccess: true,
-			// Only pass metadata fields we actually set below.
-			allowedMetaFields: ['channel_id', 'filename', 'filetype'],
 		});
 
 		// GoldenRetriever persists upload state (file blobs + metadata) in
@@ -238,19 +196,30 @@ export function useUppyDirectUpload(
 			setProgress(0);
 		});
 
-		// When each individual file's TUS upload completes, kick off the
-		// FileInfo retrieval from the server.
+		// When each S3 upload completes, notify Mattermost to finalize and register the FileInfo.
 		uppy.on('upload-success', (file) => {
 			if (!file) {
 				return;
 			}
-			const uploadUrl = (file as { tus?: { uploadUrl?: string } }).tus?.uploadUrl ?? '';
-			const uploadId = tusUploadIdFromUrl(uploadUrl);
-			if (!uploadId) {
+			const uploadId = file.meta?.upload_id as string;
+			const fileId = file.meta?.file_id as string;
+			const objectKey = file.meta?.object_key as string;
+			const fileSize = file.size ?? 0;
+			if (!uploadId || !fileId || !objectKey) {
 				return;
 			}
 			pendingFileInfosRef.current.push(
-				fetchTusFileInfo(uploadId).catch((err: unknown) => {
+				Client4.completeDirectUploadSession({
+					upload_id: uploadId,
+					file_id: fileId,
+					object_key: objectKey,
+					file_size: fileSize,
+				}).then((data) => {
+					if (data.file_infos && data.file_infos.length > 0) {
+						return data.file_infos[0] as FileInfo;
+					}
+					throw new Error('No FileInfo returned from complete direct upload');
+				}).catch((err: unknown) => {
 					onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
 					return null as unknown as FileInfo;
 				}),
