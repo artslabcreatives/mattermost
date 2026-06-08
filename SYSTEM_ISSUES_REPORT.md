@@ -42,4 +42,15 @@ Based on the actual system logs and configuration files in the repository, here 
 ✅ **[FIXED]**
 * **Current Status:** The backend image post-processing pipeline was updated to catch decoding failures (e.g. when trying to generate previews for formats like AVIF that the Go standard library cannot natively decode). Instead of creating invalid preview records, the backend now explicitly clears `HasPreviewImage`, `ThumbnailPath`, and `PreviewPath`, allowing the frontend to fall back to native browser rendering or generic icons.
 * **Why it happened:** The server optimistically set `HasPreviewImage = true` and generated invalid thumbnail paths for all images. When a format like AVIF failed to decode, the database still referenced non-existent thumbnail files, causing broken image icons in the chat UI.
+# Updated Sections
+
+### 6. Video preview size uniform
+✅ **[FIXED]**
+* **Current Status:** Video previews now display at a consistent 320x180 size with `object-fit: cover`, ensuring uniform thumbnail appearance across the UI.
+* **Why it happened:** The `SingleImageView` component was updated to enforce fixed width and height for video thumbnails and adjusted CSS.
+
+### 7. Scoped search indexing (Typesense)
+✅ **[FIXED]**
+* **Current Status:** Typesense indexing job completed successfully, now containing 42,478 post documents. Scoped search (`in:{channel}`) works as expected.
+* **Why it happened:** Fixed schema mismatch for Users and re‑ran a bulk indexing job.
 
