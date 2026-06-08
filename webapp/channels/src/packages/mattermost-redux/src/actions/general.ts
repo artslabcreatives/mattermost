@@ -43,11 +43,19 @@ export function getLicenseConfig() {
 	});
 }
 
-export function getCustomProfileAttributeFields() {
-	return bindClientFunc({
-		clientFunc: Client4.getCustomProfileAttributeFields,
-		onSuccess: [GeneralTypes.CUSTOM_PROFILE_ATTRIBUTE_FIELDS_RECEIVED],
-	});
+export function getCustomProfileAttributeFields(): ActionFuncAsync {
+	return async (dispatch, getState) => {
+		const state = getState() as any;
+		const license = state.entities.general.license;
+		if (license?.IsLicensed !== 'true') {
+			return { data: [] };
+		}
+
+		return (bindClientFunc({
+			clientFunc: Client4.getCustomProfileAttributeFields,
+			onSuccess: [GeneralTypes.CUSTOM_PROFILE_ATTRIBUTE_FIELDS_RECEIVED],
+		}) as any)(dispatch, getState);
+	};
 }
 
 export function logClientError(message: string, level = LogLevel.Error) {

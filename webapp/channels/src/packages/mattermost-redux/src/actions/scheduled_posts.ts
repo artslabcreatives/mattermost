@@ -33,6 +33,13 @@ export function createSchedulePost(schedulePost: ScheduledPost, teamId: string, 
 
 export function fetchTeamScheduledPosts(teamId: string, includeDirectChannels: boolean, prune?: false) {
 	return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+		const state = getState() as any;
+		const license = state.entities.general.license;
+		const config = state.entities.general.config;
+		if (config.ScheduledPosts !== 'true' || license?.IsLicensed !== 'true') {
+			return { data: {} };
+		}
+
 		let scheduledPosts;
 
 		try {
