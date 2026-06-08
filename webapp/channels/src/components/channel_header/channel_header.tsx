@@ -26,17 +26,54 @@ import ChannelHeaderTitle from './channel_header_title';
 import ChannelInfoButton from './channel_info_button';
 import HeaderIconWrapper from './components/header_icon_wrapper';
 
+import SearchIcon from 'components/widgets/icons/search_icon';
+
 import type { PropsFromRedux } from './index';
 
 export type Props = WrappedComponentProps & PropsFromRedux;
 
-class ChannelHeader extends React.PureComponent<Props> {
+class ChannelHeader extends React.PureComponent<Props, { showLocalSearch: boolean; localSearchTerms: string }> {
 	toggleFavoriteRef: RefObject<HTMLButtonElement>;
 
 	constructor(props: Props) {
 		super(props);
 		this.toggleFavoriteRef = React.createRef();
+		this.state = {
+			showLocalSearch: false,
+			localSearchTerms: '',
+		};
 	}
+
+	toggleLocalSearch = () => {
+		this.setState((prevState) => ({
+			showLocalSearch: !prevState.showLocalSearch,
+			localSearchTerms: prevState.showLocalSearch ? '' : prevState.localSearchTerms,
+		}));
+	};
+
+	handleLocalSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		this.setState({ localSearchTerms: e.target.value });
+	};
+
+	handleLocalSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === 'Escape') {
+			this.toggleLocalSearch();
+		}
+	};
+
+	handleLocalSearchSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		const terms = this.state.localSearchTerms.trim();
+		if (!terms) {
+			return;
+		}
+		const { channelSearchName } = this.props;
+		if (channelSearchName) {
+			const query = `in:${channelSearchName} ${terms}`;
+			this.props.actions.updateSearchTerms(query);
+			this.props.actions.showSearchResults();
+		}
+	};
 
 	componentDidMount() {
 		this.props.actions.getCustomEmojisInText(this.props.channel ? this.props.channel.header : '');
@@ -361,54 +398,118 @@ class ChannelHeader extends React.PureComponent<Props> {
 							id='channelHeaderInfo'
 							className='channel-header__info'
 						>
-							<div
-								className='channel-header__title dropdown'
-							>
-								<ChannelHeaderTitle
-									dmUser={dmUser}
-									gmMembers={gmMembers}
-									remoteNames={this.props.remoteNames}
-								/>
+							{this.state.showLocalSearch ? (
 								<div
-									className='channel-header__icons'
+									style={{
+										position: 'relative',
+										display: 'flex',
+										alignItems: 'center',
+										width: '100%',
+										maxWidth: '350px',
+									}}
 								>
-									{muteTrigger}
-									{memberListButton}
-									{pinnedButton}
-									{this.props.isFileAttachmentsEnabled &&
-										<HeaderIconWrapper
-											buttonClass={pinnedFilesIconClass}
-											buttonId={'channelHeaderPinnedFilesButton'}
-											onClick={this.showPinnedFiles}
-											tooltip={this.props.intl.formatMessage({ id: 'channel_header.pinnedFiles', defaultMessage: 'Pinned files' })}
+									<form
+										onSubmit={this.handleLocalSearchSubmit}
+										style={{
+											display: 'flex',
+											alignItems: 'center',
+											width: '100%',
+										}}
+									>
+										<input
+											type='text'
+											className='form-control'
+											style={{
+												height: '32px',
+												borderRadius: '4px',
+												border: '1px solid var(--button-bg)',
+												padding: '0 8px 0 32px',
+												width: '100%',
+												backgroundColor: 'var(--center-channel-bg)',
+												color: 'var(--center-channel-color)',
+											}}
+											placeholder={this.props.intl.formatMessage({
+												id: 'channel_header.search_placeholder',
+												defaultMessage: 'Search in this chat...',
+											})}
+											value={this.state.localSearchTerms}
+											onChange={this.handleLocalSearchChange}
+											onKeyDown={this.handleLocalSearchKeyDown}
+											autoFocus={true}
+										/>
+										<SearchIcon
+											style={{
+												position: 'absolute',
+												left: '10px',
+												top: '50%',
+												transform: 'translateY(-50%)',
+												color: 'var(--center-channel-color-50)',
+												pointerEvents: 'none',
+											}}
+										/>
+										<button
+											type='button'
+											className='btn btn-icon btn-xs'
+											style={{
+												marginLeft: '8px',
+												color: 'var(--center-channel-color-50)',
+											}}
+											onClick={this.toggleLocalSearch}
 										>
-											{pinnedFilesIcon}
-										</HeaderIconWrapper>
-									}
-									{this.props.isFileAttachmentsEnabled &&
-										<HeaderIconWrapper
-											buttonClass={channelFilesIconClass}
-											buttonId={'channelHeaderFilesButton'}
-											onClick={this.showChannelFiles}
-											tooltip={this.props.intl.formatMessage({ id: 'channel_header.channelFiles', defaultMessage: 'Channel files' })}
-										>
-											{channelFilesIcon}
-										</HeaderIconWrapper>
-									}
+											<i className='icon icon-close' />
+										</button>
+									</form>
 								</div>
+							) : (
 								<div
-									id='channelHeaderDescription'
-									className='channel-header__description'
+									className='channel-header__title dropdown'
 								>
-									{dmHeaderTextStatus}
-									{hasGuestsText}
-									<ChannelHeaderText
-										teamId={teamId}
-										channel={channel}
+									<ChannelHeaderTitle
 										dmUser={dmUser}
+										gmMembers={gmMembers}
+										remoteNames={this.props.remoteNames}
 									/>
+									<div
+										className='channel-header__icons'
+									>
+										{muteTrigger}
+										{memberListButton}
+										{pinnedButton}
+										{this.props.isFileAttachmentsEnabled &&
+											<HeaderIconWrapper
+												buttonClass={pinnedFilesIconClass}
+												buttonId={'channelHeaderPinnedFilesButton'}
+												onClick={this.showPinnedFiles}
+												tooltip={this.props.intl.formatMessage({ id: 'channel_header.pinnedFiles', defaultMessage: 'Pinned files' })}
+											>
+												{pinnedFilesIcon}
+											</HeaderIconWrapper>
+										}
+										{this.props.isFileAttachmentsEnabled &&
+											<HeaderIconWrapper
+												buttonClass={channelFilesIconClass}
+												buttonId={'channelHeaderFilesButton'}
+												onClick={this.showChannelFiles}
+												tooltip={this.props.intl.formatMessage({ id: 'channel_header.channelFiles', defaultMessage: 'Channel files' })}
+											>
+												{channelFilesIcon}
+											</HeaderIconWrapper>
+										}
+									</div>
+									<div
+										id='channelHeaderDescription'
+										className='channel-header__description'
+									>
+										{dmHeaderTextStatus}
+										{hasGuestsText}
+										<ChannelHeaderText
+											teamId={teamId}
+											channel={channel}
+											dmUser={dmUser}
+										/>
+									</div>
 								</div>
-							</div>
+							)}
 						</div>
 					</div>
 					{(!channel.shared || this.props.sharedChannelsPluginsEnabled) && (
@@ -420,6 +521,16 @@ class ChannelHeader extends React.PureComponent<Props> {
 							<CallButton />
 						</>
 					)}
+					<HeaderIconWrapper
+						buttonId={'channelHeaderLocalSearchButton'}
+						onClick={this.toggleLocalSearch}
+						tooltip={'Search in this chat'}
+						buttonClass={classNames('channel-header__icon', {
+							'channel-header__icon--active': this.state.showLocalSearch,
+						})}
+					>
+						<SearchIcon className='icon icon--standard' aria-hidden='true' />
+					</HeaderIconWrapper>
 					<ChannelInfoButton channel={channel} />
 				</div>
 			</div>

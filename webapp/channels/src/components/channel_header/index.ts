@@ -17,6 +17,7 @@ import {
 	getMyCurrentChannelMembership,
 	isCurrentChannelMuted,
 	getCurrentChannelStats,
+	getCurrentChannelNameForSearchShortcut,
 } from 'mattermost-redux/selectors/entities/channels';
 import { getConfig, getFeatureFlagValue } from 'mattermost-redux/selectors/entities/general';
 import { getRemoteNamesForChannel } from 'mattermost-redux/selectors/entities/shared_channels';
@@ -37,6 +38,8 @@ import {
 	showChannelFiles,
 	closeRightHandSide,
 	showChannelMembers,
+	updateSearchTerms,
+	showSearchResults,
 } from 'actions/views/rhs';
 import { getRhsState } from 'selectors/rhs';
 import { makeGetCustomStatus, isCustomStatusEnabled, isCustomStatusExpired } from 'selectors/views/custom_status';
@@ -107,6 +110,7 @@ function makeMapStateToProps() {
 			timestampUnits,
 			hideGuestTags: config.HideGuestTags === 'true',
 			sharedChannelsPluginsEnabled,
+			channelSearchName: getCurrentChannelNameForSearchShortcut(state),
 		};
 	};
 }
@@ -121,6 +125,8 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
 		updateChannelNotifyProps,
 		showChannelMembers,
 		fetchChannelRemotes,
+		updateSearchTerms,
+		showSearchResults,
 	}, dispatch),
 });
 
