@@ -236,34 +236,51 @@ export default class SingleImageView extends React.PureComponent<Props, State> {
 							>
 								<div className={classNames(permalinkClass)}>
 									{fileType === FileTypes.VIDEO ? (
-										<div
-											className='video-thumbnail-container'
-											onClick={this.handleImageClick}
-											style={{ position: 'relative', cursor: 'pointer', display: 'inline-block' }}
-										>
-											<video
-												className={classNames('normal', minPreviewClass, permalinkClass)}
-												src={fileURL}
-												preload='metadata'
-												onLoadedMetadata={this.imageLoaded}
-												style={{ display: 'block', maxWidth: '100%', maxHeight: '450px', objectFit: 'contain', borderRadius: '4px' }}
-											/>
-											<div style={{
-												position: 'absolute',
-												top: '50%',
-												left: '50%',
-												transform: 'translate(-50%, -50%)',
-												backgroundColor: 'rgba(0, 0, 0, 0.7)',
-												borderRadius: '8px',
-												padding: '12px 24px',
-												display: 'flex',
-												alignItems: 'center',
-												justifyContent: 'center',
-												pointerEvents: 'none',
-											}}>
-												<svg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
-													<path d='M8 5V19L19 12L8 5Z' fill='white' />
-												</svg>
+										<div style={{ display: 'inline-block', maxWidth: '100%' }}>
+											<div
+												className='video-thumbnail-container'
+												onClick={this.handleImageClick}
+												style={{ position: 'relative', cursor: 'pointer', display: 'inline-block' }}
+											>
+												<video
+													className={classNames('normal', minPreviewClass, permalinkClass)}
+													src={fileURL}
+													preload='metadata'
+													onLoadedMetadata={this.imageLoaded}
+													style={{ display: 'block', maxWidth: '100%', maxHeight: '450px', objectFit: 'contain', borderRadius: '4px' }}
+												/>
+												<div style={{
+													position: 'absolute',
+													top: '50%',
+													left: '50%',
+													transform: 'translate(-50%, -50%)',
+													backgroundColor: 'rgba(0, 0, 0, 0.7)',
+													borderRadius: '8px',
+													padding: '12px 24px',
+													display: 'flex',
+													alignItems: 'center',
+													justifyContent: 'center',
+													pointerEvents: 'none',
+												}}>
+													<svg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+														<path d='M8 5V19L19 12L8 5Z' fill='white' />
+													</svg>
+												</div>
+											</div>
+											<div
+												onClick={this.handleImageClick}
+												style={{
+													marginTop: '8px',
+													fontSize: '13px',
+													fontWeight: 600,
+													color: 'var(--center-channel-color, #3d3c40)',
+													opacity: 0.8,
+													wordBreak: 'break-all',
+													cursor: 'pointer',
+												}}
+												className='video-title'
+											>
+												{fileInfo.name}
 											</div>
 										</div>
 									) : (
