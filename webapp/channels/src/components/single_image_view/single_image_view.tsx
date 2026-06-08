@@ -240,14 +240,14 @@ export default class SingleImageView extends React.PureComponent<Props, State> {
 											<div
 												className='video-thumbnail-container'
 												onClick={this.handleImageClick}
-												style={{ position: 'relative', cursor: 'pointer', display: 'inline-block' }}
+												style={{ position: 'relative', cursor: 'pointer', display: 'inline-block', width: '320px', height: '180px', overflow: 'hidden', borderRadius: '4px', backgroundColor: '#000' }}
 											>
 												<video
 													className={classNames('normal', minPreviewClass, permalinkClass)}
 													src={fileURL}
 													preload='metadata'
 													onLoadedMetadata={this.imageLoaded}
-													style={{ display: 'block', maxWidth: '100%', maxHeight: '450px', objectFit: 'contain', borderRadius: '4px' }}
+													style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
 												/>
 												<div style={{
 													position: 'absolute',
@@ -277,6 +277,7 @@ export default class SingleImageView extends React.PureComponent<Props, State> {
 													opacity: 0.8,
 													wordBreak: 'break-all',
 													cursor: 'pointer',
+													maxWidth: '320px',
 												}}
 												className='video-title'
 											>
