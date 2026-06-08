@@ -242,11 +242,11 @@ export default class SingleImageView extends React.PureComponent<Props, State> {
 											style={{ position: 'relative', cursor: 'pointer', display: 'inline-block' }}
 										>
 											<video
-												className={classNames('post-image normal', minPreviewClass, permalinkClass)}
+												className={classNames('normal', minPreviewClass, permalinkClass)}
 												src={fileURL}
 												preload='metadata'
 												onLoadedMetadata={this.imageLoaded}
-												style={{ display: 'block', maxWidth: '100%', maxHeight: '450px', objectFit: 'contain' }}
+												style={{ display: 'block', maxWidth: '100%', maxHeight: '450px', objectFit: 'contain', borderRadius: '4px' }}
 											/>
 											<div style={{
 												position: 'absolute',
