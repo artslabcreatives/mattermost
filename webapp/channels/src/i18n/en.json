@@ -3301,6 +3301,7 @@
   "adminConsole.list.table.rowsCount.20": "20",
   "adminConsole.list.table.rowsCount.50": "50",
   "adminConsole.list.table.rowsCount.show(rowsPerPage)": "rows per page",
+  "advanced_create_comment.alsoSendToChannel": "Also send to {channelName}",
   "advanced_create_post.doNotDisturbWarning": "{displayName} is set to <b>Do Not Disturb</b>",
   "advanced_text_editor.remote_user_hour": "The time for {user} is {time}",
   "advanced_textbox.max_length_error": "Text exceeds the maximum character limit of {maxLength} characters.",

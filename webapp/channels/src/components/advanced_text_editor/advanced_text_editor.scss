@@ -256,3 +256,27 @@
 .FileUpload--hidden {
     display: none;
 }
+
+.AdvancedTextEditor__send-to-channel {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding: 8px 16px 4px;
+    color: rgba(var(--center-channel-color-rgb), 0.75);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 400;
+    gap: 8px;
+
+    strong {
+        font-weight: 600;
+    }
+
+    .AdvancedTextEditor__send-to-channel-checkbox {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        cursor: pointer;
+        accent-color: var(--button-bg);
+    }
+}

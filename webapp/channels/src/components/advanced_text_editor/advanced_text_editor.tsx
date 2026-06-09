@@ -17,7 +17,7 @@ import { savePreferences } from 'mattermost-redux/actions/preferences';
 import { Permissions } from 'mattermost-redux/constants';
 import { getChannel, makeGetChannel, getDirectChannel } from 'mattermost-redux/selectors/entities/channels';
 import { getConfig, getFeatureFlagValue } from 'mattermost-redux/selectors/entities/general';
-import { get, getBool, getInt } from 'mattermost-redux/selectors/entities/preferences';
+import { get, getBool, getInt, isCollapsedThreadsEnabled } from 'mattermost-redux/selectors/entities/preferences';
 import { haveIChannelPermission } from 'mattermost-redux/selectors/entities/roles';
 import { getCurrentUserId, isCurrentUserGuestUser, getStatusForUserId, makeGetDisplayName } from 'mattermost-redux/selectors/entities/users';
 
@@ -192,6 +192,7 @@ const AdvancedTextEditor = ({
 	const showDndWarning = useSelector((state: GlobalState) => (teammateId ? getStatusForUserId(state, teammateId) === UserStatuses.DND : false));
 	const selectedPostFocussedAt = useSelector((state: GlobalState) => getSelectedPostFocussedAt(state));
 	const aiRewriteEnabled = useGetAgentsBridgeEnabled();
+	const collapsedThreadsEnabled = useSelector(isCollapsedThreadsEnabled);
 
 	const canPost = useSelector((state: GlobalState) => {
 		const channel = getChannel(state, channelId);
@@ -402,6 +403,18 @@ const AdvancedTextEditor = ({
 			}
 		}
 	}, [handleSubmit, draft, errorClass]);
+
+	// "Also send to channel" is only meaningful for thread replies when collapsed threads is on
+	// (otherwise replies already appear in the channel).
+	const showSendToChannel = !isInEditMode && Boolean(rootId) && location === Locations.RHS_COMMENT && collapsedThreadsEnabled;
+	const alsoSendToChannel = Boolean(draft.props?.also_send_to_channel);
+
+	const handleToggleSendToChannel = useCallback(() => {
+		handleDraftChange({
+			...draft,
+			props: { ...draft.props, also_send_to_channel: !draft.props?.also_send_to_channel },
+		}, { instant: true });
+	}, [draft, handleDraftChange]);
 
 	const handleCancel = useCallback(() => {
 		handleDraftChange({
@@ -841,6 +854,21 @@ const AdvancedTextEditor = ({
 									canRemove={!showPreview}
 								/>
 							</div>
+						)}
+						{showSendToChannel && (
+							<label className='AdvancedTextEditor__send-to-channel'>
+								<input
+									type='checkbox'
+									className='AdvancedTextEditor__send-to-channel-checkbox'
+									checked={alsoSendToChannel}
+									onChange={handleToggleSendToChannel}
+								/>
+								<FormattedMessage
+									id='advanced_create_comment.alsoSendToChannel'
+									defaultMessage='Also send to {channelName}'
+									values={{ channelName: <strong>{channelDisplayName}</strong> }}
+								/>
+							</label>
 						)}
 						<Textbox
 							hasLabels={isInEditMode ? false : Boolean(priorityLabels || burnOnReadLabels)}

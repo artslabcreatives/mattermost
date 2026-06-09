@@ -29,9 +29,11 @@ import { runMessageWillBePostedHooks, runSlashCommandWillBePostedHooks } from 'a
 import * as PostActions from 'actions/post_actions';
 import { createSchedulePostFromDraft } from 'actions/post_actions';
 import { isBurnOnReadEnabled } from 'selectors/burn_on_read';
+import { getPermalinkURL } from 'selectors/urls';
 
 import EmojiMap from 'utils/emoji_map';
 import { containsAtChannel, groupsMentionedInText } from 'utils/post_utils';
+import { getSiteURL } from 'utils/url';
 import * as Utils from 'utils/utils';
 
 import type { ActionFunc, ActionFuncAsync, GlobalState } from 'types/store';
@@ -97,6 +99,13 @@ export function submitPost(
 
 		post = hookResult.data!;
 
+		// "Also send to channel" is a thread-reply only option. The flag is carried on the
+		// draft props but must not be persisted on the reply itself, so strip it here.
+		const alsoSendToChannel = Boolean(rootId) && Boolean(post.props?.also_send_to_channel);
+		if (post.props && 'also_send_to_channel' in post.props) {
+			delete post.props.also_send_to_channel;
+		}
+
 		if (schedulingInfo) {
 			const scheduledPost = scheduledPostFromPost(post, schedulingInfo);
 			scheduledPost.file_ids = draft.fileInfos.map((fileInfo) => fileInfo.id);
@@ -119,7 +128,29 @@ export function submitPost(
 			return response;
 		}
 
-		return dispatch(PostActions.createPost(post, draft.fileInfos, afterSubmit, options));
+		const result = await dispatch(PostActions.createPost(post, draft.fileInfos, afterSubmit, options));
+
+		// When "Also send to channel" is checked, post an additional root-level message in the
+		// channel that mirrors the reply and links back to the original thread message via a
+		// permalink (rendered by Mattermost as a preview card).
+		if (alsoSendToChannel && !result?.error) {
+			const permalink = `${getSiteURL()}${getPermalinkURL(state, channel.team_id, rootId)}`;
+			const channelCopyTime = Utils.getTimestamp();
+			const channelCopy = {
+				file_ids: [],
+				message: `${draft.message}\n\n${permalink}`,
+				channel_id: channelId,
+				root_id: '',
+				pending_post_id: `${userId}:${channelCopyTime}`,
+				user_id: userId,
+				create_at: channelCopyTime,
+				props: { also_sent_to_channel_root_id: rootId },
+			} as unknown as Post;
+
+			dispatch(PostActions.createPost(channelCopy, [], undefined, {}));
+		}
+
+		return result;
 	};
 }
 
