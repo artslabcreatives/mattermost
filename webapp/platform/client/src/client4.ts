@@ -2717,33 +2717,7 @@ export default class Client4 {
 		});
 	};
 
-	// Presigned direct-to-S3 upload routes
-
-	/**
-	 * Request a presigned PUT URL for direct browser → S3 upload.
-	 * Only available when the S3 file backend is configured.
-	 * @deprecated Use createDirectUploadSession instead.
-	 */
-	createPresignedUploadURL = (params: { channel_id: string; filename: string; content_type: string }) => {
-		return this.doFetch<{ file_id: string; upload_url: string; key: string }>(
-			`${this.getFilesRoute()}/upload-url`,
-			{ method: 'post', body: JSON.stringify(params) },
-		);
-	};
-
-	/**
-	 * Notify the server that a direct-to-S3 upload has completed.
-	 * The server creates the FileInfo record and schedules image processing.
-	 * @deprecated Use completeDirectUploadSession instead.
-	 */
-	completeDirectUpload = (params: { file_id: string; channel_id: string; filename: string; key: string; file_size: number }) => {
-		return this.doFetch<{ file_infos: Array<{ id: string;[key: string]: unknown }>; client_ids: string[] }>(
-			`${this.getFilesRoute()}/complete-upload`,
-			{ method: 'post', body: JSON.stringify(params) },
-		);
-	};
-
-	// Session-based direct-to-S3 upload routes (preferred)
+	// Session-based direct-to-S3 upload routes
 
 	/**
 	 * Create a server-managed direct upload session.

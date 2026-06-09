@@ -2,44 +2,31 @@
 // See LICENSE.txt for license information.
 
 /**
- * UppyFileUpload renders a full-featured Uppy Dashboard inside the post
- * composer.  It supports:
+ * UppyFileUpload is the attachment (paperclip) button used when
+ * EnableDirectUploads=true on the server.
  *
- *   Local:   Browse, Webcam, Microphone, Screencast, Image Editor
- *   Remote:  Google Drive, Dropbox, OneDrive, Box, Unsplash, URL
- *   Drop:    Drag-and-drop anywhere on the page (via @uppy/drop-target)
- *   Upload:  TUS resumable upload through /api/v4/files/tus/
+ * It deliberately renders NO Uppy Dashboard / popup. Clicking the paperclip
+ * opens the browser's native file picker; selected (or pasted / drag-dropped)
+ * files are handed to Uppy, which uploads them straight to S3 via presigned
+ * PUT (@uppy/aws-s3). Progress and previews are shown by Mattermost's normal
+ * attachment thumbnails above the message box — the parent composer wires
+ * those up through onFilesAdded / onFilesUploaded.
+ *
+ *   Browse: native <input type="file"> behind the paperclip button
+ *   Drop:   drag-and-drop anywhere on the page (via @uppy/drop-target)
+ *   Paste:  Ctrl/Cmd+V of files in the composer
+ *   Upload: direct browser → S3 via presigned PUT (@uppy/aws-s3)
  *   Recover: @uppy/golden-retriever persists state across page reloads
- *
- * Rendered only when EnableDirectUploads=true on the server.
  */
 
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 import { useIntl } from 'react-intl';
 
 import type { FileInfo } from '@mattermost/types/files';
 import { PaperclipIcon } from '@mattermost/compass-icons/components';
 
 import type Uppy from '@uppy/core';
-import Dashboard from '@uppy/dashboard';
-import Webcam from '@uppy/webcam';
-import Audio from '@uppy/audio';
-import ScreenCapture from '@uppy/screen-capture';
-import Url from '@uppy/url';
-import GoogleDrive from '@uppy/google-drive';
-import Dropbox from '@uppy/dropbox';
-import OneDrive from '@uppy/onedrive';
-import Box from '@uppy/box';
-import Unsplash from '@uppy/unsplash';
-import ImageEditor from '@uppy/image-editor';
 import DropTarget from '@uppy/drop-target';
-
-import '@uppy/core/css/style.min.css';
-import '@uppy/dashboard/css/style.min.css';
-import '@uppy/audio/dist/style.min.css';
-import '@uppy/screen-capture/dist/style.min.css';
-import '@uppy/image-editor/dist/style.min.css';
-import '@uppy/url/dist/style.min.css';
 
 import WithTooltip from 'components/with_tooltip';
 import KeyboardShortcutSequence, { KEYBOARD_SHORTCUTS } from 'components/keyboard_shortcuts/keyboard_shortcuts_sequence';
@@ -48,9 +35,6 @@ import { useUppyDirectUpload } from 'hooks/useUppyDirectUpload';
 import { hasPlainText, createFileFromClipboardDataItem } from 'utils/paste';
 
 import './uppy_file_upload.scss';
-
-// Public companion URL — nginx proxies /api/companion/ → companion:3020
-const COMPANION_URL = `${window.location.origin}/api/companion`;
 
 export type RestoredFileInfo = {
 	id: string;
@@ -75,8 +59,8 @@ export type Props = {
 	 */
 	onFilesRestored?: (files: RestoredFileInfo[]) => void;
 	/**
-	 * Called when the user removes a file from the Uppy Dashboard panel.
-	 * The id is the Uppy file id that was previously reported via onFilesRestored.
+	 * Called when a file is removed from the Uppy instance.
+	 * The id is the Uppy file id that was previously reported via onFilesAdded.
 	 */
 	onFileRemoved?: (uppyFileId: string) => void;
 	onUploadStart?: () => void;
@@ -94,18 +78,18 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 	onUploadError,
 }, ref) {
 	const { formatMessage } = useIntl();
-	const [panelOpen, setPanelOpen] = useState(false);
-	const containerRef = useRef<HTMLDivElement>(null);
-	const wrapperRef = useRef<HTMLDivElement>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 	const uppyRef = useRef<Uppy | null>(null);
 
 	// Keep callback refs stable so the effect below doesn't need to re-run.
 	const onFilesAddedRef = useRef(onFilesAdded);
 	const onFilesRestoredRef = useRef(onFilesRestored);
 	const onFileRemovedRef = useRef(onFileRemoved);
+	const onUploadStartRef = useRef(onUploadStart);
 	onFilesAddedRef.current = onFilesAdded;
 	onFilesRestoredRef.current = onFilesRestored;
 	onFileRemovedRef.current = onFileRemoved;
+	onUploadStartRef.current = onUploadStart;
 
 	useImperativeHandle(ref, () => ({
 		removeFile: (uppyFileId: string) => {
@@ -113,15 +97,21 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 		},
 	}), []);
 
-	// TUS uploads complete asynchronously on the server side; the client only
-	// knows that bytes were transmitted.  Notify the parent so it knows the
-	// upload session is done (FileInfo will appear via WebSocket event).
+	// Called by the hook once every upload batch has settled, with the
+	// registered FileInfo records for the files that completed successfully.
 	const handleComplete = useCallback((fileInfos: FileInfo[]) => {
-		// Forward whatever the hook resolved (may be empty for TUS uploads).
+		// Forward whatever the hook resolved to the composer/draft.
 		onFilesUploaded(fileInfos);
-		// Clear the Uppy file list so the next panel open starts fresh.
-		uppyRef.current?.clear();
-		setPanelOpen(false);
+
+		// Remove only the files that have actually finished (completed or
+		// errored) so the Uppy queue (and its IndexedDB state) is cleaned up
+		// without disturbing files still uploading in another batch.
+		const uppy = uppyRef.current;
+		uppy?.getFiles().forEach((file) => {
+			if (file.progress?.uploadComplete || file.error) {
+				uppy.removeFile(file.id);
+			}
+		});
 	}, [onFilesUploaded]);
 
 	const { uppy, uploading, progress } = useUppyDirectUpload({
@@ -130,45 +120,16 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 		onError: onUploadError,
 	});
 
-	// Keep the ref in sync so handleComplete can call clear() on the Uppy instance.
+	// Keep the ref in sync so handleComplete / removeFile can reach the instance.
 	uppyRef.current = uppy;
 
-	// Mount the Uppy Dashboard once — the div is always in the DOM (shown/hidden
-	// via CSS), so the Dashboard never needs to be torn down and re-created.
+	// Wire Uppy events and the page-wide drop target. No Dashboard is mounted —
+	// previews are rendered by the composer via the callbacks below.
 	useEffect(() => {
-		if (!containerRef.current) {
-			return;
-		}
-
-		uppy
-			.use(Dashboard, {
-				inline: true,
-				target: containerRef.current,
-				showProgressDetails: true,
-				proudlyDisplayPoweredByUppy: false,
-				theme: 'auto',
-				width: '100%',
-				height: 400,
-				plugins: [
-					'Webcam', 'Audio', 'ScreenCapture',
-					'GoogleDrive', 'Dropbox', 'OneDrive', 'Box', 'Unsplash', 'Url',
-					'ImageEditor',
-				],
-			})
-			.use(Webcam, { id: 'Webcam', target: Dashboard })
-			.use(Audio, { id: 'Audio', target: Dashboard })
-			.use(ScreenCapture, { id: 'ScreenCapture', target: Dashboard })
-			.use(GoogleDrive, { id: 'GoogleDrive', companionUrl: COMPANION_URL, target: Dashboard })
-			.use(Dropbox, { id: 'Dropbox', companionUrl: COMPANION_URL, target: Dashboard })
-			.use(OneDrive, { id: 'OneDrive', companionUrl: COMPANION_URL, target: Dashboard })
-			.use(Box, { id: 'Box', companionUrl: COMPANION_URL, target: Dashboard })
-			.use(Unsplash, { id: 'Unsplash', companionUrl: COMPANION_URL, target: Dashboard })
-			.use(Url, { id: 'Url', companionUrl: COMPANION_URL, target: Dashboard })
-			.use(ImageEditor, { id: 'ImageEditor', target: Dashboard })
-			// DropTarget makes the whole page a drop zone.
-			// Files dropped onto the chat area are added to Uppy and the
-			// panel is opened automatically (see file-added handler below).
-			.use(DropTarget, { id: 'DropTarget', target: document.body });
+		// DropTarget makes the whole page a drop zone; dropped files are added
+		// to Uppy and uploaded straight away (the legacy FileUpload is mounted
+		// with skipDragEvents, so this is the only active drop handler).
+		uppy.use(DropTarget, { id: 'DropTarget', target: document.body });
 
 		// Batch-collect files that GoldenRetriever restores from IndexedDB and
 		// notify the parent once after all are queued (setTimeout 0 lets all
@@ -199,26 +160,13 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 			} else {
 				onFilesAddedRef.current?.([queuedFile]);
 			}
-			setPanelOpen(true);
-			onUploadStart?.();
+			onUploadStartRef.current?.();
 		});
 
 		uppy.on('file-removed', (file) => {
 			onFileRemovedRef.current?.(file.id);
 		});
 	}, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-	const togglePanel = useCallback(() => {
-		if (disabled) {
-			return;
-		}
-		setPanelOpen((prev) => {
-			if (!prev) {
-				onUploadStart?.();
-			}
-			return !prev;
-		});
-	}, [disabled, onUploadStart]);
 
 	// Handle paste events: when the user pastes files from their file manager
 	// (e.g. Ctrl+C on a file, then Ctrl+V in the composer) route them through
@@ -250,13 +198,15 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 
 			e.preventDefault();
 
-			for (const file of files) {
-				try {
-					uppy.addFile({ name: file.name, type: file.type, data: file });
-				} catch {
-					// addFile throws if the file type is restricted or the file is a duplicate;
-					// silently ignore so other paste-file adds can still proceed.
-				}
+			// Add all pasted files in a single addFiles() call so they form one
+			// upload batch (one files-added event) instead of one batch per file.
+			// addFiles() logs/notifies on restricted or duplicate files but does
+			// not throw for valid ones, so a single bad file won't drop the rest.
+			try {
+				uppy.addFiles(files.map((file) => ({ name: file.name, type: file.type, data: file })));
+			} catch {
+				// addFiles aggregates non-restriction errors into a throw; the
+				// valid files were still added, so there is nothing to recover.
 			}
 		}
 
@@ -264,19 +214,33 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 		return () => document.removeEventListener('paste', onPaste);
 	}, []);
 
-	// Close the panel when the user clicks outside the component.
-	useEffect(() => {
-		if (!panelOpen) {
-			return undefined;
+	// Paperclip click → open the native file picker.
+	const openFilePicker = useCallback(() => {
+		if (disabled) {
+			return;
 		}
-		const handleClickOutside = (e: MouseEvent) => {
-			if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-				setPanelOpen(false);
+		fileInputRef.current?.click();
+	}, [disabled]);
+
+	// Native <input type="file"> change → hand the chosen files to Uppy.
+	const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+		const input = e.target;
+		const fileList = input.files;
+		if (fileList && fileList.length > 0) {
+			const uppy = uppyRef.current;
+			if (uppy) {
+				try {
+					uppy.addFiles(Array.from(fileList).map((file) => ({ name: file.name, type: file.type, data: file })));
+				} catch {
+					// addFiles throws an aggregate error for restricted/duplicate
+					// files; the valid ones were still queued.
+				}
 			}
-		};
-		document.addEventListener('mousedown', handleClickOutside);
-		return () => document.removeEventListener('mousedown', handleClickOutside);
-	}, [panelOpen]);
+		}
+
+		// Reset so selecting the same file again still fires onChange.
+		input.value = '';
+	}, []);
 
 	const label = formatMessage({
 		id: 'file_upload.upload_files',
@@ -284,10 +248,7 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 	});
 
 	return (
-		<div
-			className='UppyFileUpload'
-			ref={wrapperRef}
-		>
+		<div className='UppyFileUpload'>
 			<WithTooltip
 				title={
 					<KeyboardShortcutSequence
@@ -303,7 +264,7 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 					aria-label={label}
 					className='style--none'
 					disabled={disabled}
-					onClick={togglePanel}
+					onClick={openFilePicker}
 				>
 					<PaperclipIcon
 						size={18}
@@ -312,6 +273,16 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 					/>
 				</button>
 			</WithTooltip>
+
+			<input
+				ref={fileInputRef}
+				type='file'
+				multiple={true}
+				style={{display: 'none'}}
+				onChange={handleInputChange}
+				aria-hidden='true'
+				tabIndex={-1}
+			/>
 
 			{/* Inline progress bar – shown only while an upload is active. */}
 			{uploading && (
@@ -328,18 +299,12 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 				>
 					<div
 						className='UppyFileUpload__progress-bar-fill'
-						style={{ width: `${progress}%` }}
+						style={{width: `${progress}%`}}
 					/>
 				</div>
 			)}
-
-			<div
-				className={`UppyFileUpload__panel${panelOpen ? '' : ' UppyFileUpload__panel--hidden'}`}
-				ref={containerRef}
-			/>
 		</div>
 	);
 });
 
 export default UppyFileUpload;
-

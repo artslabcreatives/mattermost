@@ -66,12 +66,15 @@ function TeamController(props: Props) {
 		InitialLoadingScreen.stop('team_controller');
 		DesktopApp.reactAppInitialized();
 		async function fetchAllChannels() {
-			await props.fetchAllMyTeamsChannels();
-			setInitialChannelsLoaded(true);
+			try {
+				await props.fetchAllMyTeamsChannels();
+			} finally {
+				setInitialChannelsLoaded(true);
+			}
 		}
 
 		props.fetchAllMyChannelMembers();
-		fetchAllChannels();
+		void fetchAllChannels();
 	}, []);
 
 	useEffect(() => {

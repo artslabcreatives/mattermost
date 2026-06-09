@@ -2,8 +2,8 @@
 // See LICENSE.txt for license information.
 
 /**
- * useUppyDirectUpload provides an Uppy instance pre-configured for
- * TUS resumable uploads via the Mattermost TUS endpoint at /api/v4/files/tus/.
+ * useUppyDirectUpload provides an Uppy instance pre-configured for direct
+ * browser → S3 uploads using presigned PUT URLs (the @uppy/aws-s3 plugin).
  *
  * When the `EnableDirectUploads` server config flag is true the webapp
  * replaces the legacy append-based upload path with this hook.
@@ -12,17 +12,17 @@
  * -----
  * const { uppy, uploading, progress, startUpload } = useUppyDirectUpload({ channelId });
  *
- * All files added to the Uppy instance are uploaded via TUS chunked protocol.
- * TUS provides built-in resumability: if a network interruption occurs the
- * upload resumes automatically from the last acknowledged byte, even after
- * an IP address change.
+ * Upload flow (per file):
+ *   1. createDirectUploadSession() — the server returns a presigned PUT URL
+ *      plus an upload_id / file_id / object_key for the pending object.
+ *   2. The @uppy/aws-s3 plugin PUTs the file bytes directly to S3. The bytes
+ *      never pass through the Mattermost server.
+ *   3. completeDirectUploadSession() — the server verifies the object exists
+ *      and registers a Mattermost FileInfo record, which is returned to the
+ *      caller so the file behaves exactly as it did on the legacy path.
  *
  * The @uppy/golden-retriever plugin stores upload metadata in IndexedDB so
  * that in-progress uploads survive page refreshes and browser restarts.
- *
- * After each TUS upload the hook retrieves the Mattermost FileInfo record from
- * GET /api/v4/files/tus/fileinfo/{upload_id} (with retries) so callers
- * receive the full FileInfo as they did with the legacy upload path.
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react';
@@ -66,7 +66,8 @@ export interface UppyDirectUploadResult {
 
 	/**
 	 * Kick off the upload of all files currently staged in Uppy.
-	 * Resolves once all TUS uploads have been acknowledged by the server.
+	 * Resolves once all S3 uploads have been acknowledged and their
+	 * FileInfo records registered with the server.
 	 */
 	startUpload: () => Promise<FileInfo[]>;
 }
@@ -91,8 +92,13 @@ export function useUppyDirectUpload(
 	const uploadingRef = useRef(false);
 	const [progress, setProgress] = useState(0);
 
-	// Collect FileInfo promises for all files in the current batch.
-	const pendingFileInfosRef = useRef<Array<Promise<FileInfo>>>([]);
+	// Collect FileInfo promises keyed by Uppy file id. A Map (rather than an
+	// array reset per batch) is required because files can be added in several
+	// separate operations — paste, drag-drop, "add more", remote providers —
+	// each of which produces its own upload batch with its own upload/complete
+	// events. Keying by file id lets us accumulate results across overlapping
+	// batches without ever discarding a finished file's FileInfo.
+	const pendingFileInfosRef = useRef<Map<string, Promise<FileInfo | null>>>(new Map());
 
 	if (!uppyRef.current) {
 		const uppy = new Uppy({
@@ -143,7 +149,7 @@ export function useUppyDirectUpload(
 
 		// Attach channel_id and filename metadata whenever a file is added so
 		// the backend can associate the upload with the right channel/user.
-		// Also automatically start the upload when a file is added (Slack-like behavior).
+		// The upload itself is kicked off from the `files-added` handler below.
 		uppy.on('file-added', (file) => {
 			// Robustly determine the filename — file.name can be undefined,
 			// empty, or the literal string "undefined" depending on how the
@@ -163,15 +169,34 @@ export function useUppyDirectUpload(
 				filename: safeName,
 				filetype: fileType,
 			});
+		});
 
-			// Auto-start upload if not already uploading and we have a channel_id.
-			// If channelId is empty (e.g. a draft DM), we wait until the user creates the channel.
-			if (!uploadingRef.current && channelIdRef.current) {
-				uppy.upload().catch((err) => {
-					// Errors are handled by uppy.on('upload-error') handler below
-					console.error('Auto-upload failed:', err);
-				});
+		// Auto-start the upload once per add operation. Uppy fires `files-added`
+		// (plural) a single time after all the `file-added` events for the same
+		// batch, so the metadata above is already set for every file here.
+		//
+		// IMPORTANT: this used to be gated on `!uploadingRef.current` inside the
+		// per-file `file-added` handler. That dropped files: any file added while
+		// an earlier upload was still running (a second multi-select, a paste of
+		// several files — which are added one-by-one — drag-drop while uploading,
+		// remote providers, etc.) never triggered its own `upload()` call and was
+		// left stranded in the `waiting` state, so it never reached the channel.
+		//
+		// `uppy.upload()` is safe to call repeatedly: internally it only picks up
+		// files that have not started and are not already assigned to an upload
+		// (see Uppy core `waitingFileIDs`), and `allowMultipleUploadBatches: true`
+		// lets a new batch run alongside one already in flight. So we simply start
+		// an upload for every add operation and let Uppy de-duplicate.
+		uppy.on('files-added', () => {
+			// If channelId is empty (e.g. a draft DM not yet created) defer until
+			// the channel exists; the `upload` event below re-stamps channel_id.
+			if (!channelIdRef.current) {
+				return;
 			}
+			uppy.upload().catch((err) => {
+				// Errors are surfaced via the 'upload-error' handler below.
+				console.error('Auto-upload failed:', err);
+			});
 		});
 
 		// Track overall upload progress (0-100).
@@ -192,8 +217,14 @@ export function useUppyDirectUpload(
 			}
 			
 			uploadingRef.current = true;
-			pendingFileInfosRef.current = [];
 			setProgress(0);
+
+			// NOTE: do NOT clear pendingFileInfosRef here. With overlapping
+			// batches this event can fire for batch N+1 while batch N's
+			// completeDirectUploadSession() calls are still resolving; clearing
+			// would drop those FileInfos and the files would silently vanish from
+			// the composer. Entries are removed individually once delivered in the
+			// 'complete' handler below.
 		});
 
 		// When each S3 upload completes, notify Mattermost to finalize and register the FileInfo.
@@ -208,7 +239,8 @@ export function useUppyDirectUpload(
 			if (!uploadId || !fileId || !objectKey) {
 				return;
 			}
-			pendingFileInfosRef.current.push(
+			pendingFileInfosRef.current.set(
+				file.id,
 				Client4.completeDirectUploadSession({
 					upload_id: uploadId,
 					file_id: fileId,
@@ -221,20 +253,37 @@ export function useUppyDirectUpload(
 					throw new Error('No FileInfo returned from complete direct upload');
 				}).catch((err: unknown) => {
 					onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
-					return null as unknown as FileInfo;
+					return null;
 				}),
 			);
 		});
 
 		uppy.on('complete', () => {
-			uploadingRef.current = false;
 			setProgress(100);
 
-			const proms = pendingFileInfosRef.current;
-			pendingFileInfosRef.current = [];
+			// `complete` fires once per upload batch, but files may still be
+			// uploading in another batch that was started while this one ran
+			// (or one that is queued behind it). If anything is still in flight
+			// we must NOT deliver yet — and the parent must not clear the panel
+			// or the still-uploading files would be wiped. A file is considered
+			// settled once it has either completed or errored.
+			const stillInFlight = uppy.getFiles().some(
+				(f) => !f.progress?.uploadComplete && !f.error,
+			);
+			if (stillInFlight) {
+				return;
+			}
 
-			Promise.all(proms).then((infos) => {
-				const valid = infos.filter(Boolean);
+			uploadingRef.current = false;
+
+			// Every batch has settled: deliver the union of all collected
+			// FileInfos in one shot, then drain the map so the next round of
+			// uploads starts clean.
+			const entries = [...pendingFileInfosRef.current.values()];
+			pendingFileInfosRef.current.clear();
+
+			Promise.all(entries).then((infos) => {
+				const valid = infos.filter((info): info is FileInfo => Boolean(info));
 				onCompleteRef.current?.(valid);
 			});
 		});
@@ -259,7 +308,6 @@ export function useUppyDirectUpload(
 	const startUpload = useCallback(async (): Promise<FileInfo[]> => {
 		const uppy = uppyRef.current!;
 		uploadingRef.current = true;
-		pendingFileInfosRef.current = [];
 		setProgress(0);
 
 		const result = await uppy.upload();
@@ -274,9 +322,13 @@ export function useUppyDirectUpload(
 
 		setProgress(100);
 
-		// Await all in-flight FileInfo fetches.
-		const infos = await Promise.all(pendingFileInfosRef.current);
-		return infos.filter(Boolean);
+		// Await the FileInfo fetches for the files in this upload result.
+		const ids = result.successful.map((f) => (f as { id: string }).id);
+		const proms = ids
+			.map((id) => pendingFileInfosRef.current.get(id))
+			.filter((p): p is Promise<FileInfo | null> => Boolean(p));
+		const infos = await Promise.all(proms);
+		return infos.filter((info): info is FileInfo => Boolean(info));
 	}, []);
 
 	return {

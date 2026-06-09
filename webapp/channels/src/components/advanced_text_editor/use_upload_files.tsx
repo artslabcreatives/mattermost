@@ -352,7 +352,7 @@ const useUploadFiles = (
 							postType={postType}
 							skipDragEvents={true} skipPasteEvents={true} />
 					</span>
-					{/* Visible Uppy Dashboard — replaces the legacy attachment button. */}
+					{/* Paperclip attachment button: uploads direct to S3, no popup. */}
 					<UppyFileUpload
 						ref={uppyFileUploadRef}
 						channelId={channelId}

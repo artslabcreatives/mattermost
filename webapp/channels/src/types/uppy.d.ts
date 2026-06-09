@@ -30,6 +30,15 @@ declare module '@uppy/core' {
 		onBeforeUpload?: (files: { [id: string]: UppyFile }) => { [id: string]: UppyFile } | boolean;
 	}
 
+	export interface FileProgress {
+		uploadStarted?: number | null;
+		/** True once the file has uploaded successfully (no error). */
+		uploadComplete?: boolean;
+		percentage?: number;
+		bytesUploaded?: number;
+		bytesTotal?: number | null;
+	}
+
 	export interface UppyFile {
 		id: string;
 		name?: string;
@@ -40,6 +49,7 @@ declare module '@uppy/core' {
 		source?: string;
 		isRemote?: boolean;
 		error?: string;
+		progress?: FileProgress;
 		/** True when the file was restored from IndexedDB by @uppy/golden-retriever. */
 		isRestored?: boolean;
 	}
@@ -60,6 +70,7 @@ declare module '@uppy/core' {
 		use<T extends PluginOptions>(plugin: new (uppy: Uppy, opts?: T) => unknown, opts?: T): this;
 		upload(): Promise<UploadResult>;
 		addFile(file: Partial<UppyFile> & { name: string; data: Blob | File }): string;
+		addFiles(files: Array<Partial<UppyFile> & { name: string; data: Blob | File }>): void;
 		removeFile(fileID: string): void;
 		getFiles(): UppyFile[];
 		destroy(): void;
@@ -171,30 +182,6 @@ declare module '@uppy/companion-client' {
 		companionUrl: string;
 		companionHeaders?: Record<string, string>;
 		companionCookiesRule?: 'include' | 'same-origin' | 'omit';
-	}
-}
-
-declare module '@uppy/tus' {
-	import type Uppy from '@uppy/core';
-	import type { UppyFile, PluginOptions } from '@uppy/core';
-
-	export interface TusOptions extends PluginOptions {
-		endpoint: string;
-		headers?: Record<string, string> | ((file: UppyFile) => Record<string, string>);
-		chunkSize?: number;
-		retryDelays?: number[] | null;
-		limit?: number;
-		withCredentials?: boolean;
-		onBeforeRequest?: (req: unknown, file: UppyFile) => void | Promise<void>;
-		onAfterResponse?: (req: unknown, res: unknown) => void | Promise<void>;
-		onShouldRetry?: (err: unknown, retryAttempt: number, options: TusOptions, next: () => void) => boolean;
-		removeFingerprintOnSuccess?: boolean;
-		allowedMetaFields?: string[] | null;
-		fieldName?: string;
-	}
-
-	export default class Tus {
-		constructor(uppy: Uppy, opts?: TusOptions);
 	}
 }
 
