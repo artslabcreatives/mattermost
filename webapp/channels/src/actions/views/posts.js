@@ -74,11 +74,22 @@ export function forwardPost(post, channel, message = '') {
 		newPost.props = {
 			attachments: [{
 				author_name: authorName,
+				title: 'Forwarded post',
+				title_link: permaLink,
 				text: post.message || '',
 				footer: footerChannel ? `Originally posted in ${footerChannel}` : '',
-				title_link: permaLink,
 			}],
 		};
+
+		const fileIds = post.file_ids || state.entities.files.fileIdsByPostId?.[post.id] || post.metadata?.files?.map((f) => f.id) || [];
+		const files = [];
+		if (fileIds && fileIds.length > 0) {
+			newPost.file_ids = fileIds;
+			for (const id of fileIds) {
+				const file = post.metadata?.files?.find((f) => f.id === id) || state.entities.files.files[id] || {id};
+				files.push(file);
+			}
+		}
 
 		if (!useChannelMentions && containsAtChannel(newPost.message, { checkAllMentions: true })) {
 			newPost.props.mentionHighlightDisabled = true;
@@ -96,7 +107,7 @@ export function forwardPost(post, channel, message = '') {
 
 		newPost = hookResult.data;
 
-		return dispatch(PostActions.createPost(newPost, []));
+		return dispatch(PostActions.createPost(newPost, files));
 	};
 }
 

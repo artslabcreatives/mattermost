@@ -493,6 +493,13 @@ func (a *App) attachFileIDsToPost(rctx request.CTX, postID, channelID, userID st
 	for _, fileID := range fileIDs {
 		err := a.Srv().Store().FileInfo().AttachToPost(rctx, fileID, postID, channelID, userID)
 		if err != nil {
+			// If attaching failed, it might be because the file is already attached to another post (linked/forwarded).
+			// We can retrieve the FileInfo to verify if it exists and is not deleted.
+			if fileInfo, getErr := a.Srv().Store().FileInfo().Get(fileID); getErr == nil && fileInfo != nil && fileInfo.DeleteAt == 0 {
+				// The file exists and is valid. We allow linking it to the new post.
+				attachedIds = append(attachedIds, fileID)
+				continue
+			}
 			rctx.Logger().Warn("Failed to attach file to post", mlog.String("file_id", fileID), mlog.String("post_id", postID), mlog.Err(err))
 			continue
 		}
@@ -2077,6 +2084,23 @@ func (a *App) GetFileInfosForPostWithMigration(rctx request.CTX, postID string, 
 
 // GetFileInfosForPost also returns firstInaccessibleFileTime based on cloud plan's limit.
 func (a *App) GetFileInfosForPost(rctx request.CTX, postID string, fromMaster bool, includeDeleted bool) ([]*model.FileInfo, int64, *model.AppError) {
+	post, err := a.Srv().Store().Post().GetSingle(rctx, postID, includeDeleted)
+	if err == nil && post != nil && len(post.FileIds) > 0 {
+		fileInfos, err := a.Srv().Store().FileInfo().GetByIds(post.FileIds, includeDeleted, true)
+		if err != nil {
+			return nil, 0, model.NewAppError("GetFileInfosForPost", "app.file_info.get_for_post.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+		}
+
+		firstInaccessibleFileTime, appErr := a.removeInaccessibleContentFromFilesSlice(fileInfos)
+		if appErr != nil {
+			return nil, 0, appErr
+		}
+
+		a.generateMiniPreviewForInfos(rctx, fileInfos)
+
+		return fileInfos, firstInaccessibleFileTime, nil
+	}
+
 	fileInfos, err := a.Srv().Store().FileInfo().GetForPost(postID, fromMaster, includeDeleted, true)
 	if err != nil {
 		return nil, 0, model.NewAppError("GetFileInfosForPost", "app.file_info.get_for_post.app_error", nil, "", http.StatusInternalServerError).Wrap(err)

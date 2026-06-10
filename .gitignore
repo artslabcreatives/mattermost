@@ -166,3 +166,4 @@ CLAUDE.md
 docker-compose.prod.yml
 companion/docker-compose.yml
 companion/.env
+rebuild.sh
