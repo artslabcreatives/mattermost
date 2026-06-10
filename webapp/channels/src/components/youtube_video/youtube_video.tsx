@@ -171,7 +171,7 @@ export default class YoutubeVideo extends React.PureComponent<Props, State> {
 						frameBorder='0'
 						allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
 						allowFullScreen={true}
-						referrerPolicy={this.props.youtubeReferrerPolicy ? 'origin' : undefined}
+						referrerPolicy={this.props.youtubeReferrerPolicy ? 'origin' : 'no-referrer-when-downgrade'}
 						sandbox='allow-scripts allow-same-origin allow-popups allow-presentation'
 					/>
 				</div>

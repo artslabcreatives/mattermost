@@ -298,7 +298,19 @@ func (a *App) getFileMetadataForPost(rctx request.CTX, post *model.Post, fromMas
 		return nil, 0, nil
 	}
 
-	return a.GetFileInfosForPost(rctx, post.Id, fromMaster, includeDeleted)
+	fileInfos, err := a.Srv().Store().FileInfo().GetByIds(post.FileIds, includeDeleted, true)
+	if err != nil {
+		return nil, 0, model.NewAppError("getFileMetadataForPost", "app.file_info.get_for_post.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+
+	firstInaccessibleFileTime, appErr := a.removeInaccessibleContentFromFilesSlice(fileInfos)
+	if appErr != nil {
+		return nil, 0, appErr
+	}
+
+	a.generateMiniPreviewForInfos(rctx, fileInfos)
+
+	return fileInfos, firstInaccessibleFileTime, nil
 }
 
 func (a *App) getEmojisAndReactionsForPost(rctx request.CTX, post *model.Post) ([]*model.Emoji, []*model.Reaction, *model.AppError) {
