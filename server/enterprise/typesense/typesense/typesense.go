@@ -268,17 +268,13 @@ func (ts *TypesenseInterfaceImpl) SearchPosts(channels model.ChannelList, search
 		query += param.Terms
 	}
 
-	// Build channel filter
-	channelIDs := make([]string, len(channels))
-	for i, ch := range channels {
-		channelIDs[i] = ch.Id
-	}
-
-	filterBy := ""
-	if len(channelIDs) > 0 {
-		filterBy = fmt.Sprintf("channel_id:[%s] && delete_at:=0", joinStrings(channelIDs, ","))
-	} else {
-		filterBy = "delete_at:=0"
+	// Build channel/user filter, honoring the in:/from: search modifiers while
+	// keeping the accessible-channel set as the security boundary.
+	filterBy, ok := buildSearchFilterBy(channels, searchParams)
+	if !ok {
+		// The modifiers eliminated every accessible channel; return no results.
+		// An empty channel_id:[] clause would instead match the entire index.
+		return []string{}, nil, nil
 	}
 
 	tsSearchParams := &api.SearchCollectionParams{
@@ -715,16 +711,10 @@ func (ts *TypesenseInterfaceImpl) SearchFiles(channels model.ChannelList, search
 		query += param.Terms
 	}
 
-	channelIDs := make([]string, len(channels))
-	for i, ch := range channels {
-		channelIDs[i] = ch.Id
-	}
-
-	filterBy := ""
-	if len(channelIDs) > 0 {
-		filterBy = fmt.Sprintf("channel_id:[%s] && delete_at:=0", joinStrings(channelIDs, ","))
-	} else {
-		filterBy = "delete_at:=0"
+	filterBy, ok := buildSearchFilterBy(channels, searchParams)
+	if !ok {
+		// The modifiers eliminated every accessible channel; return no results.
+		return []string{}, nil
 	}
 
 	tsSearchParams := &api.SearchCollectionParams{
@@ -897,6 +887,85 @@ func intPtr(i int) *int {
 
 func stringPtr(s string) *string {
 	return &s
+}
+
+// buildSearchFilterBy builds the Typesense filter_by clause for post and file
+// searches. The channels argument is the security boundary — every channel the
+// requesting user is allowed to read — passed in by the search layer. The
+// searchParams carry the in:/from: modifiers, whose channel and user values
+// have already been resolved from names to IDs by App.SearchPostsForUser
+// before the engine is reached.
+//
+// It intersects the accessible channels with InChannels, drops
+// ExcludedChannels, and adds FromUsers/ExcludedUsers (user_id) constraints,
+// mirroring how the Elasticsearch/Bleve engines narrow their queries. It
+// returns ok=false when no accessible channel survives the modifiers, in which
+// case the caller must return no results: an empty channel_id:[] clause would
+// otherwise match every channel and leak the whole index.
+func buildSearchFilterBy(channels model.ChannelList, searchParams []*model.SearchParams) (string, bool) {
+	inChannels := map[string]bool{}
+	excludedChannels := map[string]bool{}
+	hasInChannels := false
+
+	var fromUsers []string
+	var excludedUsers []string
+	fromSeen := map[string]bool{}
+	excludedUserSeen := map[string]bool{}
+
+	for _, p := range searchParams {
+		for _, id := range p.InChannels {
+			inChannels[id] = true
+			hasInChannels = true
+		}
+		for _, id := range p.ExcludedChannels {
+			excludedChannels[id] = true
+		}
+		for _, id := range p.FromUsers {
+			if !fromSeen[id] {
+				fromSeen[id] = true
+				fromUsers = append(fromUsers, id)
+			}
+		}
+		for _, id := range p.ExcludedUsers {
+			if !excludedUserSeen[id] {
+				excludedUserSeen[id] = true
+				excludedUsers = append(excludedUsers, id)
+			}
+		}
+	}
+
+	channelSeen := map[string]bool{}
+	channelIDs := make([]string, 0, len(channels))
+	for _, ch := range channels {
+		if channelSeen[ch.Id] {
+			continue
+		}
+		channelSeen[ch.Id] = true
+		if hasInChannels && !inChannels[ch.Id] {
+			continue
+		}
+		if excludedChannels[ch.Id] {
+			continue
+		}
+		channelIDs = append(channelIDs, ch.Id)
+	}
+
+	if len(channelIDs) == 0 {
+		return "", false
+	}
+
+	clauses := []string{
+		fmt.Sprintf("channel_id:[%s]", joinStrings(channelIDs, ",")),
+		"delete_at:=0",
+	}
+	if len(fromUsers) > 0 {
+		clauses = append(clauses, fmt.Sprintf("user_id:[%s]", joinStrings(fromUsers, ",")))
+	}
+	for _, id := range excludedUsers {
+		clauses = append(clauses, fmt.Sprintf("user_id:!=%s", id))
+	}
+
+	return joinStrings(clauses, " && "), true
 }
 
 func joinStrings(strs []string, sep string) string {
