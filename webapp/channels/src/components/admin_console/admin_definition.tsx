@@ -68,6 +68,7 @@ import CustomDataRetentionForm from './data_retention_settings/custom_policy_for
 import {searchableStrings as dataRetentionSearchableStrings} from './data_retention_settings/data_retention_settings';
 import GlobalDataRetentionForm from './data_retention_settings/global_policy_form';
 import DatabaseSettings, {searchableStrings as databaseSearchableStrings} from './database_settings';
+import DatabaseBackupSettings, {searchableStrings as databaseBackupSearchableStrings} from './database_backup_settings';
 import ElasticSearchSettings, {searchableStrings as elasticSearchSearchableStrings} from './elasticsearch_settings';
 import TypesenseSettings, {searchableStrings as typesenseSearchableStrings} from './typesense_settings';
 import {
@@ -997,6 +998,21 @@ const AdminDefinition: AdminDefinitionType = {
                 schema: {
                     id: 'DatabaseSettings',
                     component: DatabaseSettings,
+                },
+            },
+            database_backup: {
+                url: 'environment/database_backup',
+                title: defineMessage({id: 'admin.sidebar.database_backup', defaultMessage: 'Database Backup'}),
+                searchableStrings: databaseBackupSearchableStrings,
+                isHidden: it.any(
+                    it.cloudLicensed,
+                    it.configIsTrue('ExperimentalSettings', 'RestrictSystemAdmin'),
+                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.DATABASE)),
+                ),
+                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.DATABASE)),
+                schema: {
+                    id: 'DatabaseBackupSettings',
+                    component: DatabaseBackupSettings,
                 },
             },
             elasticsearch: {

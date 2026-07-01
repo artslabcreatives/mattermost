@@ -45,6 +45,7 @@ RUN apt-get update \
   poppler-utils \
   tidy \
   tzdata \
+  postgresql-client \
   && rm -rf /var/lib/apt/lists/*
 
 # Create mattermost user and directories
