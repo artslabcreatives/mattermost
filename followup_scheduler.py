@@ -196,6 +196,12 @@ def get_unanswered_threads(bot_user_id):
       AND tl.createat > {time_cutoff_ms}
       AND tl.createat < {age_cutoff_ms}
       AND rp.deleteat = 0
+      AND NOT EXISTS (
+          SELECT 1 
+          FROM reactions 
+          WHERE reactions.postid = tl.post_id 
+            AND reactions.deleteat = 0
+      )
     ORDER BY tl.createat DESC;
     """
 
@@ -240,7 +246,46 @@ def get_thread_history(thread_id):
         return ""
     return "\n".join(output.split('\n'))
 
-def call_openai_analyzer(api_key, model, thread_history, is_second_reminder=False, is_dm=False, last_author_username=None, recipient_username=None):
+def get_surrounding_channel_chat(channel_id, post_createat, limit=5):
+    # Fetch up to `limit` posts created in the channel BEFORE the candidate post
+    query_before = f"""
+    SELECT u.username || ': ' || replace(replace(posts.message, E'\\n', ' '), '|', ' ')
+    FROM (
+        SELECT userid, message, createat
+        FROM posts
+        WHERE channelid = '{channel_id}'
+          AND createat < {post_createat}
+          AND deleteat = 0
+        ORDER BY createat DESC
+        LIMIT {limit}
+    ) posts
+    JOIN users u ON posts.userid = u.id
+    ORDER BY posts.createat ASC;
+    """
+    output_before = query_db(query_before)
+    before_lines = [line.strip() for line in output_before.split('\n') if line.strip()] if output_before else []
+
+    # Fetch up to `limit` posts created in the channel AFTER the candidate post
+    query_after = f"""
+    SELECT u.username || ': ' || replace(replace(posts.message, E'\\n', ' '), '|', ' ')
+    FROM (
+        SELECT userid, message, createat
+        FROM posts
+        WHERE channelid = '{channel_id}'
+          AND createat > {post_createat}
+          AND deleteat = 0
+        ORDER BY createat ASC
+        LIMIT {limit}
+    ) posts
+    JOIN users u ON posts.userid = u.id
+    ORDER BY posts.createat ASC;
+    """
+    output_after = query_db(query_after)
+    after_lines = [line.strip() for line in output_after.split('\n') if line.strip()] if output_after else []
+
+    return before_lines, after_lines
+
+def call_openai_analyzer(api_key, model, thread_history, before_chat=None, after_chat=None, is_second_reminder=False, is_dm=False, last_author_username=None, recipient_username=None):
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -249,26 +294,33 @@ def call_openai_analyzer(api_key, model, thread_history, is_second_reminder=Fals
     
     if is_dm:
         system_prompt = (
-            "You are the Follow-up Assistant bot. Review the following Direct Message thread history. "
-            f"This is a private conversation between @{last_author_username} and @{recipient_username}. "
+            "You are the Follow-up Assistant bot. Review the following Direct Message thread history "
+            "and the surrounding channel chat context.\n"
+            f"This is a private conversation between @{last_author_username} and @{recipient_username}.\n"
             f"@{last_author_username} sent the last message. Determine if it is a question, request, or update "
-            f"that has gone unanswered by @{recipient_username} and needs a reply. "
-            "If it is already resolved, answered, or does not need a follow-up reminder, respond with {\"needs_followup\": false}. "
-            "If it needs a follow-up: "
-            f"1. Identify the responsible user (which MUST be @{recipient_username}). "
+            f"that has gone unanswered by @{recipient_username} and needs a reply.\n"
+            "IMPORTANT: Check the surrounding channel chat context (especially the messages sent AFTER the candidate message). "
+            f"If @{recipient_username} has already answered, acknowledged, or discussed the topic of the candidate message "
+            "in the subsequent chat (even if not as a direct thread reply), a follow-up is NOT needed. "
+            "If it is already resolved, answered, or does not need a follow-up reminder, respond with {\"needs_followup\": false}.\n"
+            "If it needs a follow-up:\n"
+            f"1. Identify the responsible user (which MUST be @{recipient_username}).\n"
             f"2. Write a brief, polite reminder message to be sent directly to @{recipient_username} in a DM from the bot, "
-            f"reminding them to reply to @{last_author_username}. Do not tag @{recipient_username} in the message itself "
-            f"(since it is sent as a direct message to them). "
+            f"reminding them to reply to @{last_author_username}. Do not tag @{recipient_username} in the message itself.\n"
             f"Example: \"Hi, just checking in to see if you had a chance to look at the message from @{last_author_username} about the reports?\""
         )
     else:
         system_prompt = (
-            "You are the Follow-up Assistant bot. Review the following thread history from a Mattermost channel. "
-            "Determine if the last message in the thread is a question, request, or update that has gone unanswered by the team members and needs a reply. "
-            "If it is already resolved, answered, or does not need a follow-up reminder, respond with {\"needs_followup\": false}. "
-            "If it needs a follow-up: "
-            "1. Identify the team member/agent who is responsible or mentioned/should reply. "
-            "2. Write a brief, polite nudge/reminder message tagging that person (e.g. \"Hi @miyuru, could you look into this?\"). "
+            "You are the Follow-up Assistant bot. Review the following thread history from a Mattermost channel "
+            "and the surrounding channel chat context.\n"
+            "Determine if the last message in the thread is a question, request, or update that has gone unanswered by the team members and needs a reply.\n"
+            "IMPORTANT: Check the surrounding channel chat context (especially the messages sent AFTER the candidate message). "
+            "If a team member has already answered, acknowledged, or discussed the topic of the candidate message "
+            "in the subsequent chat (even if outside the thread), a follow-up is NOT needed. "
+            "If it is already resolved, answered, or does not need a follow-up reminder, respond with {\"needs_followup\": false}.\n"
+            "If it needs a follow-up:\n"
+            "1. Identify the team member/agent who is responsible or mentioned/should reply.\n"
+            "2. Write a brief, polite nudge/reminder message tagging that person (e.g. \"Hi @miyuru, could you look into this?\").\n"
         )
         
     if is_second_reminder:
@@ -281,11 +333,22 @@ def call_openai_analyzer(api_key, model, thread_history, is_second_reminder=Fals
         "{\"needs_followup\": true, \"responsible_user\": \"username\", \"reminder_message\": \"nudge message\"}"
     )
 
+    user_content = f"Thread History:\n{thread_history}\n"
+    if before_chat or after_chat:
+        user_content += "\nSurrounding Channel Chat Context:\n"
+        if before_chat:
+            user_content += "--- Chat Before Candidate Message ---\n"
+            user_content += "\n".join(before_chat) + "\n"
+        user_content += f"--- Candidate Message: {last_author_username}: {thread_history.splitlines()[-1] if thread_history else ''} ---\n"
+        if after_chat:
+            user_content += "--- Chat After Candidate Message ---\n"
+            user_content += "\n".join(after_chat) + "\n"
+
     data = {
         "model": model,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Thread History:\n{thread_history}"}
+            {"role": "user", "content": user_content}
         ],
         "response_format": {"type": "json_object"},
         "temperature": 0.2
@@ -485,9 +548,14 @@ def main():
         if not thread_history:
             continue
             
+        # Fetch surrounding channel chat
+        before_chat, after_chat = get_surrounding_channel_chat(thread["channel_id"], thread["createat"], limit=5)
+            
         # Call LLM
         decision = call_openai_analyzer(
             api_key, model, thread_history,
+            before_chat=before_chat,
+            after_chat=after_chat,
             is_second_reminder=is_second_reminder,
             is_dm=is_dm,
             last_author_username=thread["username"],
