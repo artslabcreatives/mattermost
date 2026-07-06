@@ -166,3 +166,11 @@ CLAUDE.md
 docker-compose.prod.yml
 companion/docker-compose.yml
 companion/.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Scheduler state and backups
+followup_reminded_threads.json
+mattermost_db_backup.sql.gz

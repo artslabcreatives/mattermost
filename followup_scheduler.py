@@ -12,7 +12,7 @@ STATE_FILE_PATH = "/var/www/mattermost-collab-prod/followup_reminded_threads.jso
 BOT_USERNAME = "followup-bot"
 ADMIN_USERNAME = "aura"      # We use aura's token because bots cannot post via PATs by default
 ADMIN_USER_ID = "5okt5rse1pfudrogiguf5xfgmr"
-CHECK_DAYS = 30         # Scan threads with activity in the last N days
+CHECK_DAYS = 2          # Scan threads with activity in the last N days
 MIN_AGE_HOURS = 2       # Unanswered for at least M hours
 API_BASE_URL = "http://localhost:8065/api/v4"
 
@@ -102,13 +102,42 @@ def get_admin_token():
             print(f"Stderr: {e.stderr}")
     return None
 
+def get_user_id_to_username_map():
+    query = "SELECT id, username FROM users WHERE deleteat = 0;"
+    output = query_db(query)
+    mapping = {}
+    if output:
+        for line in output.split('\n'):
+            parts = line.split('|')
+            if len(parts) == 2:
+                mapping[parts[0]] = parts[1]
+    return mapping
+
+def get_or_create_direct_channel(token, bot_user_id, recipient_id):
+    url = f"{API_BASE_URL}/channels/direct"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    data = [bot_user_id, recipient_id]
+    try:
+        response = requests.post(url, headers=headers, json=data, timeout=10)
+        response.raise_for_status()
+        return response.json()["id"]
+    except Exception as e:
+        print(f"Error getting/creating direct channel with user {recipient_id}: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"Response: {e.response.text}")
+        return None
+
 def get_unanswered_threads(bot_user_id):
     # Fetch threads where the latest post is:
     # 1. Not from followup-bot
-    # 2. In a public ('O') or private ('P') channel
+    # 2. In a public ('O'), private ('P'), or DM ('D') channel
     # 3. Created in the last CHECK_DAYS days
     # 4. Older than MIN_AGE_HOURS hours
-    time_cutoff_ms = int((time.time() - (CHECK_DAYS * 86400)) * 1000)
+    START_TODAY_TIMESTAMP = 1782950400000 # July 2, 2026 00:00:00 UTC
+    time_cutoff_ms = max(int((time.time() - (CHECK_DAYS * 86400)) * 1000), START_TODAY_TIMESTAMP)
     age_cutoff_ms = int((time.time() - (MIN_AGE_HOURS * 3600)) * 1000)
 
     query = f"""
@@ -148,24 +177,31 @@ def get_unanswered_threads(bot_user_id):
         CAST(tl.createat AS VARCHAR) || '|' || 
         tl.channelid || '|' || 
         c.name || '|' || 
-        t.name || '|' || 
+        COALESCE(t.name, '') || '|' || 
         CAST(ts.bot_reminder_count AS VARCHAR) || '|' || 
         COALESCE(CAST(ts.latest_bot_reminder_createat AS VARCHAR), '0') || '|' ||
         CASE WHEN rp.userid IN (SELECT userid FROM bot_users) OR rp.props::text LIKE '%"from_webhook"%' OR rp.props::text LIKE '%"override_username"%' THEN '1' ELSE '0' END || '|' ||
         CASE WHEN (tl.userid IN (SELECT userid FROM bot_users) OR tl.props::text LIKE '%"from_webhook"%' OR tl.props::text LIKE '%"override_username"%') 
-                  AND NOT (tl.userid = '{bot_user_id}' OR tl.props::text LIKE '%"override_username": "followup-bot"%') THEN '1' ELSE '0' END
+                  AND NOT (tl.userid = '{bot_user_id}' OR tl.props::text LIKE '%"override_username": "followup-bot"%') THEN '1' ELSE '0' END || '|' ||
+        c.type
     FROM thread_latest tl
     JOIN thread_stats ts ON tl.thread_id = ts.thread_id
     JOIN channels c ON tl.channelid = c.id
-    JOIN teams t ON c.teamid = t.id
+    LEFT JOIN teams t ON c.teamid = t.id
     JOIN users u ON tl.userid = u.id
     JOIN posts rp ON tl.thread_id = rp.id
     WHERE tl.rn = 1
-      AND c.type IN ('O', 'P')
+      AND c.type IN ('O', 'P', 'D')
       AND c.deleteat = 0
       AND tl.createat > {time_cutoff_ms}
       AND tl.createat < {age_cutoff_ms}
       AND rp.deleteat = 0
+      AND NOT EXISTS (
+          SELECT 1 
+          FROM reactions 
+          WHERE reactions.postid = tl.post_id 
+            AND reactions.deleteat = 0
+      )
     ORDER BY tl.createat DESC;
     """
 
@@ -176,7 +212,7 @@ def get_unanswered_threads(bot_user_id):
     threads = []
     for line in output.split('\n'):
         parts = line.split('|')
-        if len(parts) >= 13:
+        if len(parts) >= 14:
             threads.append({
                 "thread_id": parts[0],
                 "latest_post_id": parts[1],
@@ -190,7 +226,8 @@ def get_unanswered_threads(bot_user_id):
                 "bot_reminder_count": int(parts[9]),
                 "latest_bot_reminder_createat": int(parts[10]),
                 "is_root_bot": parts[11],
-                "is_latest_other_bot": parts[12]
+                "is_latest_other_bot": parts[12],
+                "channel_type": parts[13]
             })
     return threads
 
@@ -209,24 +246,86 @@ def get_thread_history(thread_id):
         return ""
     return "\n".join(output.split('\n'))
 
-def call_openai_analyzer(api_key, model, thread_history, is_second_reminder=False):
+def get_surrounding_channel_chat(channel_id, post_createat, limit=5):
+    # Fetch up to `limit` posts created in the channel BEFORE the candidate post
+    query_before = f"""
+    SELECT u.username || ': ' || replace(replace(posts.message, E'\\n', ' '), '|', ' ')
+    FROM (
+        SELECT userid, message, createat
+        FROM posts
+        WHERE channelid = '{channel_id}'
+          AND createat < {post_createat}
+          AND deleteat = 0
+        ORDER BY createat DESC
+        LIMIT {limit}
+    ) posts
+    JOIN users u ON posts.userid = u.id
+    ORDER BY posts.createat ASC;
+    """
+    output_before = query_db(query_before)
+    before_lines = [line.strip() for line in output_before.split('\n') if line.strip()] if output_before else []
+
+    # Fetch up to `limit` posts created in the channel AFTER the candidate post
+    query_after = f"""
+    SELECT u.username || ': ' || replace(replace(posts.message, E'\\n', ' '), '|', ' ')
+    FROM (
+        SELECT userid, message, createat
+        FROM posts
+        WHERE channelid = '{channel_id}'
+          AND createat > {post_createat}
+          AND deleteat = 0
+        ORDER BY createat ASC
+        LIMIT {limit}
+    ) posts
+    JOIN users u ON posts.userid = u.id
+    ORDER BY posts.createat ASC;
+    """
+    output_after = query_db(query_after)
+    after_lines = [line.strip() for line in output_after.split('\n') if line.strip()] if output_after else []
+
+    return before_lines, after_lines
+
+def call_openai_analyzer(api_key, model, thread_history, before_chat=None, after_chat=None, is_second_reminder=False, is_dm=False, last_author_username=None, recipient_username=None):
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
     
-    system_prompt = (
-        "You are the Follow-up Assistant bot. Review the following thread history from a Mattermost channel. "
-        "Determine if the last message in the thread is a question, request, or update that has gone unanswered by the team members and needs a reply. "
-        "If it is already resolved, answered, or does not need a follow-up reminder, respond with {\"needs_followup\": false}. "
-        "If it needs a follow-up: "
-        "1. Identify the team member/agent who is responsible or mentioned/should reply. "
-        "2. Write a brief, polite nudge/reminder message tagging that person (e.g. \"Hi @miyuru, could you look into this?\"). "
-    )
+    if is_dm:
+        system_prompt = (
+            "You are the Follow-up Assistant bot. Review the following Direct Message thread history "
+            "and the surrounding channel chat context.\n"
+            f"This is a private conversation between @{last_author_username} and @{recipient_username}.\n"
+            f"@{last_author_username} sent the last message. Determine if it is a question, request, or update "
+            f"that has gone unanswered by @{recipient_username} and needs a reply.\n"
+            "IMPORTANT: Check the surrounding channel chat context (especially the messages sent AFTER the candidate message). "
+            f"If @{recipient_username} has already answered, acknowledged, or discussed the topic of the candidate message "
+            "in the subsequent chat (even if not as a direct thread reply), a follow-up is NOT needed. "
+            "If it is already resolved, answered, or does not need a follow-up reminder, respond with {\"needs_followup\": false}.\n"
+            "If it needs a follow-up:\n"
+            f"1. Identify the responsible user (which MUST be @{recipient_username}).\n"
+            f"2. Write a brief, polite reminder message to be sent directly to @{recipient_username} in a DM from the bot, "
+            f"reminding them to reply to @{last_author_username}. Do not tag @{recipient_username} in the message itself.\n"
+            f"Example: \"Hi, just checking in to see if you had a chance to look at the message from @{last_author_username} about the reports?\""
+        )
+    else:
+        system_prompt = (
+            "You are the Follow-up Assistant bot. Review the following thread history from a Mattermost channel "
+            "and the surrounding channel chat context.\n"
+            "Determine if the last message in the thread is a question, request, or update that has gone unanswered by the team members and needs a reply.\n"
+            "IMPORTANT: Check the surrounding channel chat context (especially the messages sent AFTER the candidate message). "
+            "If a team member has already answered, acknowledged, or discussed the topic of the candidate message "
+            "in the subsequent chat (even if outside the thread), a follow-up is NOT needed. "
+            "If it is already resolved, answered, or does not need a follow-up reminder, respond with {\"needs_followup\": false}.\n"
+            "If it needs a follow-up:\n"
+            "1. Identify the team member/agent who is responsible or mentioned/should reply.\n"
+            "2. Write a brief, polite nudge/reminder message tagging that person (e.g. \"Hi @miyuru, could you look into this?\").\n"
+        )
+        
     if is_second_reminder:
         system_prompt += (
-            "NOTE: We have already sent one follow-up reminder and received no response. "
+            "\nNOTE: We have already sent one follow-up reminder and received no response. "
             "This is the second (and final) reminder. Please make it polite but clearly state that this is a second check-in."
         )
     system_prompt += (
@@ -234,11 +333,22 @@ def call_openai_analyzer(api_key, model, thread_history, is_second_reminder=Fals
         "{\"needs_followup\": true, \"responsible_user\": \"username\", \"reminder_message\": \"nudge message\"}"
     )
 
+    user_content = f"Thread History:\n{thread_history}\n"
+    if before_chat or after_chat:
+        user_content += "\nSurrounding Channel Chat Context:\n"
+        if before_chat:
+            user_content += "--- Chat Before Candidate Message ---\n"
+            user_content += "\n".join(before_chat) + "\n"
+        user_content += f"--- Candidate Message: {last_author_username}: {thread_history.splitlines()[-1] if thread_history else ''} ---\n"
+        if after_chat:
+            user_content += "--- Chat After Candidate Message ---\n"
+            user_content += "\n".join(after_chat) + "\n"
+
     data = {
         "model": model,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Thread History:\n{thread_history}"}
+            {"role": "user", "content": user_content}
         ],
         "response_format": {"type": "json_object"},
         "temperature": 0.2
@@ -254,26 +364,31 @@ def call_openai_analyzer(api_key, model, thread_history, is_second_reminder=Fals
         print(f"Error calling OpenAI API: {e}")
         return None
 
-def post_reminder(token, bot_user_id, channel_id, thread_id, message):
+def post_reminder(token, bot_user_id, channel_id, thread_id, message, last_picture_update=None):
     url = f"{API_BASE_URL}/posts"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
+    icon_url = f"/api/v4/users/{bot_user_id}/image"
+    if last_picture_update:
+        icon_url += f"?_={last_picture_update}"
     data = {
         "channel_id": channel_id,
-        "root_id": thread_id,
         "message": message,
         "props": {
             "from_webhook": "true",
             "override_username": BOT_USERNAME,
-            "override_icon_url": f"/api/v4/users/{bot_user_id}/image"
+            "override_icon_url": icon_url
         }
     }
+    if thread_id:
+        data["root_id"] = thread_id
     try:
         response = requests.post(url, headers=headers, json=data, timeout=10)
         response.raise_for_status()
-        print(f"Successfully posted reminder to thread {thread_id} using REST API")
+        loc = f"thread {thread_id}" if thread_id else f"channel {channel_id}"
+        print(f"Successfully posted reminder to {loc} using REST API")
         return True
     except Exception as e:
         print(f"Error posting reminder via REST API: {e}")
@@ -300,15 +415,26 @@ def ensure_channel_membership(token, user_id, channel_id):
         return False
 
 def main():
+    import datetime
+    # Do not run on Saturday (5) or Sunday (6) in Sri Lanka time (UTC+05:30)
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    sri_lanka_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+    now_sl = now_utc.astimezone(sri_lanka_tz)
+    if now_sl.weekday() in (5, 6):
+        print("Today is Saturday/Sunday in Sri Lanka time. Follow-up Bot Scheduler does not run on weekends.")
+        return
+
     load_env_file()
     print(f"--- Starting Follow-up Bot Scheduler at {time.strftime('%Y-%m-%d %H:%M:%S')} ---")
     
-    # 1. Get bot user ID
-    bot_id_output = query_db(f"SELECT id FROM users WHERE username = '{BOT_USERNAME}';")
-    if not bot_id_output:
+    # 1. Get bot user ID and last picture update
+    bot_info_output = query_db(f"SELECT id || '|' || lastpictureupdate FROM users WHERE username = '{BOT_USERNAME}';")
+    if not bot_info_output:
         print(f"Error: User {BOT_USERNAME} not found in database.")
         sys.exit(1)
-    bot_user_id = bot_id_output.strip()
+    parts = bot_info_output.strip().split('|')
+    bot_user_id = parts[0]
+    last_picture_update = parts[1] if len(parts) > 1 else '0'
     
     # 2. Get Admin token
     token = get_admin_token()
@@ -330,6 +456,9 @@ def main():
     threads = get_unanswered_threads(bot_user_id)
     print(f"Found {len(threads)} candidate threads to analyze.")
 
+    # Get user mappings for DMs
+    user_map = get_user_id_to_username_map()
+
     reminded_count = 0
     for thread in threads:
         thread_id = thread["thread_id"]
@@ -341,59 +470,125 @@ def main():
         if thread["is_latest_other_bot"] == '1':
             continue
 
-        # 2. Limit to maximum of 2 reminders per thread
+        is_dm = (thread["channel_type"] == 'D')
+
+        # Determine reminder count and last reminder time
         reminder_count = thread["bot_reminder_count"]
+        last_reminder_time = thread["latest_bot_reminder_createat"]
+
+        # For DMs, we rely on the state file since reminders are sent in a separate channel
+        if is_dm:
+            state_entry = state.get(thread_id)
+            if state_entry:
+                if isinstance(state_entry, str):
+                    if state_entry == latest_post_id:
+                        reminder_count = 1
+                        last_reminder_time = thread["createat"] # Fallback to thread latest post time
+                elif isinstance(state_entry, dict):
+                    if state_entry.get("latest_post_id") == latest_post_id:
+                        reminder_count = state_entry.get("reminder_count", 0)
+                        last_reminder_time = state_entry.get("last_reminder_time", 0)
+            else:
+                reminder_count = 0
+
+        # 2. Limit to maximum of 2 reminders per thread
         if reminder_count >= 2:
             continue
 
         # 3. If exactly 1 reminder exists, the second reminder is sent only if:
-        # - The latest post in the thread IS that first reminder (no response yet)
         # - The first reminder was sent at least 6 hours ago
         is_second_reminder = False
         if reminder_count == 1:
-            latest_post_is_reminder = (thread["createat"] == thread["latest_bot_reminder_createat"])
-            if latest_post_is_reminder:
-                time_since_reminder_ms = int(time.time() * 1000) - thread["latest_bot_reminder_createat"]
+            if is_dm:
+                time_since_reminder_ms = int(time.time() * 1000) - last_reminder_time
                 if time_since_reminder_ms < 6 * 3600 * 1000:
                     # Not yet 6 hours since the first reminder
                     continue
                 is_second_reminder = True
             else:
-                # A user has replied since our first reminder.
-                # Since the latest post is a user post, the query's age_cutoff_ms (2 hours)
-                # already ensures it has been quiet for at least 2 hours.
-                pass
+                latest_post_is_reminder = (thread["createat"] == thread["latest_bot_reminder_createat"])
+                if latest_post_is_reminder:
+                    time_since_reminder_ms = int(time.time() * 1000) - thread["latest_bot_reminder_createat"]
+                    if time_since_reminder_ms < 6 * 3600 * 1000:
+                        # Not yet 6 hours since the first reminder
+                        continue
+                    is_second_reminder = True
 
-        # Check if already reminded for this post
-        if state.get(thread_id) == latest_post_id:
-            # We already posted a reminder for the latest message in this thread
-            continue
-            
-        print(f"Analyzing thread {thread_id} (Channel: {thread['team_name']}:{thread['channel_name']})...")
+        # Check if already reminded for this post (to prevent duplicate first reminders)
+        if reminder_count == 0:
+            state_entry = state.get(thread_id)
+            if state_entry:
+                if isinstance(state_entry, str) and state_entry == latest_post_id:
+                    continue
+                elif isinstance(state_entry, dict) and state_entry.get("latest_post_id") == latest_post_id:
+                    continue
+        recipient_id = None
+        recipient_username = None
+
+        if is_dm:
+            uids = thread["channel_name"].split('__')
+            if len(uids) == 2:
+                if uids[0] == uids[1]:
+                    # Self DM, ignore
+                    continue
+                recipient_id = uids[0] if uids[1] == thread["userid"] else uids[1]
+                recipient_username = user_map.get(recipient_id)
+            if not recipient_id or not recipient_username:
+                continue
+            print(f"Analyzing DM thread {thread_id} (Between @{thread['username']} and @{recipient_username})...")
+        else:
+            # For channels, only follow up if a member/group is mentioned in the message
+            import re
+            if not re.search(r'@\w+', thread["message"]):
+                continue
+            print(f"Analyzing thread {thread_id} (Channel: {thread['team_name']}:{thread['channel_name']})...")
         
         # Fetch thread history
         thread_history = get_thread_history(thread_id)
         if not thread_history:
             continue
             
+        # Fetch surrounding channel chat
+        before_chat, after_chat = get_surrounding_channel_chat(thread["channel_id"], thread["createat"], limit=5)
+            
         # Call LLM
-        decision = call_openai_analyzer(api_key, model, thread_history, is_second_reminder=is_second_reminder)
+        decision = call_openai_analyzer(
+            api_key, model, thread_history,
+            before_chat=before_chat,
+            after_chat=after_chat,
+            is_second_reminder=is_second_reminder,
+            is_dm=is_dm,
+            last_author_username=thread["username"],
+            recipient_username=recipient_username
+        )
         if not decision:
             continue
             
         if decision.get("needs_followup"):
             msg = decision.get("reminder_message")
-            responsible = decision.get("responsible_user")
+            responsible = decision.get("responsible_user", "").lstrip("@")
             print(f"  -> Thread needs follow-up! Responsible: @{responsible}. Nudge: '{msg}'")
             
-            # Ensure the dummy admin is in the channel first
-            ensure_channel_membership(token, ADMIN_USER_ID, thread["channel_id"])
-            
-            # Post reminder using the REST API with bot overrides
-            success = post_reminder(token, bot_user_id, thread["channel_id"], thread_id, msg)
+            if is_dm:
+                # Get/create bot-recipient DM channel
+                dest_channel_id = get_or_create_direct_channel(token, bot_user_id, recipient_id)
+                if not dest_channel_id:
+                    print(f"  -> Error: Could not get/create DM channel with {recipient_username}.")
+                    continue
+                success = post_reminder(token, bot_user_id, dest_channel_id, None, msg, last_picture_update)
+            else:
+                # Ensure the dummy admin is in the channel first
+                ensure_channel_membership(token, ADMIN_USER_ID, thread["channel_id"])
+                # Post reminder using the REST API with bot overrides
+                success = post_reminder(token, bot_user_id, thread["channel_id"], thread_id, msg, last_picture_update)
+                
             if success:
                 # Save state so we don't repeat this reminder
-                state[thread_id] = latest_post_id
+                state[thread_id] = {
+                    "latest_post_id": latest_post_id,
+                    "reminder_count": reminder_count + 1,
+                    "last_reminder_time": int(time.time() * 1000)
+                }
                 save_state(state)
                 reminded_count += 1
                 # Small sleep to prevent rate limiting or log flooding
