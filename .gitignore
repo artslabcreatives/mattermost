@@ -167,3 +167,9 @@ docker-compose.prod.yml
 companion/docker-compose.yml
 companion/.env
 rebuild.sh
+
+# Python cache & local tracking files
+__pycache__/
+followup_reminded_threads.json
+sahan_followed_threads.txt
+*.tar.gz
