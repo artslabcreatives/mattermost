@@ -3,17 +3,32 @@
 
 import React from 'react';
 
-import type { ChannelType } from '@mattermost/types/channels';
+import type { Channel, ChannelType } from '@mattermost/types/channels';
+import { Client4 } from 'mattermost-redux/client';
 
+import Avatar from 'components/widgets/users/avatar';
 import Constants from 'utils/constants';
 
 type Props = {
 	channelType: ChannelType;
+	channel?: Channel;
 }
 
 const SidebarBaseChannelIcon = ({
 	channelType,
+	channel,
 }: Props) => {
+	if (channel && channel.last_picture_update && channel.last_picture_update > 0) {
+		const iconUrl = Client4.getChannelIconUrl(channel.id, channel.last_picture_update);
+		return (
+			<Avatar
+				size='xs'
+				url={iconUrl}
+				alt={channel.display_name}
+			/>
+		);
+	}
+
 	if (channelType === Constants.OPEN_CHANNEL) {
 		return (
 			<i className='icon icon-globe' />

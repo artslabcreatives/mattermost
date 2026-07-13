@@ -71,6 +71,7 @@ func newSqlGroupStore(sqlStore *SqlStore) store.GroupStore {
 			"UserGroups.UpdateAt",
 			"UserGroups.DeleteAt",
 			"UserGroups.AllowReference",
+			"UserGroups.LastPictureUpdate",
 		).
 		From("UserGroups")
 
@@ -126,9 +127,9 @@ func (s *SqlGroupStore) Create(group *model.Group) (*model.Group, error) {
 	group.UpdateAt = group.CreateAt
 
 	if _, err := s.GetMaster().NamedExec(`INSERT INTO UserGroups
-		(Id, Name, DisplayName, Description, Source, RemoteId, CreateAt, UpdateAt, DeleteAt, AllowReference)
+		(Id, Name, DisplayName, Description, Source, RemoteId, CreateAt, UpdateAt, DeleteAt, AllowReference, LastPictureUpdate)
 		VALUES
-		(:Id, :Name, :DisplayName, :Description, :Source, :RemoteId, :CreateAt, :UpdateAt, :DeleteAt, :AllowReference)`, group); err != nil {
+		(:Id, :Name, :DisplayName, :Description, :Source, :RemoteId, :CreateAt, :UpdateAt, :DeleteAt, :AllowReference, :LastPictureUpdate)`, group); err != nil {
 		if IsUniqueConstraintError(err, []string{"Name", "groups_name_key"}) {
 			return nil, errors.Wrapf(err, "Group with name %s already exists", *group.Name)
 		}
@@ -159,8 +160,8 @@ func (s *SqlGroupStore) CreateWithUserIds(g *model.GroupWithUserIds) (_ *model.G
 
 	groupInsertQuery, groupInsertArgs, err := s.getQueryBuilder().
 		Insert("UserGroups").
-		Columns("Id", "Name", "DisplayName", "Description", "Source", "RemoteId", "CreateAt", "UpdateAt", "DeleteAt", "AllowReference").
-		Values(g.Id, g.Name, g.DisplayName, g.Description, g.Source, g.RemoteId, g.CreateAt, g.UpdateAt, 0, g.AllowReference).
+		Columns("Id", "Name", "DisplayName", "Description", "Source", "RemoteId", "CreateAt", "UpdateAt", "DeleteAt", "AllowReference", "LastPictureUpdate").
+		Values(g.Id, g.Name, g.DisplayName, g.Description, g.Source, g.RemoteId, g.CreateAt, g.UpdateAt, 0, g.AllowReference, g.LastPictureUpdate).
 		ToSql()
 	if err != nil {
 		return nil, err
@@ -388,6 +389,7 @@ func (s *SqlGroupStore) Update(group *model.Group) (*model.Group, error) {
 	// Reset these properties, don't update them based on input
 	group.CreateAt = retrievedGroup.CreateAt
 	group.UpdateAt = model.GetMillis()
+	group.LastPictureUpdate = retrievedGroup.LastPictureUpdate
 
 	if err := group.IsValidForUpdate(); err != nil {
 		return nil, err
@@ -395,7 +397,7 @@ func (s *SqlGroupStore) Update(group *model.Group) (*model.Group, error) {
 
 	res, err := s.GetMaster().NamedExec(`UPDATE UserGroups
 		SET Name=:Name, DisplayName=:DisplayName, Description=:Description, Source=:Source,
-		RemoteId=:RemoteId, CreateAt=:CreateAt, UpdateAt=:UpdateAt, DeleteAt=:DeleteAt, AllowReference=:AllowReference
+		RemoteId=:RemoteId, CreateAt=:CreateAt, UpdateAt=:UpdateAt, DeleteAt=:DeleteAt, AllowReference=:AllowReference, LastPictureUpdate=:LastPictureUpdate
 		WHERE Id=:Id`, group)
 	if err != nil {
 		if IsUniqueConstraintError(err, []string{"Name", "groups_name_key"}) {
@@ -1137,6 +1139,7 @@ type group struct {
 	AllowReference              bool
 	ChannelMemberCount          *int
 	ChannelMemberTimezonesCount *int
+	LastPictureUpdate           int64
 }
 
 func (g group) ToModel() *model.Group {
@@ -1155,6 +1158,7 @@ func (g group) ToModel() *model.Group {
 		MemberCount:                 g.MemberCount,
 		ChannelMemberCount:          g.ChannelMemberCount,
 		ChannelMemberTimezonesCount: g.ChannelMemberTimezonesCount,
+		LastPictureUpdate:           g.LastPictureUpdate,
 	}
 }
 
@@ -2002,4 +2006,20 @@ func (s *SqlGroupStore) buildDeleteMembersQuery(groupID string, userIDs []string
 		})
 
 	return
+}
+
+func (s *SqlGroupStore) UpdateLastPictureUpdate(groupID string) error {
+	curTime := model.GetMillis()
+	if _, err := s.GetMaster().Exec("UPDATE UserGroups SET LastPictureUpdate = $1, UpdateAt = $2 WHERE Id = $3", curTime, curTime, groupID); err != nil {
+		return errors.Wrap(err, "failed to update LastPictureUpdate for group")
+	}
+	return nil
+}
+
+func (s *SqlGroupStore) ResetLastPictureUpdate(groupID string) error {
+	curTime := model.GetMillis()
+	if _, err := s.GetMaster().Exec("UPDATE UserGroups SET LastPictureUpdate = 0, UpdateAt = $1 WHERE Id = $2", curTime, groupID); err != nil {
+		return errors.Wrap(err, "failed to reset LastPictureUpdate for group")
+	}
+	return nil
 }

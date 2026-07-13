@@ -71,6 +71,7 @@ export type Channel = {
     policy_enforced?: boolean;
     policy_is_active?: boolean;
     default_category_name?: string;
+    last_picture_update?: number;
 };
 
 export type ServerChannel = Channel & {

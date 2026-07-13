@@ -323,6 +323,8 @@ type ChannelStore interface {
 	GetTeamForChannel(channelID string) (*model.Team, error)
 	IsReadOnlyChannel(channelID string) (bool, error)
 	IsChannelReadOnlyScheme(schemeID string) (bool, error)
+	UpdateLastPictureUpdate(channelID string) error
+	ResetLastPictureUpdate(channelID string) error
 }
 
 type ChannelMemberHistoryStore interface {
@@ -1004,6 +1006,8 @@ type GroupStore interface {
 	DeleteMembers(groupID string, userIDs []string) ([]*model.GroupMember, error)
 
 	GetMember(groupID string, userID string) (*model.GroupMember, error)
+	UpdateLastPictureUpdate(groupID string) error
+	ResetLastPictureUpdate(groupID string) error
 }
 
 type LinkMetadataStore interface {

@@ -17,6 +17,7 @@ import type {
     SyncablePatch} from '@mattermost/types/groups';
 import type {Team} from '@mattermost/types/teams';
 import type {UserProfile} from '@mattermost/types/users';
+import {Client4} from 'mattermost-redux/client';
 
 import type {ActionResult} from 'mattermost-redux/types/actions';
 
@@ -95,6 +96,9 @@ export type State = {
     rolesToChange: Record<string, boolean>;
     groupTeams: GroupTeam[];
     groupChannels: GroupChannel[];
+    pictureFile: File | null;
+    pictureUrl: string | null;
+    removePicture: boolean;
 };
 
 class GroupDetails extends React.PureComponent<Props, State> {
@@ -126,8 +130,76 @@ class GroupDetails extends React.PureComponent<Props, State> {
             rolesToChange: {},
             groupTeams: [],
             groupChannels: [],
+            pictureFile: null,
+            pictureUrl: null,
+            removePicture: false,
         };
     }
+
+    fileInputRef = React.createRef<HTMLInputElement>();
+
+    componentWillUnmount() {
+        if (this.state.pictureUrl && this.state.pictureUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(this.state.pictureUrl);
+        }
+    }
+
+    handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            const previewUrl = URL.createObjectURL(file);
+            this.setState((state) => {
+                if (state.pictureUrl && state.pictureUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(state.pictureUrl);
+                }
+                return {
+                    pictureFile: file,
+                    pictureUrl: previewUrl,
+                    removePicture: false,
+                    saveNeeded: true,
+                };
+            });
+        }
+    };
+
+    handleIconUploadClick = () => {
+        this.fileInputRef.current?.click();
+    };
+
+    handleIconRemoveClick = () => {
+        this.setState((state) => {
+            if (state.pictureUrl && state.pictureUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(state.pictureUrl);
+            }
+            return {
+                pictureFile: null,
+                pictureUrl: null,
+                removePicture: true,
+                saveNeeded: true,
+            };
+        });
+    };
+
+    handleGroupIconSave = async () => {
+        const {groupID, group} = this.props;
+        const {pictureFile, removePicture} = this.state;
+        if (pictureFile) {
+            try {
+                await Client4.uploadGroupIcon(groupID, pictureFile);
+            } catch (err: any) {
+                this.setState({serverError: <>{err.message || err}</>});
+                return false;
+            }
+        } else if (removePicture && group.last_picture_update) {
+            try {
+                await Client4.deleteGroupIcon(groupID);
+            } catch (err: any) {
+                this.setState({serverError: <>{err.message || err}</>});
+                return false;
+            }
+        }
+        return true;
+    };
 
     componentDidMount() {
         const {groupID, actions} = this.props;
@@ -389,6 +461,7 @@ class GroupDetails extends React.PureComponent<Props, State> {
         this.setState({saving: true});
 
         const patchGroupSuccessful = await this.handlePatchGroup();
+        const iconSuccessful = await this.handleGroupIconSave();
         const addsSuccessful = await this.handleAddedTeamsAndChannels();
         const removesSuccessful = await this.handleRemovedTeamsAndChannels();
         const rolesSuccessful = await this.handleRolesToUpdate();
@@ -402,17 +475,32 @@ class GroupDetails extends React.PureComponent<Props, State> {
                 this.props.groupID,
                 SyncableType.Team,
             ),
+            this.props.actions.getGroup(this.props.groupID),
         ]);
 
-        const allSuccuessful =
+        const allSuccessful =
             patchGroupSuccessful &&
+            iconSuccessful &&
             addsSuccessful &&
             removesSuccessful &&
             rolesSuccessful;
 
-        this.setState({saveNeeded: !allSuccuessful, saving: false});
+        if (allSuccessful) {
+            this.setState({
+                saveNeeded: false,
+                saving: false,
+                pictureFile: null,
+                pictureUrl: null,
+                removePicture: false,
+            });
+        } else {
+            this.setState({
+                saveNeeded: true,
+                saving: false,
+            });
+        }
 
-        this.props.actions.setNavigationBlocked(!allSuccuessful);
+        this.props.actions.setNavigationBlocked(!allSuccessful);
     };
 
     roleChangeKey = (groupTeamOrChannel: {
@@ -641,6 +729,9 @@ class GroupDetails extends React.PureComponent<Props, State> {
             serverError,
         } = this.state;
 
+        const groupIconUrl = this.state.pictureUrl ||
+            (!this.state.removePicture && group.last_picture_update && group.last_picture_update > 0 ? Client4.getGroupIconUrl(group.id, group.last_picture_update) : null);
+
         return (
             <div className='wrapper--fixed'>
                 <AdminHeader withBackButton={true}>
@@ -674,6 +765,11 @@ class GroupDetails extends React.PureComponent<Props, State> {
                             onToggle={this.onMentionToggle}
                             onChange={this.onMentionChange}
                             readOnly={isDisabled}
+                            groupIconUrl={groupIconUrl}
+                            onIconUploadClick={this.handleIconUploadClick}
+                            onIconRemoveClick={this.handleIconRemoveClick}
+                            onIconFileChange={this.handleFileChange}
+                            fileInputRef={this.fileInputRef}
                         />
 
                         <AdminPanel

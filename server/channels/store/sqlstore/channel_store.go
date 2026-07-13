@@ -138,6 +138,7 @@ func channelSliceColumns(isSelect bool, prefix ...string) []string {
 		p + "LastRootPostAt",
 		p + "BannerInfo",
 		p + "DefaultCategoryName",
+		p + "LastPictureUpdate",
 	}
 
 	if isSelect {
@@ -176,6 +177,7 @@ func channelToSlice(channel *model.Channel) []any {
 		channel.LastRootPostAt,
 		channel.BannerInfo,
 		channel.DefaultCategoryName,
+		channel.LastPictureUpdate,
 	}
 }
 
@@ -4415,4 +4417,20 @@ func (s SqlChannelStore) IsChannelReadOnlyScheme(schemeID string) (bool, error) 
 	}
 	permissionList := strings.Split(permissions, " ")
 	return slices.Index(permissionList, model.PermissionCreatePost.Id) == -1, nil
+}
+
+func (s SqlChannelStore) UpdateLastPictureUpdate(channelID string) error {
+	curTime := model.GetMillis()
+	if _, err := s.GetMaster().Exec("UPDATE Channels SET LastPictureUpdate = $1, UpdateAt = $2 WHERE Id = $3", curTime, curTime, channelID); err != nil {
+		return errors.Wrap(err, "failed to update LastPictureUpdate for channel")
+	}
+	return nil
+}
+
+func (s SqlChannelStore) ResetLastPictureUpdate(channelID string) error {
+	curTime := model.GetMillis()
+	if _, err := s.GetMaster().Exec("UPDATE Channels SET LastPictureUpdate = 0, UpdateAt = $1 WHERE Id = $2", curTime, channelID); err != nil {
+		return errors.Wrap(err, "failed to reset LastPictureUpdate for channel")
+	}
+	return nil
 }

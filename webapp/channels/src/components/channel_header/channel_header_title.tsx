@@ -10,6 +10,7 @@ import type { UserProfile } from '@mattermost/types/users';
 import { Client4 } from 'mattermost-redux/client';
 import { getCurrentChannel } from 'mattermost-redux/selectors/entities/channels';
 
+import Avatar from 'components/widgets/users/avatar';
 import ProfilePicture from 'components/profile_picture';
 import SharedChannelIndicator from 'components/shared_channel_indicator';
 import ArchiveIcon from 'components/widgets/icons/archive_icon';
@@ -100,6 +101,13 @@ const ChannelHeaderTitle = ({
 					src={Client4.getProfilePictureUrl(dmUser.id, dmUser.last_picture_update)}
 					size='sm'
 					status={channel.status}
+				/>
+			)}
+			{!isDirect && !isGroup && channel.last_picture_update && channel.last_picture_update > 0 && (
+				<Avatar
+					size='sm'
+					url={Client4.getChannelIconUrl(channel.id, channel.last_picture_update)}
+					alt={channel.display_name}
 				/>
 			)}
 			<ChannelHeaderMenu

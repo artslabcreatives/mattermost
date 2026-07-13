@@ -4,11 +4,15 @@
 package app
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
+	"github.com/mattermost/mattermost/server/public/shared/request"
 	"github.com/mattermost/mattermost/server/v8/channels/store"
 )
 
@@ -880,5 +884,101 @@ func (a *App) publishGroupMemberEvent(eventName model.WebsocketEventType, groupM
 	}
 	messageWs.Add("group_member", string(groupMemberJSON))
 	a.Publish(messageWs)
+	return nil
+}
+
+func getGroupIconPath(groupID string) string {
+	return "groups/" + groupID + "/icon.png"
+}
+
+func (a *App) GetGroupIcon(group *model.Group) ([]byte, bool, *model.AppError) {
+	if group.LastPictureUpdate == 0 {
+		return nil, false, nil
+	}
+
+	path := getGroupIconPath(group.Id)
+	data, err := a.ReadFile(path)
+	if err != nil {
+		return nil, false, model.NewAppError("GetGroupIcon", "api.group.get_image.read.app_error", nil, "", http.StatusNotFound).Wrap(err)
+	}
+
+	return data, true, nil
+}
+
+func (a *App) SetGroupIcon(rctx request.CTX, groupID string, imageData *multipart.FileHeader) *model.AppError {
+	file, err := imageData.Open()
+	if err != nil {
+		return model.NewAppError("SetGroupIcon", "api.group.upload_image.open.app_error", nil, "", http.StatusBadRequest).Wrap(err)
+	}
+	defer file.Close()
+
+	if limitErr := checkImageLimits(file, *a.Config().FileSettings.MaxImageResolution); limitErr != nil {
+		return model.NewAppError("SetGroupIcon", "api.group.upload_image.check_image_limits.app_error", nil, "", http.StatusBadRequest).Wrap(limitErr)
+	}
+
+	buf, appErr := a.AdjustImage(rctx, file)
+	if appErr != nil {
+		return appErr
+	}
+
+	path := getGroupIconPath(groupID)
+	if storedData, err := a.ReadFile(path); err == nil && bytes.Equal(storedData, buf.Bytes()) {
+		return nil
+	}
+
+	if _, err := a.WriteFile(buf, path); err != nil {
+		return model.NewAppError("SetGroupIcon", "api.group.upload_image.upload.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+
+	if err := a.Srv().Store().Group().UpdateLastPictureUpdate(groupID); err != nil {
+		rctx.Logger().Warn("Error with updating group last picture update", mlog.Err(err))
+	}
+
+	if updatedGroup, err := a.Srv().Store().Group().Get(groupID); err == nil {
+		if count, errCount := a.Srv().Store().Group().GetMemberCount(groupID); errCount == nil {
+			updatedGroup.MemberCount = model.NewPointer(int(count))
+		}
+		messageWs := model.NewWebSocketEvent(model.WebsocketEventReceivedGroup, "", "", "", nil, "")
+		groupJSON, jsonErr := json.Marshal(updatedGroup)
+		if jsonErr == nil {
+			messageWs.Add("group", string(groupJSON))
+			a.Publish(messageWs)
+		}
+	}
+
+	return nil
+}
+
+func (a *App) DeleteGroupIcon(rctx request.CTX, groupID string) *model.AppError {
+	path := getGroupIconPath(groupID)
+
+	exists, err := a.FileExists(path)
+	if err != nil {
+		return model.NewAppError("DeleteGroupIcon", "api.group.delete_image.exists.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+	if !exists {
+		return nil
+	}
+
+	if err := a.RemoveFile(path); err != nil {
+		return model.NewAppError("DeleteGroupIcon", "api.group.delete_image.remove.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+
+	if err := a.Srv().Store().Group().ResetLastPictureUpdate(groupID); err != nil {
+		rctx.Logger().Warn("Error with resetting group last picture update", mlog.Err(err))
+	}
+
+	if updatedGroup, err := a.Srv().Store().Group().Get(groupID); err == nil {
+		if count, errCount := a.Srv().Store().Group().GetMemberCount(groupID); errCount == nil {
+			updatedGroup.MemberCount = model.NewPointer(int(count))
+		}
+		messageWs := model.NewWebSocketEvent(model.WebsocketEventReceivedGroup, "", "", "", nil, "")
+		groupJSON, jsonErr := json.Marshal(updatedGroup)
+		if jsonErr == nil {
+			messageWs.Add("group", string(groupJSON))
+			a.Publish(messageWs)
+		}
+	}
+
 	return nil
 }

@@ -55,6 +55,11 @@ type GroupProfileAndSettingsProps = {
 	onChange: React.ChangeEventHandler<HTMLInputElement>;
 	onToggle: (allowReference: boolean) => void;
 	readOnly?: boolean;
+	groupIconUrl?: string | null;
+	onIconUploadClick?: () => void;
+	onIconRemoveClick?: () => void;
+	fileInputRef?: React.RefObject<HTMLInputElement>;
+	onIconFileChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
 export const GroupProfileAndSettings = ({
@@ -64,6 +69,11 @@ export const GroupProfileAndSettings = ({
 	onToggle,
 	onChange,
 	readOnly,
+	groupIconUrl,
+	onIconUploadClick,
+	onIconRemoveClick,
+	fileInputRef,
+	onIconFileChange,
 }: GroupProfileAndSettingsProps) => (
 	<AdminPanel
 		id='group_profile'
@@ -77,6 +87,48 @@ export const GroupProfileAndSettings = ({
 			isDisabled={true}
 			showAtMention={false}
 		/>
+		<div className='group-settings--body group-icon-section'>
+			<div className='group-icon-wrapper'>
+				{groupIconUrl ? (
+					<img
+						className='group-icon-preview'
+						src={groupIconUrl}
+						alt={displayname}
+					/>
+				) : (
+					<div className='group-icon-default'>
+						{(displayname || '?').charAt(0).toUpperCase()}
+					</div>
+				)}
+				{!readOnly && (
+					<div className='group-icon-actions'>
+						<button
+							type='button'
+							className='btn btn-tertiary btn-xs'
+							onClick={onIconUploadClick}
+						>
+							<FormattedMessage id='group_settings.icon.upload' defaultMessage='Upload Image' />
+						</button>
+						{groupIconUrl && (
+							<button
+								type='button'
+								className='btn btn-danger-outline btn-xs'
+								onClick={onIconRemoveClick}
+							>
+								<FormattedMessage id='group_settings.icon.remove' defaultMessage='Remove' />
+							</button>
+						)}
+						<input
+							type='file'
+							ref={fileInputRef}
+							style={{ display: 'none' }}
+							accept='image/*'
+							onChange={onIconFileChange}
+						/>
+					</div>
+				)}
+			</div>
+		</div>
 		<div className='group-settings'>
 			<div className='group-settings--body'>
 				<div className='section-separator'>
@@ -102,3 +154,4 @@ export const GroupProfileAndSettings = ({
 		)}
 	</AdminPanel>
 );
+

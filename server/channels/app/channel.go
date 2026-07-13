@@ -4,10 +4,12 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"slices"
 	"strings"
@@ -4143,4 +4145,96 @@ func (a *App) addChannelToDefaultCategory(rctx request.CTX, userID string, chann
 			}
 		}
 	}
+}
+
+func getChannelIconPath(channelID string) string {
+	return "channels/" + channelID + "/icon.png"
+}
+
+func (a *App) GetChannelIcon(channel *model.Channel) ([]byte, bool, *model.AppError) {
+	if channel.LastPictureUpdate == 0 {
+		return nil, false, nil
+	}
+
+	path := getChannelIconPath(channel.Id)
+	data, err := a.ReadFile(path)
+	if err != nil {
+		return nil, false, model.NewAppError("GetChannelIcon", "api.channel.get_image.read.app_error", nil, "", http.StatusNotFound).Wrap(err)
+	}
+
+	return data, true, nil
+}
+
+func (a *App) SetChannelIcon(rctx request.CTX, channelID string, imageData *multipart.FileHeader) *model.AppError {
+	file, err := imageData.Open()
+	if err != nil {
+		return model.NewAppError("SetChannelIcon", "api.channel.upload_image.open.app_error", nil, "", http.StatusBadRequest).Wrap(err)
+	}
+	defer file.Close()
+
+	if limitErr := checkImageLimits(file, *a.Config().FileSettings.MaxImageResolution); limitErr != nil {
+		return model.NewAppError("SetChannelIcon", "api.channel.upload_image.check_image_limits.app_error", nil, "", http.StatusBadRequest).Wrap(limitErr)
+	}
+
+	buf, appErr := a.AdjustImage(rctx, file)
+	if appErr != nil {
+		return appErr
+	}
+
+	path := getChannelIconPath(channelID)
+	if storedData, err := a.ReadFile(path); err == nil && bytes.Equal(storedData, buf.Bytes()) {
+		return nil
+	}
+
+	if _, err := a.WriteFile(buf, path); err != nil {
+		return model.NewAppError("SetChannelIcon", "api.channel.upload_image.upload.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+
+	if err := a.Srv().Store().Channel().UpdateLastPictureUpdate(channelID); err != nil {
+		rctx.Logger().Warn("Error with updating channel last picture update", mlog.Err(err))
+	}
+
+	if updatedChannel, err := a.Srv().Store().Channel().Get(channelID, true); err == nil {
+		a.Srv().Platform().InvalidateCacheForChannel(updatedChannel)
+		messageWs := model.NewWebSocketEvent(model.WebsocketEventChannelUpdated, "", updatedChannel.Id, "", nil, "")
+		channelJSON, jsonErr := json.Marshal(updatedChannel)
+		if jsonErr == nil {
+			messageWs.Add("channel", string(channelJSON))
+			a.Publish(messageWs)
+		}
+	}
+
+	return nil
+}
+
+func (a *App) DeleteChannelIcon(rctx request.CTX, channelID string) *model.AppError {
+	path := getChannelIconPath(channelID)
+
+	exists, err := a.FileExists(path)
+	if err != nil {
+		return model.NewAppError("DeleteChannelIcon", "api.channel.delete_image.exists.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+	if !exists {
+		return nil
+	}
+
+	if err := a.RemoveFile(path); err != nil {
+		return model.NewAppError("DeleteChannelIcon", "api.channel.delete_image.remove.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+
+	if err := a.Srv().Store().Channel().ResetLastPictureUpdate(channelID); err != nil {
+		rctx.Logger().Warn("Error with resetting channel last picture update", mlog.Err(err))
+	}
+
+	if updatedChannel, err := a.Srv().Store().Channel().Get(channelID, true); err == nil {
+		a.Srv().Platform().InvalidateCacheForChannel(updatedChannel)
+		messageWs := model.NewWebSocketEvent(model.WebsocketEventChannelUpdated, "", updatedChannel.Id, "", nil, "")
+		channelJSON, jsonErr := json.Marshal(updatedChannel)
+		if jsonErr == nil {
+			messageWs.Add("channel", string(channelJSON))
+			a.Publish(messageWs)
+		}
+	}
+
+	return nil
 }

@@ -39,13 +39,32 @@ interface Props {
 	dmUser?: DMUser;
 	gmUsers?: UserProfile[];
 	canEditChannelProperties: boolean;
+	isFavorite: boolean;
+	isMuted: boolean;
+	isInvitingPeople: boolean;
+	canManageMembers: boolean;
+	channelURL: string;
 	actions: {
 		editChannelPurpose: () => void;
 		editChannelHeader: () => void;
+		toggleFavorite: () => void;
+		toggleMute: () => void;
+		addPeople: () => void;
 	};
 }
 
-const AboutArea = ({ channel, dmUser, gmUsers, canEditChannelProperties, actions }: Props) => {
+const AboutArea = ({
+	channel,
+	dmUser,
+	gmUsers,
+	canEditChannelProperties,
+	isFavorite,
+	isMuted,
+	isInvitingPeople,
+	canManageMembers,
+	channelURL,
+	actions,
+}: Props) => {
 	return (
 		<Container>
 			{channel.type === Constants.DM_CHANNEL && dmUser && (
@@ -59,13 +78,28 @@ const AboutArea = ({ channel, dmUser, gmUsers, canEditChannelProperties, actions
 				<AboutAreaGM
 					channel={channel}
 					gmUsers={gmUsers!}
-					actions={{ editChannelHeader: actions.editChannelHeader }}
+					isFavorite={isFavorite}
+					isMuted={isMuted}
+					isInvitingPeople={isInvitingPeople}
+					canManageMembers={canManageMembers}
+					channelURL={channelURL}
+					actions={{
+						editChannelHeader: actions.editChannelHeader,
+						toggleFavorite: actions.toggleFavorite,
+						toggleMute: actions.toggleMute,
+						addPeople: actions.addPeople,
+					}}
 				/>
 			)}
 			{[Constants.OPEN_CHANNEL, Constants.PRIVATE_CHANNEL].includes(channel.type) && (
 				<AboutAreaChannel
 					channel={channel}
 					canEditChannelProperties={canEditChannelProperties}
+					isFavorite={isFavorite}
+					isMuted={isMuted}
+					isInvitingPeople={isInvitingPeople}
+					canManageMembers={canManageMembers}
+					channelURL={channelURL}
 					actions={actions}
 				/>
 			)}

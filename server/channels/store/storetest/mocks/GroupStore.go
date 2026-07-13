@@ -1384,6 +1384,24 @@ func (_m *GroupStore) PermittedSyncableAdmins(syncableID string, syncableType mo
 	return r0, r1
 }
 
+// ResetLastPictureUpdate provides a mock function with given fields: groupID
+func (_m *GroupStore) ResetLastPictureUpdate(groupID string) error {
+	ret := _m.Called(groupID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResetLastPictureUpdate")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(groupID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Restore provides a mock function with given fields: groupID
 func (_m *GroupStore) Restore(groupID string) (*model.Group, error) {
 	ret := _m.Called(groupID)
@@ -1562,6 +1580,24 @@ func (_m *GroupStore) UpdateGroupSyncable(groupSyncable *model.GroupSyncable) (*
 	}
 
 	return r0, r1
+}
+
+// UpdateLastPictureUpdate provides a mock function with given fields: groupID
+func (_m *GroupStore) UpdateLastPictureUpdate(groupID string) error {
+	ret := _m.Called(groupID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateLastPictureUpdate")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(groupID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // UpsertMember provides a mock function with given fields: groupID, userID

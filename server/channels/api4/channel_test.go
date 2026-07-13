@@ -6305,3 +6305,67 @@ func TestChannelMemberSanitization(t *testing.T) {
 		assert.Equal(t, channel.Id, returnedMember.ChannelId, "ChannelId should be preserved")
 	})
 }
+
+func TestChannelIcon(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+
+	client := th.Client
+	team := th.BasicTeam
+
+	// 1. Create a channel
+	channel := &model.Channel{
+		DisplayName: "Test Icon Channel",
+		Name:        GenerateTestChannelName(),
+		Type:        model.ChannelTypeOpen,
+		TeamId:      team.Id,
+	}
+	rchannel, _, err := client.CreateChannel(context.Background(), channel)
+	require.NoError(t, err)
+
+	// Get a test image
+	imageData, err := testutils.ReadTestFile("test.png")
+	require.NoError(t, err)
+
+	// 2. Set channel icon (authorized user)
+	resp, err := client.SetChannelIcon(context.Background(), rchannel.Id, imageData)
+	require.NoError(t, err)
+	CheckOKStatus(t, resp)
+
+	// Verify channel LastPictureUpdate is set
+	updatedChannel, _, err := client.GetChannel(context.Background(), rchannel.Id, "")
+	require.NoError(t, err)
+	assert.Greater(t, updatedChannel.LastPictureUpdate, int64(0))
+
+	// 3. Get channel icon
+	iconData, _, err := client.GetChannelIcon(context.Background(), rchannel.Id, "")
+	require.NoError(t, err)
+	assert.NotEmpty(t, iconData)
+
+	// 4. Delete channel icon
+	resp, err = client.DeleteChannelIcon(context.Background(), rchannel.Id)
+	require.NoError(t, err)
+	CheckOKStatus(t, resp)
+
+	// Verify channel LastPictureUpdate is reset
+	updatedChannel2, _, err := client.GetChannel(context.Background(), rchannel.Id, "")
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), updatedChannel2.LastPictureUpdate)
+
+	// 5. Check permissions (user not in channel shouldn't be able to edit)
+	otherUser := th.CreateUser(t)
+	otherClient := th.CreateClient()
+	_, _, err = otherClient.Login(context.Background(), otherUser.Email, otherUser.Password)
+	require.NoError(t, err)
+	defer func() {
+		_, _ = otherClient.Logout(context.Background())
+	}()
+
+	resp, err = otherClient.SetChannelIcon(context.Background(), rchannel.Id, imageData)
+	require.Error(t, err)
+	CheckForbiddenStatus(t, resp)
+
+	resp, err = otherClient.DeleteChannelIcon(context.Background(), rchannel.Id)
+	require.Error(t, err)
+	CheckForbiddenStatus(t, resp)
+}

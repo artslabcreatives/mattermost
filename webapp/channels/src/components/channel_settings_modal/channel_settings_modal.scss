@@ -213,7 +213,52 @@
             width: calc(75%);
         }
     }
+
+    &__iconSection {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 16px;
+    }
+
+    &__iconWrapper {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    &__iconPreview {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid rgba(var(--center-channel-color-rgb), 0.16);
+    }
+
+    &__defaultIcon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--button-bg), var(--sidebar-header-bg));
+        color: var(--button-color);
+        font-family: Metropolis, sans-serif;
+        font-size: 32px;
+        font-weight: 600;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        border: 2px solid rgba(var(--center-channel-color-rgb), 0.16);
+        user-select: none;
+    }
+
+    &__iconActions {
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+    }
 }
+
 
 // styles for the archive channel confirm modal
 .archiveChannelConfirmModal {

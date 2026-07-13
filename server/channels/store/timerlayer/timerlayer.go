@@ -55,6 +55,7 @@ type TimerLayer struct {
 	PropertyValueStore              store.PropertyValueStore
 	ReactionStore                   store.ReactionStore
 	ReadReceiptStore                store.ReadReceiptStore
+	RecapStore                      store.RecapStore
 	RemoteClusterStore              store.RemoteClusterStore
 	RetentionPolicyStore            store.RetentionPolicyStore
 	RoleStore                       store.RoleStore
@@ -218,6 +219,10 @@ func (s *TimerLayer) Reaction() store.ReactionStore {
 
 func (s *TimerLayer) ReadReceipt() store.ReadReceiptStore {
 	return s.ReadReceiptStore
+}
+
+func (s *TimerLayer) Recap() store.RecapStore {
+	return s.RecapStore
 }
 
 func (s *TimerLayer) RemoteCluster() store.RemoteClusterStore {
@@ -473,6 +478,11 @@ type TimerLayerReactionStore struct {
 
 type TimerLayerReadReceiptStore struct {
 	store.ReadReceiptStore
+	Root *TimerLayer
+}
+
+type TimerLayerRecapStore struct {
+	store.RecapStore
 	Root *TimerLayer
 }
 
@@ -2607,6 +2617,22 @@ func (s *TimerLayerChannelStore) ResetAllChannelSchemes() error {
 	return err
 }
 
+func (s *TimerLayerChannelStore) ResetLastPictureUpdate(channelID string) error {
+	start := time.Now()
+
+	err := s.ChannelStore.ResetLastPictureUpdate(channelID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("ChannelStore.ResetLastPictureUpdate", success, elapsed)
+	}
+	return err
+}
+
 func (s *TimerLayerChannelStore) Restore(channelID string, timestamp int64) error {
 	start := time.Now()
 
@@ -2813,6 +2839,22 @@ func (s *TimerLayerChannelStore) Update(rctx request.CTX, channel *model.Channel
 		s.Root.Metrics.ObserveStoreMethodDuration("ChannelStore.Update", success, elapsed)
 	}
 	return result, err
+}
+
+func (s *TimerLayerChannelStore) UpdateLastPictureUpdate(channelID string) error {
+	start := time.Now()
+
+	err := s.ChannelStore.UpdateLastPictureUpdate(channelID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("ChannelStore.UpdateLastPictureUpdate", success, elapsed)
+	}
+	return err
 }
 
 func (s *TimerLayerChannelStore) UpdateLastViewedAt(channelIds []string, userID string) (map[string]int64, error) {
@@ -4204,6 +4246,22 @@ func (s *TimerLayerFileInfoStore) GetFromMaster(id string) (*model.FileInfo, err
 	return result, err
 }
 
+func (s *TimerLayerFileInfoStore) GetPinnedFileInfosForChannel(channelID string) ([]*model.FileInfo, error) {
+	start := time.Now()
+
+	result, err := s.FileInfoStore.GetPinnedFileInfosForChannel(channelID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("FileInfoStore.GetPinnedFileInfosForChannel", success, elapsed)
+	}
+	return result, err
+}
+
 func (s *TimerLayerFileInfoStore) GetStorageUsage(allowFromCache bool, includeDeleted bool) (int64, error) {
 	start := time.Now()
 
@@ -4331,6 +4389,22 @@ func (s *TimerLayerFileInfoStore) PermanentDeleteForPost(rctx request.CTX, postI
 	return err
 }
 
+func (s *TimerLayerFileInfoStore) PinFileInfo(rctx request.CTX, fileID string) error {
+	start := time.Now()
+
+	err := s.FileInfoStore.PinFileInfo(rctx, fileID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("FileInfoStore.PinFileInfo", success, elapsed)
+	}
+	return err
+}
+
 func (s *TimerLayerFileInfoStore) RefreshFileStats() error {
 	start := time.Now()
 
@@ -4407,6 +4481,22 @@ func (s *TimerLayerFileInfoStore) SetContent(rctx request.CTX, fileID string, co
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("FileInfoStore.SetContent", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerFileInfoStore) UnpinFileInfo(rctx request.CTX, fileID string) error {
+	start := time.Now()
+
+	err := s.FileInfoStore.UnpinFileInfo(rctx, fileID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("FileInfoStore.UnpinFileInfo", success, elapsed)
 	}
 	return err
 }
@@ -5179,6 +5269,22 @@ func (s *TimerLayerGroupStore) PermittedSyncableAdmins(syncableID string, syncab
 	return result, err
 }
 
+func (s *TimerLayerGroupStore) ResetLastPictureUpdate(groupID string) error {
+	start := time.Now()
+
+	err := s.GroupStore.ResetLastPictureUpdate(groupID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("GroupStore.ResetLastPictureUpdate", success, elapsed)
+	}
+	return err
+}
+
 func (s *TimerLayerGroupStore) Restore(groupID string) (*model.Group, error) {
 	start := time.Now()
 
@@ -5273,6 +5379,22 @@ func (s *TimerLayerGroupStore) UpdateGroupSyncable(groupSyncable *model.GroupSyn
 		s.Root.Metrics.ObserveStoreMethodDuration("GroupStore.UpdateGroupSyncable", success, elapsed)
 	}
 	return result, err
+}
+
+func (s *TimerLayerGroupStore) UpdateLastPictureUpdate(groupID string) error {
+	start := time.Now()
+
+	err := s.GroupStore.UpdateLastPictureUpdate(groupID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("GroupStore.UpdateLastPictureUpdate", success, elapsed)
+	}
+	return err
 }
 
 func (s *TimerLayerGroupStore) UpsertMember(groupID string, userID string) (*model.GroupMember, error) {
@@ -8422,6 +8544,166 @@ func (s *TimerLayerReadReceiptStore) Update(rctx request.CTX, receipt *model.Rea
 		s.Root.Metrics.ObserveStoreMethodDuration("ReadReceiptStore.Update", success, elapsed)
 	}
 	return result, err
+}
+
+func (s *TimerLayerRecapStore) DeleteRecap(id string) error {
+	start := time.Now()
+
+	err := s.RecapStore.DeleteRecap(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("RecapStore.DeleteRecap", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerRecapStore) DeleteRecapChannels(recapId string) error {
+	start := time.Now()
+
+	err := s.RecapStore.DeleteRecapChannels(recapId)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("RecapStore.DeleteRecapChannels", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerRecapStore) GetRecap(id string) (*model.Recap, error) {
+	start := time.Now()
+
+	result, err := s.RecapStore.GetRecap(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("RecapStore.GetRecap", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerRecapStore) GetRecapChannelsByRecapId(recapId string) ([]*model.RecapChannel, error) {
+	start := time.Now()
+
+	result, err := s.RecapStore.GetRecapChannelsByRecapId(recapId)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("RecapStore.GetRecapChannelsByRecapId", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerRecapStore) GetRecapsForUser(userId string, page int, perPage int) ([]*model.Recap, error) {
+	start := time.Now()
+
+	result, err := s.RecapStore.GetRecapsForUser(userId, page, perPage)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("RecapStore.GetRecapsForUser", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerRecapStore) MarkRecapAsRead(id string) error {
+	start := time.Now()
+
+	err := s.RecapStore.MarkRecapAsRead(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("RecapStore.MarkRecapAsRead", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerRecapStore) SaveRecap(recap *model.Recap) (*model.Recap, error) {
+	start := time.Now()
+
+	result, err := s.RecapStore.SaveRecap(recap)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("RecapStore.SaveRecap", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerRecapStore) SaveRecapChannel(recapChannel *model.RecapChannel) error {
+	start := time.Now()
+
+	err := s.RecapStore.SaveRecapChannel(recapChannel)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("RecapStore.SaveRecapChannel", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerRecapStore) UpdateRecap(recap *model.Recap) (*model.Recap, error) {
+	start := time.Now()
+
+	result, err := s.RecapStore.UpdateRecap(recap)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("RecapStore.UpdateRecap", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerRecapStore) UpdateRecapStatus(id string, status string) error {
+	start := time.Now()
+
+	err := s.RecapStore.UpdateRecapStatus(id, status)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("RecapStore.UpdateRecapStatus", success, elapsed)
+	}
+	return err
 }
 
 func (s *TimerLayerRemoteClusterStore) Delete(remoteClusterID string) (bool, error) {
@@ -14024,6 +14306,7 @@ func New(childStore store.Store, metrics einterfaces.MetricsInterface) *TimerLay
 	newStore.PropertyValueStore = &TimerLayerPropertyValueStore{PropertyValueStore: childStore.PropertyValue(), Root: &newStore}
 	newStore.ReactionStore = &TimerLayerReactionStore{ReactionStore: childStore.Reaction(), Root: &newStore}
 	newStore.ReadReceiptStore = &TimerLayerReadReceiptStore{ReadReceiptStore: childStore.ReadReceipt(), Root: &newStore}
+	newStore.RecapStore = &TimerLayerRecapStore{RecapStore: childStore.Recap(), Root: &newStore}
 	newStore.RemoteClusterStore = &TimerLayerRemoteClusterStore{RemoteClusterStore: childStore.RemoteCluster(), Root: &newStore}
 	newStore.RetentionPolicyStore = &TimerLayerRetentionPolicyStore{RetentionPolicyStore: childStore.RetentionPolicy(), Root: &newStore}
 	newStore.RoleStore = &TimerLayerRoleStore{RoleStore: childStore.Role(), Root: &newStore}

@@ -2821,6 +2821,59 @@ func (c *Client4) GetChannel(ctx context.Context, channelId string, etag string)
 	return DecodeJSONFromResponse[*Channel](r)
 }
 
+// GetChannelIcon gets the channel icon image.
+func (c *Client4) GetChannelIcon(ctx context.Context, channelId string, etag string) ([]byte, *Response, error) {
+	r, err := c.doAPIGet(ctx, c.channelRoute(channelId).Join("image"), etag)
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+
+	data, readErr := io.ReadAll(r.Body)
+	if readErr != nil {
+		return nil, BuildResponse(r), readErr
+	}
+
+	return data, BuildResponse(r), nil
+}
+
+// SetChannelIcon sets the channel icon image.
+func (c *Client4) SetChannelIcon(ctx context.Context, channelId string, data []byte) (*Response, error) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("image", "icon.png")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create form file: %w", err)
+	}
+
+	if _, err = io.Copy(part, bytes.NewBuffer(data)); err != nil {
+		return nil, fmt.Errorf("failed to copy data to form file: %w", err)
+	}
+
+	if err = writer.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	r, err := c.doAPIRequestReaderRoute(ctx, http.MethodPost, c.channelRoute(channelId).Join("image"), writer.FormDataContentType(), body, nil)
+	if err != nil {
+		return BuildResponse(r), err
+	}
+	defer closeBody(r)
+
+	return BuildResponse(r), nil
+}
+
+// DeleteChannelIcon deletes/resets the channel icon image.
+func (c *Client4) DeleteChannelIcon(ctx context.Context, channelId string) (*Response, error) {
+	r, err := c.doAPIDelete(ctx, c.channelRoute(channelId).Join("image"))
+	if err != nil {
+		return BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return BuildResponse(r), nil
+}
+
 // GetChannelAsContentReviewer returns a channel based on the provided channel id string, fetching it as a Content Reviewer for a flagged post.
 func (c *Client4) GetChannelAsContentReviewer(ctx context.Context, channelId, etag, flaggedPostId string) (*Channel, *Response, error) {
 	values := url.Values{}
@@ -6600,6 +6653,59 @@ func (c *Client4) PatchGroup(ctx context.Context, groupID string, patch *GroupPa
 	}
 	defer closeBody(r)
 	return DecodeJSONFromResponse[*Group](r)
+}
+
+// GetGroupIcon gets the group icon image.
+func (c *Client4) GetGroupIcon(ctx context.Context, groupID string, etag string) ([]byte, *Response, error) {
+	r, err := c.doAPIGet(ctx, c.groupRoute(groupID).Join("image"), etag)
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+
+	data, readErr := io.ReadAll(r.Body)
+	if readErr != nil {
+		return nil, BuildResponse(r), readErr
+	}
+
+	return data, BuildResponse(r), nil
+}
+
+// SetGroupIcon sets the group icon image.
+func (c *Client4) SetGroupIcon(ctx context.Context, groupID string, data []byte) (*Response, error) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("image", "icon.png")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create form file: %w", err)
+	}
+
+	if _, err = io.Copy(part, bytes.NewBuffer(data)); err != nil {
+		return nil, fmt.Errorf("failed to copy data to form file: %w", err)
+	}
+
+	if err = writer.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	r, err := c.doAPIRequestReaderRoute(ctx, http.MethodPost, c.groupRoute(groupID).Join("image"), writer.FormDataContentType(), body, nil)
+	if err != nil {
+		return BuildResponse(r), err
+	}
+	defer closeBody(r)
+
+	return BuildResponse(r), nil
+}
+
+// DeleteGroupIcon deletes/resets the group icon image.
+func (c *Client4) DeleteGroupIcon(ctx context.Context, groupID string) (*Response, error) {
+	r, err := c.doAPIDelete(ctx, c.groupRoute(groupID).Join("image"))
+	if err != nil {
+		return BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return BuildResponse(r), nil
 }
 
 func (c *Client4) GetGroupMembers(ctx context.Context, groupID string) (*GroupMemberList, *Response, error) {

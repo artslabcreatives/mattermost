@@ -169,9 +169,17 @@ const ChannelInfoRhs = ({
 					dmUser={dmUser}
 					gmUsers={gmUsers}
 					canEditChannelProperties={canEditChannelProperties}
+					isFavorite={isFavorite}
+					isMuted={isMuted}
+					isInvitingPeople={isInvitingPeople}
+					canManageMembers={canManageMembers}
+					channelURL={channelURL}
 					actions={{
 						editChannelHeader,
 						editChannelPurpose,
+						toggleFavorite,
+						toggleMute,
+						addPeople,
 					}}
 				/>
 				<Divider />

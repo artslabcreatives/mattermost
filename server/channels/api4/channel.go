@@ -5,6 +5,8 @@ package api4
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -54,6 +56,9 @@ func (api *API) InitChannel() {
 	api.BaseRoutes.Channel.Handle("/privacy", api.APISessionRequired(updateChannelPrivacy)).Methods(http.MethodPut)
 	api.BaseRoutes.Channel.Handle("/restore", api.APISessionRequired(restoreChannel)).Methods(http.MethodPost)
 	api.BaseRoutes.Channel.Handle("", api.APISessionRequired(deleteChannel)).Methods(http.MethodDelete)
+	api.BaseRoutes.Channel.Handle("/image", api.APISessionRequired(getChannelIcon)).Methods(http.MethodGet)
+	api.BaseRoutes.Channel.Handle("/image", api.APISessionRequired(setChannelIcon)).Methods(http.MethodPost)
+	api.BaseRoutes.Channel.Handle("/image", api.APISessionRequired(deleteChannelIcon)).Methods(http.MethodDelete)
 	api.BaseRoutes.Channel.Handle("/stats", api.APISessionRequired(getChannelStats)).Methods(http.MethodGet)
 	api.BaseRoutes.Channel.Handle("/pinned", api.APISessionRequired(getPinnedPosts)).Methods(http.MethodGet)
 	api.BaseRoutes.Channel.Handle("/pinned_files", api.APISessionRequired(getPinnedFiles)).Methods(http.MethodGet)
@@ -2593,4 +2598,155 @@ func getChannelAccessControlAttributes(c *Context, w http.ResponseWriter, r *htt
 	if err := json.NewEncoder(w).Encode(attributes); err != nil {
 		c.Logger.Warn("Error while writing response", mlog.Err(err))
 	}
+}
+
+func checkChannelIconPermissions(c *Context, channel *model.Channel) bool {
+	switch channel.Type {
+	case model.ChannelTypeOpen:
+		if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), channel.Id, model.PermissionManagePublicChannelProperties) {
+			c.SetPermissionError(model.PermissionManagePublicChannelProperties)
+			return false
+		}
+	case model.ChannelTypePrivate:
+		if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), channel.Id, model.PermissionManagePrivateChannelProperties) {
+			c.SetPermissionError(model.PermissionManagePrivateChannelProperties)
+			return false
+		}
+	case model.ChannelTypeGroup, model.ChannelTypeDirect:
+		if _, errGet := c.App.GetChannelMember(c.AppContext, channel.Id, c.AppContext.Session().UserId); errGet != nil {
+			c.Err = model.NewAppError("checkChannelIconPermissions", "api.channel.patch_update_channel.forbidden.app_error", nil, "", http.StatusForbidden)
+			return false
+		}
+	}
+	return true
+}
+
+func getChannelIcon(c *Context, w http.ResponseWriter, r *http.Request) {
+	c.RequireChannelId()
+	if c.Err != nil {
+		return
+	}
+
+	channel, err := c.App.GetChannel(c.AppContext, c.Params.ChannelId)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	if channel.Type == model.ChannelTypeOpen {
+		if !c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), channel.TeamId, model.PermissionReadPublicChannel) && !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionReadChannel) {
+			c.SetPermissionError(model.PermissionReadPublicChannel)
+			return
+		}
+	} else {
+		if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionReadChannel) {
+			c.SetPermissionError(model.PermissionReadChannel)
+			return
+		}
+	}
+
+	etag := strconv.FormatInt(channel.LastPictureUpdate, 10)
+	if c.HandleEtag(etag, "Get Channel Icon", w, r) {
+		return
+	}
+
+	img, found, err := c.App.GetChannelIcon(channel)
+	if err != nil {
+		c.Err = err
+		return
+	}
+	if !found {
+		c.Err = model.NewAppError("getChannelIcon", "api.channel.get_image.read.app_error", nil, "", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%v, private", model.DayInSeconds)) // 24 hrs
+	w.Header().Set(model.HeaderEtagServer, etag)
+
+	w.Header().Set("Content-Type", "image/png")
+	if _, err := w.Write(img); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
+}
+
+func setChannelIcon(c *Context, w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			c.Logger.Warn("Error discarding request body", mlog.Err(err))
+		}
+	}()
+
+	c.RequireChannelId()
+	if c.Err != nil {
+		return
+	}
+
+	channel, err := c.App.GetChannel(c.AppContext, c.Params.ChannelId)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	if !checkChannelIconPermissions(c, channel) {
+		return
+	}
+
+	if *c.App.Config().FileSettings.DriverName == "" {
+		c.Err = model.NewAppError("setChannelIcon", "api.user.upload_profile_user.storage.app_error", nil, "", http.StatusNotImplemented)
+		return
+	}
+
+	if r.ContentLength > *c.App.Config().FileSettings.MaxFileSize {
+		c.Err = model.NewAppError("setChannelIcon", "api.user.upload_profile_user.too_large.app_error", nil, "", http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	if err := r.ParseMultipartForm(*c.App.Config().FileSettings.MaxFileSize); err != nil {
+		c.Err = model.NewAppError("setChannelIcon", "api.user.upload_profile_user.parse.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+		return
+	}
+
+	m := r.MultipartForm
+	imageArray, ok := m.File["image"]
+	if !ok || len(imageArray) <= 0 {
+		c.Err = model.NewAppError("setChannelIcon", "api.user.upload_profile_user.no_file.app_error", nil, "", http.StatusBadRequest)
+		return
+	}
+
+	imageData := imageArray[0]
+	if err := c.App.SetChannelIcon(c.AppContext, channel.Id, imageData); err != nil {
+		c.Err = err
+		return
+	}
+
+	ReturnStatusOK(w)
+}
+
+func deleteChannelIcon(c *Context, w http.ResponseWriter, r *http.Request) {
+	c.RequireChannelId()
+	if c.Err != nil {
+		return
+	}
+
+	channel, err := c.App.GetChannel(c.AppContext, c.Params.ChannelId)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	if !checkChannelIconPermissions(c, channel) {
+		return
+	}
+
+	if *c.App.Config().FileSettings.DriverName == "" {
+		c.Err = model.NewAppError("deleteChannelIcon", "api.user.upload_profile_user.storage.app_error", nil, "", http.StatusNotImplemented)
+		return
+	}
+
+	if err := c.App.DeleteChannelIcon(c.AppContext, channel.Id); err != nil {
+		c.Err = err
+		return
+	}
+
+	ReturnStatusOK(w)
 }

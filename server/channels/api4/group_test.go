@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/v8/channels/utils/testutils"
 )
 
 func TestGetGroup(t *testing.T) {
@@ -2916,4 +2917,69 @@ func TestDeleteMembersFromGroup(t *testing.T) {
 		require.Error(t, err)
 		CheckBadRequestStatus(t, response)
 	})
+}
+
+func TestGroupIcon(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+
+	th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
+
+	// 1. Create a custom group
+	id := model.NewId()
+	group := &model.Group{
+		Name:           model.NewPointer("name" + id),
+		DisplayName:    "dn_" + id,
+		Source:         model.GroupSourceCustom,
+		AllowReference: true,
+	}
+	rgroup, _, err := th.SystemAdminClient.CreateGroup(context.Background(), group)
+	require.NoError(t, err)
+
+	// Get a test image
+	imageData, err := testutils.ReadTestFile("test.png")
+	require.NoError(t, err)
+
+	// 2. Set group icon
+	resp, err := th.SystemAdminClient.SetGroupIcon(context.Background(), rgroup.Id, imageData)
+	require.NoError(t, err)
+	CheckOKStatus(t, resp)
+
+	// Verify group LastPictureUpdate is set
+	updatedGroup, _, err := th.SystemAdminClient.GetGroup(context.Background(), rgroup.Id, "")
+	require.NoError(t, err)
+	assert.Greater(t, updatedGroup.LastPictureUpdate, int64(0))
+
+	// 3. Get group icon
+	iconData, _, err := th.SystemAdminClient.GetGroupIcon(context.Background(), rgroup.Id, "")
+	require.NoError(t, err)
+	assert.NotEmpty(t, iconData)
+
+	// 4. Delete group icon
+	resp, err = th.SystemAdminClient.DeleteGroupIcon(context.Background(), rgroup.Id)
+	require.NoError(t, err)
+	CheckOKStatus(t, resp)
+
+	// Verify group LastPictureUpdate is reset
+	updatedGroup2, _, err := th.SystemAdminClient.GetGroup(context.Background(), rgroup.Id, "")
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), updatedGroup2.LastPictureUpdate)
+
+	// 5. Check permissions (unauthorized user shouldn't be able to edit LDAP group icon)
+	ldapGroup := &model.Group{
+		Name:        model.NewPointer("ldapname" + id),
+		DisplayName: "ldapdn_" + id,
+		Source:      model.GroupSourceLdap,
+		RemoteId:    model.NewPointer(model.NewId()),
+	}
+	rLdapGroup, appErr := th.App.CreateGroup(ldapGroup)
+	require.Nil(t, appErr)
+
+	resp, err = th.Client.SetGroupIcon(context.Background(), rLdapGroup.Id, imageData)
+	require.Error(t, err)
+	CheckForbiddenStatus(t, resp)
+
+	resp, err = th.Client.DeleteGroupIcon(context.Background(), rLdapGroup.Id)
+	require.Error(t, err)
+	CheckForbiddenStatus(t, resp)
 }

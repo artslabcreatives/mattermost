@@ -1748,6 +1748,34 @@ export default class Client4 {
 		);
 	};
 
+	getChannelIconUrl = (channelId: string, lastPictureUpdate?: number) => {
+		const params: any = {};
+		if (lastPictureUpdate) {
+			params._ = lastPictureUpdate;
+		}
+		return `${this.getChannelRoute(channelId)}/image${buildQueryString(params)}`;
+	};
+
+	uploadChannelIcon = (channelId: string, imageData: File) => {
+		const formData = new FormData();
+		formData.append('image', imageData);
+		const request: any = {
+			method: 'post',
+			body: formData,
+		};
+		return this.doFetch<StatusOK>(
+			`${this.getChannelRoute(channelId)}/image`,
+			request,
+		);
+	};
+
+	deleteChannelIcon = (channelId: string) => {
+		return this.doFetch<StatusOK>(
+			`${this.getChannelRoute(channelId)}/image`,
+			{ method: 'delete' },
+		);
+	};
+
 	patchChannel = (channelId: string, channelPatch: Partial<Channel>) => {
 		return this.doFetch<ServerChannel>(
 			`${this.getChannelRoute(channelId)}/patch`,
@@ -4279,6 +4307,34 @@ export default class Client4 {
 		return this.doFetch<Group>(
 			`${this.getGroupRoute(groupId)}/restore`,
 			{ method: 'post' },
+		);
+	};
+
+	getGroupIconUrl = (groupId: string, lastPictureUpdate?: number) => {
+		const params: any = {};
+		if (lastPictureUpdate) {
+			params._ = lastPictureUpdate;
+		}
+		return `${this.getGroupRoute(groupId)}/image${buildQueryString(params)}`;
+	};
+
+	uploadGroupIcon = (groupId: string, imageData: File) => {
+		const formData = new FormData();
+		formData.append('image', imageData);
+		const request: any = {
+			method: 'post',
+			body: formData,
+		};
+		return this.doFetch<StatusOK>(
+			`${this.getGroupRoute(groupId)}/image`,
+			request,
+		);
+	};
+
+	deleteGroupIcon = (groupId: string) => {
+		return this.doFetch<StatusOK>(
+			`${this.getGroupRoute(groupId)}/image`,
+			{ method: 'delete' },
 		);
 	};
 

@@ -8,7 +8,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { Channel, ChannelType } from '@mattermost/types/channels';
 import type { ServerError } from '@mattermost/types/errors';
 
-import { patchChannel, updateChannelPrivacy } from 'mattermost-redux/actions/channels';
+import { getChannel, patchChannel, updateChannelPrivacy } from 'mattermost-redux/actions/channels';
+import { Client4 } from 'mattermost-redux/client';
 import { General } from 'mattermost-redux/constants';
 import Permissions from 'mattermost-redux/constants/permissions';
 import { haveIChannelPermission } from 'mattermost-redux/selectors/entities/roles';
@@ -86,6 +87,64 @@ function ChannelSettingsInfoTab({
 	// UI Feedback: errors, states
 	const [formError, setFormError] = useState('');
 
+	// Picture/Icon state variables
+	const [pictureFile, setPictureFile] = useState<File | null>(null);
+	const [pictureUrl, setPictureUrl] = useState<string | null>(null);
+	const [removePicture, setRemovePicture] = useState(false);
+	const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+	const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+		if (e.target.files && e.target.files.length > 0) {
+			const file = e.target.files[0];
+			setPictureFile(file);
+			setRemovePicture(false);
+			const previewUrl = URL.createObjectURL(file);
+			setPictureUrl(previewUrl);
+			setFormError('');
+		}
+	}, []);
+
+	const handleUploadClick = useCallback(() => {
+		fileInputRef.current?.click();
+	}, []);
+
+	const handleRemoveClick = useCallback(() => {
+		setPictureFile(null);
+		setPictureUrl(null);
+		setRemovePicture(true);
+		setFormError('');
+		if (fileInputRef.current) {
+			fileInputRef.current.value = '';
+		}
+	}, []);
+
+	useEffect(() => {
+		return () => {
+			if (pictureUrl && pictureUrl.startsWith('blob:')) {
+				URL.revokeObjectURL(pictureUrl);
+			}
+		};
+	}, [pictureUrl]);
+
+	const currentIconUrl = useMemo(() => {
+		if (pictureUrl) {
+			return pictureUrl;
+		}
+		if (!removePicture && channel.last_picture_update && channel.last_picture_update > 0) {
+			return Client4.getChannelIconUrl(channel.id, channel.last_picture_update);
+		}
+		return null;
+	}, [pictureUrl, removePicture, channel.id, channel.last_picture_update]);
+
+	const defaultAvatar = useMemo(() => {
+		const firstLetter = (displayName || channel?.display_name || '?').charAt(0).toUpperCase();
+		return (
+			<div className='ChannelSettingsModal__defaultIcon'>
+				{firstLetter}
+			</div>
+		);
+	}, [displayName, channel?.display_name]);
+
 	// SaveChangesPanel state
 	const [saveChangesPanelState, setSaveChangesPanelState] = useState<SaveChangesPanelState>();
 
@@ -110,11 +169,13 @@ function ChannelSettingsInfoTab({
 			channelUrl.trim() !== channel.name ||
 			channelPurpose.trim() !== channel.purpose ||
 			channelHeader.trim() !== channel.header ||
-			channelType !== channel.type
+			channelType !== channel.type ||
+			pictureFile !== null ||
+			removePicture
 		) : false;
 
 		setAreThereUnsavedChanges?.(unsavedChanges);
-	}, [channel, displayName, channelUrl, channelPurpose, channelHeader, channelType, setAreThereUnsavedChanges]);
+	}, [channel, displayName, channelUrl, channelPurpose, channelHeader, channelType, pictureFile, removePicture, setAreThereUnsavedChanges]);
 
 	const handleURLChange = useCallback((newURL: string) => {
 		if (internalUrlError) {
@@ -228,6 +289,26 @@ function ChannelSettingsInfoTab({
 			}
 		}
 
+		// Handle icon upload/delete
+		let iconChanged = false;
+		if (pictureFile) {
+			try {
+				await Client4.uploadChannelIcon(channel.id, pictureFile);
+				iconChanged = true;
+			} catch (err: any) {
+				handleServerError(err as ServerError);
+				return false;
+			}
+		} else if (removePicture && channel.last_picture_update) {
+			try {
+				await Client4.deleteChannelIcon(channel.id);
+				iconChanged = true;
+			} catch (err: any) {
+				handleServerError(err as ServerError);
+				return false;
+			}
+		}
+
 		// Build updated channel object
 		const updated: Channel = {
 			...channel,
@@ -243,6 +324,15 @@ function ChannelSettingsInfoTab({
 			return false;
 		}
 
+		if (iconChanged) {
+			await dispatch(getChannel(channel.id));
+		}
+
+		// Reset picture state on successful save
+		setPictureFile(null);
+		setPictureUrl(null);
+		setRemovePicture(false);
+
 		// After every successful save, update local state to match the saved values
 		// with this, we make sure that the unsavedChanges check will return false after saving
 		setDisplayName(data?.display_name ?? updated.display_name);
@@ -250,7 +340,7 @@ function ChannelSettingsInfoTab({
 		setChannelPurpose(data?.purpose ?? updated.purpose);
 		setChannelHeader(data?.header ?? updated.header);
 		return true;
-	}, [channel, displayName, channelUrl, channelPurpose, channelHeader, channelType, setFormError, handleServerError]);
+	}, [channel, displayName, channelUrl, channelPurpose, channelHeader, channelType, pictureFile, removePicture, setFormError, handleServerError]);
 
 	// Handle save changes panel actions
 	const handleSaveChanges = useCallback(async () => {
@@ -292,6 +382,11 @@ function ChannelSettingsInfoTab({
 		setChannelHeader(channel?.header ?? '');
 		setChannelType(channel?.type as ChannelType ?? Constants.OPEN_CHANNEL as ChannelType);
 
+		// Reset picture/icon states
+		setPictureFile(null);
+		setPictureUrl(null);
+		setRemovePicture(false);
+
 		// Clear errors
 		setUrlError('');
 		setFormError('');
@@ -318,11 +413,13 @@ function ChannelSettingsInfoTab({
 			channelUrl.trim() !== channel.name ||
 			channelPurpose.trim() !== channel.purpose ||
 			channelHeader.trim() !== channel.header ||
-			channelType !== channel.type
+			channelType !== channel.type ||
+			pictureFile !== null ||
+			removePicture
 		) : false;
 
 		return unsavedChanges || saveChangesPanelState === 'saved';
-	}, [channel, displayName, channelUrl, channelPurpose, channelHeader, channelType, saveChangesPanelState]);
+	}, [channel, displayName, channelUrl, channelPurpose, channelHeader, channelType, pictureFile, removePicture, saveChangesPanelState]);
 
 	return (
 		<div className='ChannelSettingsModal__infoTab'>
@@ -348,6 +445,51 @@ function ChannelSettingsInfoTab({
 				className='ChannelSettingsModal__infoTabTitle'
 			>
 				{formatMessage({ id: 'channel_settings.channel_info_tab.name', defaultMessage: 'Channel Info' })}
+			</div>
+
+			{/* Channel Icon Section */}
+			<div className='ChannelSettingsModal__iconSection'>
+				<label className='Input_subheading'>
+					{formatMessage({ id: 'channel_settings.icon.label', defaultMessage: 'Channel Icon' })}
+				</label>
+				<div className='ChannelSettingsModal__iconWrapper'>
+					{currentIconUrl ? (
+						<img
+							className='ChannelSettingsModal__iconPreview'
+							src={currentIconUrl}
+							alt={displayName}
+						/>
+					) : (
+						defaultAvatar
+					)}
+					{canManageChannelProperties && (
+						<div className='ChannelSettingsModal__iconActions'>
+							<button
+								type='button'
+								className='btn btn-tertiary btn-xs'
+								onClick={handleUploadClick}
+							>
+								{formatMessage({ id: 'channel_settings.icon.upload', defaultMessage: 'Upload Image' })}
+							</button>
+							{currentIconUrl && (
+								<button
+									type='button'
+									className='btn btn-danger-outline btn-xs'
+									onClick={handleRemoveClick}
+								>
+									{formatMessage({ id: 'channel_settings.icon.remove', defaultMessage: 'Remove' })}
+								</button>
+							)}
+							<input
+								type='file'
+								ref={fileInputRef}
+								style={{ display: 'none' }}
+								accept='image/*'
+								onChange={handleFileChange}
+							/>
+						</div>
+					)}
+				</div>
 			</div>
 			<ChannelNameFormField
 				value={displayName}

@@ -41,6 +41,7 @@ type Group struct {
 	ChannelMemberCount          *int        `db:"-" json:"channel_member_count,omitempty"`
 	ChannelMemberTimezonesCount *int        `db:"-" json:"channel_member_timezones_count,omitempty"`
 	MemberIDs                   []string    `db:"-" json:"member_ids"`
+	LastPictureUpdate           int64       `json:"last_picture_update"`
 }
 
 func (group *Group) Auditable() map[string]any {

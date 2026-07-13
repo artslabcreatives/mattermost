@@ -41,6 +41,7 @@ export type Group = {
     channel_member_count?: number;
     channel_member_timezones_count?: number;
     member_ids?: string[];
+    last_picture_update?: number;
 };
 
 /**

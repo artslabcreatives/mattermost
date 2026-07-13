@@ -808,3 +808,47 @@ $unarchived-color: #f74343;
 .ArchiveButton:active {
     box-shadow: none;
 }
+
+.group-icon-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+    margin-bottom: 16px;
+}
+
+.group-icon-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.group-icon-preview {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.group-icon-default {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #145dbf, #0d3c7d);
+    color: white;
+    font-size: 32px;
+    font-weight: bold;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    user-select: none;
+}
+
+.group-icon-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+}
+

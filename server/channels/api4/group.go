@@ -102,6 +102,18 @@ func (api *API) InitGroup() {
 	// DELETE /api/v4/groups/:group_id/members
 	api.BaseRoutes.Groups.Handle("/{group_id:[A-Za-z0-9]+}/members",
 		api.APISessionRequired(deleteGroupMembers)).Methods(http.MethodDelete)
+
+	// GET /api/v4/groups/:group_id/image
+	api.BaseRoutes.Groups.Handle("/{group_id:[A-Za-z0-9]+}/image",
+		api.APISessionRequired(getGroupIcon)).Methods(http.MethodGet)
+
+	// POST /api/v4/groups/:group_id/image
+	api.BaseRoutes.Groups.Handle("/{group_id:[A-Za-z0-9]+}/image",
+		api.APISessionRequired(setGroupIcon)).Methods(http.MethodPost)
+
+	// DELETE /api/v4/groups/:group_id/image
+	api.BaseRoutes.Groups.Handle("/{group_id:[A-Za-z0-9]+}/image",
+		api.APISessionRequired(deleteGroupIcon)).Methods(http.MethodDelete)
 }
 
 func getGroup(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -1525,4 +1537,167 @@ func licensedAndConfiguredForGroupBySource(app *app.App, source model.GroupSourc
 	}
 
 	return nil
+}
+
+func checkGroupIconPermissions(c *Context, group *model.Group) bool {
+	var requiredPermission *model.Permission
+	if group.Source == model.GroupSourceCustom {
+		requiredPermission = model.PermissionEditCustomGroup
+	} else {
+		requiredPermission = model.PermissionSysconsoleWriteUserManagementGroups
+	}
+	if !c.App.SessionHasPermissionToGroup(*c.AppContext.Session(), group.Id, requiredPermission) {
+		c.SetPermissionError(requiredPermission)
+		return false
+	}
+	return true
+}
+
+func getGroupIcon(c *Context, w http.ResponseWriter, r *http.Request) {
+	permissionErr := requireLicense(c)
+	if permissionErr != nil {
+		c.Err = permissionErr
+		return
+	}
+
+	c.RequireGroupId()
+	if c.Err != nil {
+		return
+	}
+
+	restrictions, appErr := c.App.GetViewUsersRestrictions(c.AppContext, c.AppContext.Session().UserId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	group, appErr := c.App.GetGroup(c.Params.GroupId, nil, restrictions)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	if !group.AllowReference {
+		if !c.App.SessionHasPermissionToGroup(*c.AppContext.Session(), c.Params.GroupId, model.PermissionSysconsoleReadUserManagementGroups) {
+			c.SetPermissionError(model.PermissionSysconsoleReadUserManagementGroups)
+			return
+		}
+	}
+
+	etag := strconv.FormatInt(group.LastPictureUpdate, 10)
+	if c.HandleEtag(etag, "Get Group Icon", w, r) {
+		return
+	}
+
+	img, found, appErr := c.App.GetGroupIcon(group)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	if !found {
+		c.Err = model.NewAppError("getGroupIcon", "api.group.get_image.read.app_error", nil, "", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%v, private", model.DayInSeconds)) // 24 hrs
+	w.Header().Set(model.HeaderEtagServer, etag)
+
+	w.Header().Set("Content-Type", "image/png")
+	if _, err := w.Write(img); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
+}
+
+func setGroupIcon(c *Context, w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			c.Logger.Warn("Error discarding request body", mlog.Err(err))
+		}
+	}()
+
+	permissionErr := requireLicense(c)
+	if permissionErr != nil {
+		c.Err = permissionErr
+		return
+	}
+
+	c.RequireGroupId()
+	if c.Err != nil {
+		return
+	}
+
+	group, appErr := c.App.GetGroup(c.Params.GroupId, nil, nil)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	if !checkGroupIconPermissions(c, group) {
+		return
+	}
+
+	if *c.App.Config().FileSettings.DriverName == "" {
+		c.Err = model.NewAppError("setGroupIcon", "api.user.upload_profile_user.storage.app_error", nil, "", http.StatusNotImplemented)
+		return
+	}
+
+	if r.ContentLength > *c.App.Config().FileSettings.MaxFileSize {
+		c.Err = model.NewAppError("setGroupIcon", "api.user.upload_profile_user.too_large.app_error", nil, "", http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	if err := r.ParseMultipartForm(*c.App.Config().FileSettings.MaxFileSize); err != nil {
+		c.Err = model.NewAppError("setGroupIcon", "api.user.upload_profile_user.parse.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+		return
+	}
+
+	m := r.MultipartForm
+	imageArray, ok := m.File["image"]
+	if !ok || len(imageArray) <= 0 {
+		c.Err = model.NewAppError("setGroupIcon", "api.user.upload_profile_user.no_file.app_error", nil, "", http.StatusBadRequest)
+		return
+	}
+
+	imageData := imageArray[0]
+	if err := c.App.SetGroupIcon(c.AppContext, group.Id, imageData); err != nil {
+		c.Err = err
+		return
+	}
+
+	ReturnStatusOK(w)
+}
+
+func deleteGroupIcon(c *Context, w http.ResponseWriter, r *http.Request) {
+	permissionErr := requireLicense(c)
+	if permissionErr != nil {
+		c.Err = permissionErr
+		return
+	}
+
+	c.RequireGroupId()
+	if c.Err != nil {
+		return
+	}
+
+	group, appErr := c.App.GetGroup(c.Params.GroupId, nil, nil)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	if !checkGroupIconPermissions(c, group) {
+		return
+	}
+
+	if *c.App.Config().FileSettings.DriverName == "" {
+		c.Err = model.NewAppError("deleteGroupIcon", "api.user.upload_profile_user.storage.app_error", nil, "", http.StatusNotImplemented)
+		return
+	}
+
+	if err := c.App.DeleteGroupIcon(c.AppContext, group.Id); err != nil {
+		c.Err = err
+		return
+	}
+
+	ReturnStatusOK(w)
 }

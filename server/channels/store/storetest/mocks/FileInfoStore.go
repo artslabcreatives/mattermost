@@ -322,6 +322,36 @@ func (_m *FileInfoStore) GetFromMaster(id string) (*model.FileInfo, error) {
 	return r0, r1
 }
 
+// GetPinnedFileInfosForChannel provides a mock function with given fields: channelID
+func (_m *FileInfoStore) GetPinnedFileInfosForChannel(channelID string) ([]*model.FileInfo, error) {
+	ret := _m.Called(channelID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPinnedFileInfosForChannel")
+	}
+
+	var r0 []*model.FileInfo
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]*model.FileInfo, error)); ok {
+		return rf(channelID)
+	}
+	if rf, ok := ret.Get(0).(func(string) []*model.FileInfo); ok {
+		r0 = rf(channelID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.FileInfo)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(channelID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetStorageUsage provides a mock function with given fields: allowFromCache, includeDeleted
 func (_m *FileInfoStore) GetStorageUsage(allowFromCache bool, includeDeleted bool) (int64, error) {
 	ret := _m.Called(allowFromCache, includeDeleted)
@@ -505,6 +535,24 @@ func (_m *FileInfoStore) PermanentDeleteForPost(rctx request.CTX, postID string)
 	return r0
 }
 
+// PinFileInfo provides a mock function with given fields: rctx, fileID
+func (_m *FileInfoStore) PinFileInfo(rctx request.CTX, fileID string) error {
+	ret := _m.Called(rctx, fileID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PinFileInfo")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(request.CTX, string) error); ok {
+		r0 = rf(rctx, fileID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // RefreshFileStats provides a mock function with no fields
 func (_m *FileInfoStore) RefreshFileStats() error {
 	ret := _m.Called()
@@ -619,6 +667,24 @@ func (_m *FileInfoStore) SetContent(rctx request.CTX, fileID string, content str
 	return r0
 }
 
+// UnpinFileInfo provides a mock function with given fields: rctx, fileID
+func (_m *FileInfoStore) UnpinFileInfo(rctx request.CTX, fileID string) error {
+	ret := _m.Called(rctx, fileID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnpinFileInfo")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(request.CTX, string) error); ok {
+		r0 = rf(rctx, fileID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Upsert provides a mock function with given fields: rctx, info
 func (_m *FileInfoStore) Upsert(rctx request.CTX, info *model.FileInfo) (*model.FileInfo, error) {
 	ret := _m.Called(rctx, info)
@@ -661,70 +727,4 @@ func NewFileInfoStore(t interface {
 	t.Cleanup(func() { mock.AssertExpectations(t) })
 
 	return mock
-}
-
-// PinFileInfo provides a mock function with given fields: rctx, fileID
-func (_m *FileInfoStore) PinFileInfo(rctx request.CTX, fileID string) error {
-	ret := _m.Called(rctx, fileID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for PinFileInfo")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(request.CTX, string) error); ok {
-		r0 = rf(rctx, fileID)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// UnpinFileInfo provides a mock function with given fields: rctx, fileID
-func (_m *FileInfoStore) UnpinFileInfo(rctx request.CTX, fileID string) error {
-	ret := _m.Called(rctx, fileID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UnpinFileInfo")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(request.CTX, string) error); ok {
-		r0 = rf(rctx, fileID)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// GetPinnedFileInfosForChannel provides a mock function with given fields: channelID
-func (_m *FileInfoStore) GetPinnedFileInfosForChannel(channelID string) ([]*model.FileInfo, error) {
-	ret := _m.Called(channelID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetPinnedFileInfosForChannel")
-	}
-
-	var r0 []*model.FileInfo
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string) ([]*model.FileInfo, error)); ok {
-		return rf(channelID)
-	}
-	if rf, ok := ret.Get(0).(func(string) []*model.FileInfo); ok {
-		r0 = rf(channelID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*model.FileInfo)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(channelID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
 }

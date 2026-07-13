@@ -424,6 +424,15 @@ def main():
         print("Today is Saturday/Sunday in Sri Lanka time. Follow-up Bot Scheduler does not run on weekends.")
         return
 
+    # Do not run outside working hours: 8:30 AM to 5:30 PM Sri Lanka time
+    start_time = datetime.time(8, 30)
+    end_time = datetime.time(17, 30)
+    current_time = now_sl.time()
+    if not (start_time <= current_time <= end_time):
+        print(f"Current Sri Lanka time ({current_time.strftime('%H:%M')}) is outside working hours (08:30 - 17:30). Follow-up Bot Scheduler does not run.")
+        return
+
+
     load_env_file()
     print(f"--- Starting Follow-up Bot Scheduler at {time.strftime('%Y-%m-%d %H:%M:%S')} ---")
     

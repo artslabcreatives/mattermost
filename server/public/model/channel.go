@@ -103,6 +103,7 @@ type Channel struct {
 	PolicyEnforced      bool               `json:"policy_enforced"`
 	PolicyIsActive      bool               `json:"policy_is_active"`
 	DefaultCategoryName string             `json:"default_category_name"`
+	LastPictureUpdate   int64              `json:"last_picture_update"`
 }
 
 func (o *Channel) Auditable() map[string]any {

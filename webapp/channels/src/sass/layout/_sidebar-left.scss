@@ -1172,6 +1172,14 @@ $sidebarOpacityAnimationDuration: 0.15s;
         font-size: 18px;
     }
 
+    .SidebarChannel .SidebarLink > .Avatar {
+        width: 20px;
+        height: 20px;
+        margin: 0 6px 0 -2px;
+        flex-shrink: 0;
+        align-self: center;
+    }
+
     .SidebarChannelLinkLabel_wrapper,
     .SidebarChannelLinkLabel_wrapper > div {
         display: flex;
