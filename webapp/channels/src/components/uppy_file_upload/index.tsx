@@ -65,6 +65,8 @@ export type Props = {
 	onFileRemoved?: (uppyFileId: string) => void;
 	onUploadStart?: () => void;
 	onUploadError?: (err: Error) => void;
+	maxNumberOfFiles?: number;
+	onUploadLimitExceeded?: () => void;
 };
 
 const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFileUpload({
@@ -76,6 +78,8 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 	onFileRemoved,
 	onUploadStart,
 	onUploadError,
+	maxNumberOfFiles,
+	onUploadLimitExceeded,
 }, ref) {
 	const { formatMessage } = useIntl();
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -118,6 +122,8 @@ const UppyFileUpload = forwardRef<UppyFileUploadHandle, Props>(function UppyFile
 		channelId,
 		onComplete: handleComplete,
 		onError: onUploadError,
+		maxNumberOfFiles,
+		onUploadLimitExceeded,
 	});
 
 	// Keep the ref in sync so handleComplete / removeFile can reach the instance.

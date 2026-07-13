@@ -228,7 +228,6 @@ const AdvancedTextEditor = ({
 	const storedDrafts = useRef<Record<string, PostDraft | undefined>>({});
 	const lastBlurAt = useRef(0);
 	const messageStatusRef = useRef<HTMLDivElement | null>(null);
-	const queuedSubmissionRef = useRef<{ schedulingInfo?: SchedulingInfo; options?: CreatePostOptions } | null>(null);
 
 	const [draft, setDraft] = useState(draftFromStore);
 	const [serverError, setServerError] = useState<(ServerError & { submittedMessage?: string }) | null>(null);
@@ -385,9 +384,8 @@ const AdvancedTextEditor = ({
 	const handleSubmitWithErrorHandling = useCallback((submittingDraft?: PostDraft, schedulingInfo?: SchedulingInfo, options?: CreatePostOptions) => {
 		const draftToSubmit = submittingDraft || draft;
 
-		// If uploads are in progress, queue the submission to trigger once uploads complete
+		// If uploads are in progress, do not allow sending
 		if (draftToSubmit.uploadsInProgress.length > 0) {
-			queuedSubmissionRef.current = { schedulingInfo, options };
 			return;
 		}
 
@@ -627,25 +625,7 @@ const AdvancedTextEditor = ({
 		draftRef.current = draft;
 	}, [draft]);
 
-	// Auto-trigger queued submission once all uploads complete (Slack-like behavior)
-	useEffect(() => {
-		if (queuedSubmissionRef.current && draft.uploadsInProgress.length === 0) {
-			const { schedulingInfo, options } = queuedSubmissionRef.current;
-			queuedSubmissionRef.current = null; // Clear the queue
-			handleSubmit(draft, schedulingInfo, options);
 
-			// Show "Message Sent" feedback
-			const messageStatusElement = messageStatusRef.current;
-			if (messageStatusElement) {
-				const messageStatusInnerText = messageStatusElement.textContent;
-				if (messageStatusInnerText === 'Message Sent') {
-					messageStatusElement.textContent = 'Message Sent &nbsp;';
-				} else {
-					messageStatusElement.textContent = 'Message Sent';
-				}
-			}
-		}
-	}, [draft, handleSubmit]);
 
 	const handleSubmitPostAndScheduledMessage = useCallback((schedulingInfo?: SchedulingInfo) => {
 		handleSubmitWithErrorHandling(undefined, schedulingInfo);
@@ -665,13 +645,14 @@ const AdvancedTextEditor = ({
 		};
 	}, [channelId, rootId]);
 
-	const hasPendingAttachments = draft.fileInfos.length > 0 || draft.uploadsInProgress.length > 0;
-	const hasQueuedSubmission = Boolean(queuedSubmissionRef.current);
+	const hasUploadedAttachments = draft.fileInfos.length > 0;
+	const isUploading = draft.uploadsInProgress.length > 0;
 	const hasMessageContent = Boolean(draft.message.trim().length);
 	const shouldBlockForPersistentNotifications = !isValidPersistentNotifications && hasMessageContent;
 	const disableSendButton = Boolean(
 		isDisabled ||
-		(!hasMessageContent && !hasPendingAttachments && !hasQueuedSubmission),
+		isUploading ||
+		(!hasMessageContent && !hasUploadedAttachments),
 	) || shouldBlockForPersistentNotifications;
 	const sendButton = readOnlyChannel || isInEditMode ? null : (
 		<SendButton

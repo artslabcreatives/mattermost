@@ -49,6 +49,12 @@ export interface UppyDirectUploadOptions {
 
 	/** Called if an error occurs during upload. */
 	onError?: (error: Error) => void;
+
+	/** Maximum number of files allowed in restrictions. */
+	maxNumberOfFiles?: number;
+
+	/** Callback when file upload limit is exceeded. */
+	onUploadLimitExceeded?: () => void;
 }
 
 export interface UppyDirectUploadResult {
@@ -83,9 +89,11 @@ export function useUppyDirectUpload(
 	const channelIdRef = useRef(options.channelId);
 	const onCompleteRef = useRef(options.onComplete);
 	const onErrorRef = useRef(options.onError);
+	const onUploadLimitExceededRef = useRef(options.onUploadLimitExceeded);
 	channelIdRef.current = options.channelId;
 	onCompleteRef.current = options.onComplete;
 	onErrorRef.current = options.onError;
+	onUploadLimitExceededRef.current = options.onUploadLimitExceeded;
 
 	// Uppy is mutable — keep it in a ref so it survives re-renders.
 	const uppyRef = useRef<Uppy | null>(null);
@@ -105,8 +113,12 @@ export function useUppyDirectUpload(
 			autoProceed: false,
 			allowMultipleUploadBatches: true,
 			restrictions: {
-				maxNumberOfFiles: Constants.MAX_UPLOAD_FILES,
+				maxNumberOfFiles: options.maxNumberOfFiles ?? Constants.MAX_UPLOAD_FILES,
 			},
+		});
+
+		uppy.on('restriction-failed', (file, error) => {
+			onUploadLimitExceededRef.current?.();
 		});
 
 		// Direct-to-S3 plugin – handles direct uploads to S3 using presigned PUT URLs.
@@ -296,6 +308,18 @@ export function useUppyDirectUpload(
 
 		uppyRef.current = uppy;
 	}
+
+	// Update Uppy restrictions when maxNumberOfFiles changes.
+	useEffect(() => {
+		if (uppyRef.current && options.maxNumberOfFiles !== undefined) {
+			(uppyRef.current as any).setOptions({
+				restrictions: {
+					...(uppyRef.current as any).opts.restrictions,
+					maxNumberOfFiles: options.maxNumberOfFiles,
+				},
+			});
+		}
+	}, [options.maxNumberOfFiles]);
 
 	// Cleanup Uppy on unmount.
 	useEffect(() => {

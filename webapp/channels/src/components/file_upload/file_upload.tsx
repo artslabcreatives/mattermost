@@ -125,6 +125,11 @@ export type Props = {
 	onUploadError: (err: string | ServerError | null, clientId?: string, channelId?: string, currentRootId?: string) => void;
 
 	/**
+	 * Function to be called when the total file upload limit is exceeded
+	 */
+	onUploadLimitExceeded?: () => void;
+
+	/**
 	 * Function to be called when file upload starts
 	 */
 	onUploadStart: (clientIds: string[], channelId: string) => void;
@@ -328,6 +333,11 @@ export class FileUpload extends PureComponent<Props, State> {
 		const { channelId, rootId } = this.props;
 
 		const uploadsRemaining = Constants.MAX_UPLOAD_FILES - this.props.fileCount;
+		if (sortedFiles.length > uploadsRemaining) {
+			this.props.onUploadLimitExceeded?.();
+			return;
+		}
+
 		let numUploads = 0;
 
 		// keep track of how many files have been too large

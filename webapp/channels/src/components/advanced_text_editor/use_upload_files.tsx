@@ -2,7 +2,12 @@
 // See LICENSE.txt for license information.
 
 import React, { useCallback, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { useIntl } from 'react-intl';
+
+import { openModal } from 'actions/views/modals';
+import ConfirmModalRedux from 'components/confirm_modal_redux';
+import Constants, { ModalIdentifiers } from 'utils/constants';
 
 import type { ServerError } from '@mattermost/types/errors';
 import type { FileInfo } from '@mattermost/types/files';
@@ -40,10 +45,36 @@ const useUploadFiles = (
 	setServerError: (err: (ServerError & { submittedMessage?: string }) | null) => void,
 	isPostBeingEdited?: boolean,
 ): [React.ReactNode, React.ReactNode, React.RefObject<FileUploadClass>] => {
+	const dispatch = useDispatch();
+	const intl = useIntl();
 	const locale = useSelector(getCurrentLocale);
 	const enableDirectUploads = useSelector((state: GlobalState) => getConfig(state).EnableDirectUploads === 'true');
 
 	const [uploadsProgressPercent, setUploadsProgressPercent] = useState<{ [clientID: string]: FilePreviewInfo }>({});
+
+	const isModalOpenRef = useRef(false);
+	const handleUploadLimitExceeded = useCallback(() => {
+		if (isModalOpenRef.current) {
+			return;
+		}
+		isModalOpenRef.current = true;
+		dispatch(openModal({
+			modalId: ModalIdentifiers.CONFIRM,
+			dialogType: ConfirmModalRedux,
+			dialogProps: {
+				title: intl.formatMessage({ id: 'file_upload.limited_title', defaultMessage: 'Upload Limit Exceeded' }),
+				message: intl.formatMessage({ id: 'file_upload.limited', defaultMessage: 'Uploads limited to {count, number} files maximum. Please use additional posts for more files.' }, { count: Constants.MAX_UPLOAD_FILES }),
+				confirmButtonText: intl.formatMessage({ id: 'confirm_modal.okay', defaultMessage: 'OK' }),
+				hideCancel: true,
+				onConfirm: () => {
+					isModalOpenRef.current = false;
+				},
+				onCancel: () => {
+					isModalOpenRef.current = false;
+				},
+			},
+		}));
+	}, [dispatch, intl]);
 
 	// Stores the original File object for each in-progress upload keyed by clientId.
 	// This is used to restart failed uploads without the user having to re-select the file.
@@ -347,6 +378,7 @@ const useUploadFiles = (
 							onFileUpload={handleFileUploadComplete}
 							onUploadError={handleUploadError}
 							onUploadProgress={handleUploadProgress}
+							onUploadLimitExceeded={handleUploadLimitExceeded}
 							rootId={postId}
 							channelId={channelId}
 							postType={postType}
@@ -361,6 +393,8 @@ const useUploadFiles = (
 						onFilesRestored={handleUppyFilesRestored}
 						onFileRemoved={handleUppyFileRemoved}
 						onUploadError={(err) => setServerError(err)}
+						maxNumberOfFiles={Math.max(0, Constants.MAX_UPLOAD_FILES - getFileCount(draft))}
+						onUploadLimitExceeded={handleUploadLimitExceeded}
 					/>
 				</>
 			);
@@ -376,6 +410,7 @@ const useUploadFiles = (
 					onFileUpload={handleFileUploadComplete}
 					onUploadError={handleUploadError}
 					onUploadProgress={handleUploadProgress}
+					onUploadLimitExceeded={handleUploadLimitExceeded}
 					rootId={postId}
 					channelId={channelId}
 					postType={postType}
