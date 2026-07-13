@@ -117,9 +117,16 @@ describe('channel_info_rhs/about_area_channel', () => {
 		} as Channel,
 		channelURL: 'https://my-url.mm',
 		canEditChannelProperties: true,
+		isFavorite: false,
+		isMuted: false,
+		isInvitingPeople: false,
+		canManageMembers: true,
 		actions: {
 			editChannelPurpose: jest.fn(),
 			editChannelHeader: jest.fn(),
+			toggleFavorite: jest.fn(),
+			toggleMute: jest.fn(),
+			addPeople: jest.fn(),
 		},
 	};
 

@@ -5,14 +5,27 @@ import React from 'react';
 import type { MessageDescriptor } from 'react-intl';
 import { FormattedMessage, defineMessage, defineMessages } from 'react-intl';
 
-import type { AdminConfig } from '@Aura/types/config';
+import type { AdminConfig } from '@mattermost/types/config';
+
+type ExtendedAdminConfig = AdminConfig & {
+	TypesenseSettings: {
+		ConnectionURL: string;
+		APIKey: string;
+		EnableIndexing: boolean;
+		EnableSearching: boolean;
+		EnableAutocomplete: boolean;
+		RequestTimeoutSeconds: number;
+		LiveIndexingBatchSize: number;
+		BatchSize: number;
+	};
+};
 
 import { typesensePurgeIndexes, typesenseTest } from 'actions/admin_actions.jsx';
 
 import ExternalLink from 'components/external_link';
 
 import { DocLinks, JobTypes } from 'utils/constants';
-import type { JobType } from '@Aura/types/jobs';
+import type { JobType } from '@mattermost/types/jobs';
 import JobsTable from './jobs';
 
 import BooleanSetting from './boolean_setting';
@@ -92,31 +105,33 @@ export const searchableStrings: Array<string | MessageDescriptor | [MessageDescr
 
 export default class TypesenseSettings extends OLDAdminSettings<Props, State> {
 	getConfigFromState = (config: AdminConfig) => {
-		config.TypesenseSettings.ConnectionURL = this.state.connectionUrl;
-		config.TypesenseSettings.APIKey = this.state.apiKey;
-		config.TypesenseSettings.EnableIndexing = this.state.enableIndexing;
-		config.TypesenseSettings.EnableSearching = this.state.enableSearching;
-		config.TypesenseSettings.EnableAutocomplete = this.state.enableAutocomplete;
-		config.TypesenseSettings.RequestTimeoutSeconds = this.state.requestTimeoutSeconds;
-		config.TypesenseSettings.LiveIndexingBatchSize = this.state.liveIndexingBatchSize;
-		config.TypesenseSettings.BatchSize = this.state.batchSize;
+		const c = config as ExtendedAdminConfig;
+		c.TypesenseSettings.ConnectionURL = this.state.connectionUrl;
+		c.TypesenseSettings.APIKey = this.state.apiKey;
+		c.TypesenseSettings.EnableIndexing = this.state.enableIndexing;
+		c.TypesenseSettings.EnableSearching = this.state.enableSearching;
+		c.TypesenseSettings.EnableAutocomplete = this.state.enableAutocomplete;
+		c.TypesenseSettings.RequestTimeoutSeconds = this.state.requestTimeoutSeconds;
+		c.TypesenseSettings.LiveIndexingBatchSize = this.state.liveIndexingBatchSize;
+		c.TypesenseSettings.BatchSize = this.state.batchSize;
 
-		return config;
+		return c;
 	};
 
 	getStateFromConfig(config: AdminConfig) {
+		const c = config as ExtendedAdminConfig;
 		return {
-			connectionUrl: config.TypesenseSettings.ConnectionURL,
-			apiKey: config.TypesenseSettings.APIKey,
-			enableIndexing: config.TypesenseSettings.EnableIndexing,
-			enableSearching: config.TypesenseSettings.EnableSearching,
-			enableAutocomplete: config.TypesenseSettings.EnableAutocomplete,
-			requestTimeoutSeconds: config.TypesenseSettings.RequestTimeoutSeconds,
-			liveIndexingBatchSize: config.TypesenseSettings.LiveIndexingBatchSize,
-			batchSize: config.TypesenseSettings.BatchSize,
+			connectionUrl: c.TypesenseSettings.ConnectionURL,
+			apiKey: c.TypesenseSettings.APIKey,
+			enableIndexing: c.TypesenseSettings.EnableIndexing,
+			enableSearching: c.TypesenseSettings.EnableSearching,
+			enableAutocomplete: c.TypesenseSettings.EnableAutocomplete,
+			requestTimeoutSeconds: c.TypesenseSettings.RequestTimeoutSeconds,
+			liveIndexingBatchSize: c.TypesenseSettings.LiveIndexingBatchSize,
+			batchSize: c.TypesenseSettings.BatchSize,
 			configTested: true,
 			canSave: true,
-			canPurgeAndIndex: config.TypesenseSettings.EnableIndexing,
+			canPurgeAndIndex: c.TypesenseSettings.EnableIndexing,
 		};
 	}
 

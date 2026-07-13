@@ -103,7 +103,7 @@ const ChannelHeaderTitle = ({
 					status={channel.status}
 				/>
 			)}
-			{!isDirect && !isGroup && channel.last_picture_update && channel.last_picture_update > 0 && (
+			{!isDirect && !isGroup && (channel.last_picture_update ?? 0) > 0 && (
 				<Avatar
 					size='sm'
 					url={Client4.getChannelIconUrl(channel.id, channel.last_picture_update)}

@@ -923,7 +923,9 @@ func (a *App) SetGroupIcon(rctx request.CTX, groupID string, imageData *multipar
 
 	path := getGroupIconPath(groupID)
 	if storedData, err := a.ReadFile(path); err == nil && bytes.Equal(storedData, buf.Bytes()) {
-		return nil
+		if group, errGet := a.Srv().Store().Group().Get(groupID); errGet == nil && group.LastPictureUpdate > 0 {
+			return nil
+		}
 	}
 
 	if _, err := a.WriteFile(buf, path); err != nil {

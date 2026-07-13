@@ -4183,7 +4183,9 @@ func (a *App) SetChannelIcon(rctx request.CTX, channelID string, imageData *mult
 
 	path := getChannelIconPath(channelID)
 	if storedData, err := a.ReadFile(path); err == nil && bytes.Equal(storedData, buf.Bytes()) {
-		return nil
+		if channel, errGet := a.Srv().Store().Channel().Get(channelID, true); errGet == nil && channel.LastPictureUpdate > 0 {
+			return nil
+		}
 	}
 
 	if _, err := a.WriteFile(buf, path); err != nil {

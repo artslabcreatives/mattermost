@@ -11,6 +11,8 @@ import { getConfig } from 'mattermost-redux/selectors/entities/general';
 
 import ExternalLink from 'components/external_link';
 
+import type { SearchType } from 'types/store/rhs';
+
 import { isFileAttachmentsEnabled } from 'utils/file_utils';
 
 interface SearchTerm {
@@ -29,7 +31,7 @@ type Props = {
 	onSearchTypeSelected?: (searchType: 'files' | 'messages') => void;
 	onElementBlur?: () => void;
 	onElementFocus?: () => void;
-	searchType?: 'files' | 'messages' | '';
+	searchType?: SearchType;
 }
 
 const SearchHint = (props: Props): JSX.Element => {

@@ -53,7 +53,6 @@ describe('components/team_controller/TeamController', () => {
 			group_constrained: false,
 			allow_open_invite: true,
 			last_team_icon_update: 0,
-			class_id: '',
 		};
 
 		const fetchAllMyTeamsChannels = jest.fn().mockResolvedValue({error: new Error('network failed')});
@@ -68,8 +67,8 @@ describe('components/team_controller/TeamController', () => {
 						currentChannelId='channel-id'
 						teamsList={[team]}
 						plugins={[]}
-						selectedThreadId={undefined}
-						selectedPostId={undefined}
+						selectedThreadId={null}
+						selectedPostId={''}
 						mfaRequired={false}
 						disableRefetchingOnBrowserFocus={false}
 						disableWakeUpReconnectHandler={false}
@@ -80,6 +79,9 @@ describe('components/team_controller/TeamController', () => {
 						initializeTeam={initializeTeam}
 						joinTeam={jest.fn()}
 						unsetActiveChannelOnServer={jest.fn()}
+						history={{} as any}
+						location={{} as any}
+						match={{params: {team: 'artslab-creatives'}} as any}
 					/>
 				</Route>
 			</MemoryRouter>,

@@ -134,8 +134,16 @@ describe('channel_info_rhs/about_area_gm', () => {
 				username: 'my username2',
 			} as UserProfile,
 		],
+		isFavorite: false,
+		isMuted: false,
+		isInvitingPeople: false,
+		canManageMembers: true,
+		channelURL: 'https://my-url.mm',
 		actions: {
 			editChannelHeader: jest.fn(),
+			toggleFavorite: jest.fn(),
+			toggleMute: jest.fn(),
+			addPeople: jest.fn(),
 		},
 	};
 
