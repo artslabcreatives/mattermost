@@ -8,16 +8,19 @@ import requests
 
 # Configuration
 CONFIG_HISTORY_QUERY = "SELECT config FROM agents_confighistory WHERE active = true;"
-STATE_FILE_PATH = "/var/www/mattermost-collab-staging/followup_reminded_threads.json"
+current_dir = os.path.dirname(os.path.abspath(__file__))
+is_staging = "staging" in current_dir
+
+STATE_FILE_PATH = os.path.join(current_dir, "followup_reminded_threads.json")
 BOT_USERNAME = "followup-bot"
 ADMIN_USERNAME = "aura"      # We use aura's token because bots cannot post via PATs by default
 ADMIN_USER_ID = "5okt5rse1pfudrogiguf5xfgmr"
-CHECK_DAYS = 2          # Scan threads with activity in the last N days (configured to 2 for staging)
+CHECK_DAYS = 2          # Scan threads with activity in the last N days
 MIN_AGE_HOURS = 2       # Unanswered for at least M hours
-API_BASE_URL = "http://localhost:8066/api/v4"
+API_BASE_URL = "http://localhost:8066/api/v4" if is_staging else "http://localhost:8065/api/v4"
 
 def load_env_file():
-    env_path = "/var/www/mattermost-collab-staging/.env"
+    env_path = os.path.join(current_dir, ".env")
     if os.path.exists(env_path):
         with open(env_path, 'r') as f:
             for line in f:
@@ -31,7 +34,8 @@ def load_env_file():
 
 def query_db(query):
     try:
-        cmd = ["sudo", "-u", "postgres", "psql", "-d", "mattermost_staging", "-t", "-A", "-c", query]
+        db_name = "mattermost_staging" if is_staging else "mattermost_production"
+        cmd = ["sudo", "-u", "postgres", "psql", "-d", db_name, "-t", "-A", "-c", query]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         return result.stdout.strip()
     except Exception as e:
@@ -88,7 +92,7 @@ def get_admin_token():
     print("No scheduler token found for admin. Generating a new one...")
     try:
         cmd = [
-            "sudo", "docker", "exec", "mattermost-staging-server",
+            "sudo", "docker", "exec", "mattermost-staging-server" if is_staging else "mattermost-server",
             "bin/mmctl", "token", "generate", ADMIN_USERNAME, "Scheduler Token",
             "--local", "--json"
         ]

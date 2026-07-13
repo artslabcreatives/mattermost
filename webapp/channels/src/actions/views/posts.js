@@ -86,7 +86,7 @@ export function forwardPost(post, channel, message = '') {
 		if (fileIds && fileIds.length > 0) {
 			newPost.file_ids = fileIds;
 			for (const id of fileIds) {
-				const file = post.metadata?.files?.find((f) => f.id === id) || state.entities.files.files[id] || {id};
+				const file = post.metadata?.files?.find((f) => f.id === id) || state.entities.files.files[id] || { id };
 				files.push(file);
 			}
 		}

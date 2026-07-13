@@ -89,10 +89,14 @@ export function getFileMiniPreviewUrl(fileInfo?: FileInfo): string | undefined {
 
 export function sortFileInfos(fileInfos: FileInfo[] = [], locale: string = General.DEFAULT_LOCALE): FileInfo[] {
 	return fileInfos.sort((a, b) => {
-		if (a.create_at !== b.create_at) {
+		if (a.create_at && b.create_at && a.create_at !== b.create_at) {
 			return a.create_at - b.create_at;
 		}
 
-		return a.name.localeCompare(b.name, locale, { numeric: true });
+		if (a.name && b.name) {
+			return a.name.localeCompare(b.name, locale, { numeric: true });
+		}
+
+		return 0;
 	});
 }

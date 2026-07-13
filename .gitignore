@@ -170,6 +170,10 @@ rebuild.sh
 
 # Python cache & local tracking files
 __pycache__/
+*.pyc
+
+# Scheduler state and backups
 followup_reminded_threads.json
 sahan_followed_threads.txt
 *.tar.gz
+mattermost_db_backup.sql.gz

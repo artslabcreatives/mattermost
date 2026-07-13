@@ -298,7 +298,16 @@ func (a *App) getFileMetadataForPost(rctx request.CTX, post *model.Post, fromMas
 		return nil, 0, nil
 	}
 
-	fileInfos, err := a.Srv().Store().FileInfo().GetByIds(post.FileIds, includeDeleted, true)
+	var fileInfos []*model.FileInfo
+	var err error
+
+	if fromMaster {
+		fileInfos, err = a.Srv().Store().FileInfo().GetForPost(post.Id, true, includeDeleted, true)
+	}
+
+	if len(fileInfos) == 0 {
+		fileInfos, err = a.Srv().Store().FileInfo().GetByIds(post.FileIds, includeDeleted, true)
+	}
 	if err != nil {
 		return nil, 0, model.NewAppError("getFileMetadataForPost", "app.file_info.get_for_post.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
 	}
