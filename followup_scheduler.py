@@ -381,7 +381,8 @@ def post_reminder(token, bot_user_id, channel_id, thread_id, message, last_pictu
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
-    icon_url = f"/api/v4/users/{bot_user_id}/image"
+    base_url = API_BASE_URL.replace("/api/v4", "")
+    icon_url = f"{base_url}/api/v4/users/{bot_user_id}/image"
     if last_picture_update:
         icon_url += f"?_={last_picture_update}"
     

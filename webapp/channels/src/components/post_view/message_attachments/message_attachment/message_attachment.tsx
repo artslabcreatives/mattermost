@@ -66,6 +66,7 @@ type State = {
 	checkOverflow: number;
 	actionExecuting: boolean;
 	actionExecutingMessage: string | null;
+	hidden: boolean;
 }
 
 export default class MessageAttachment extends React.PureComponent<Props, State> {
@@ -79,6 +80,7 @@ export default class MessageAttachment extends React.PureComponent<Props, State>
 			checkOverflow: 0,
 			actionExecuting: false,
 			actionExecutingMessage: null,
+			hidden: false,
 		};
 
 		this.imageProps = {
@@ -140,6 +142,10 @@ export default class MessageAttachment extends React.PureComponent<Props, State>
 			return '';
 		}
 
+		if (this.state.hidden) {
+			return '';
+		}
+
 		const content = [] as JSX.Element[];
 
 		actions.forEach((action) => {
@@ -193,6 +199,10 @@ export default class MessageAttachment extends React.PureComponent<Props, State>
 
 		const actionId = e.currentTarget.getAttribute('data-action-id') || '';
 		const actionCookie = e.currentTarget.getAttribute('data-action-cookie') || '';
+
+		if (actionId === 'mark_resolved' || actionId === 'snooze') {
+			this.setState({ hidden: true });
+		}
 
 		this.props.actions.doPostActionWithCookie(this.props.postId, actionId, actionCookie).then(() => {
 			this.handleCustomActions(actionOptions);

@@ -109,12 +109,14 @@ func doFollowUpAction(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Save the updated bot nudge post to notify all connected clients
-	if _, appErr = c.App.UpdatePost(c.AppContext, post, &model.UpdatePostOptions{SafeUpdate: false}); appErr != nil {
+	var updatedPost *model.Post
+	if updatedPost, appErr = c.App.UpdatePost(c.AppContext, post, &model.UpdatePostOptions{SafeUpdate: false}); appErr != nil {
 		c.Err = appErr
 		return
 	}
 
 	// Respond to the integration callback to satisfy the request
+	response.Update = updatedPost
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		c.Logger.Warn("Error writing followup action response", mlog.Err(err))
