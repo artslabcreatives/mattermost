@@ -15,6 +15,7 @@ import (
 
 func (api *API) InitFollowUp() {
 	api.BaseRoutes.APIRoot.Handle("/followup/actions", api.APIHandler(doFollowUpAction)).Methods(http.MethodPost)
+	api.BaseRoutes.Post.Handle("/summarize", api.APISessionRequired(summarizePost)).Methods(http.MethodPost)
 }
 
 func doFollowUpAction(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -116,5 +117,53 @@ func doFollowUpAction(c *Context, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		c.Logger.Warn("Error writing followup action response", mlog.Err(err))
+	}
+}
+
+func summarizePost(c *Context, w http.ResponseWriter, r *http.Request) {
+	c.RequirePostId()
+	if c.Err != nil {
+		return
+	}
+
+	post, appErr := c.App.GetSinglePost(c.AppContext, c.Params.PostId, false)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	// Verify channel permission
+	if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), post.ChannelId, model.PermissionReadChannel) {
+		c.SetPermissionError(model.PermissionReadChannel)
+		return
+	}
+
+	summary, appErr := c.App.SummarizeThread(c.AppContext, post.Id, c.AppContext.Session().UserId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	rootId := post.RootId
+	if rootId == "" {
+		rootId = post.Id
+	}
+
+	// Create and send ephemeral post with the summary
+	ephemeralPost := &model.Post{
+		ChannelId: post.ChannelId,
+		RootId:    rootId,
+		Message:   summary,
+	}
+	_ = c.App.SendEphemeralPost(c.AppContext, c.AppContext.Session().UserId, ephemeralPost)
+
+	// Return summary in the JSON response
+	response := map[string]string{
+		"summary": summary,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		c.Logger.Warn("Error writing summarize post response", mlog.Err(err))
 	}
 }
