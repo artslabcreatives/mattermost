@@ -14,6 +14,8 @@ import {
 	FloatingFocusManager,
 	FloatingOverlay,
 	FloatingPortal,
+	useHover,
+	safePolygon,
 } from '@floating-ui/react';
 import classNames from 'classnames';
 import type { HtmlHTMLAttributes, ReactNode } from 'react';
@@ -106,11 +108,16 @@ export function ProfilePopoverController<TriggerComponentType = HTMLSpanElement>
 	const { isMounted, styles: transitionStyles } = useTransitionStyles(floatingContext, TRANSITION_STYLE_PROPS);
 
 	const clickInteractions = useClick(floatingContext);
+	const hoverInteractions = useHover(floatingContext, {
+		delay: { open: 400, close: 300 },
+		handleClose: safePolygon(),
+	});
 	const dismissInteraction = useDismiss(floatingContext);
 	const role = useRole(floatingContext);
 
 	const { getReferenceProps, getFloatingProps } = useInteractions([
 		clickInteractions,
+		hoverInteractions,
 		dismissInteraction,
 		role,
 	]);
@@ -135,32 +142,27 @@ export function ProfilePopoverController<TriggerComponentType = HTMLSpanElement>
 
 			{isMounted && (
 				<FloatingPortal id={RootHtmlPortalId}>
-					<FloatingOverlay
-						className='user-profile-popover-floating-overlay'
-						lockScroll={true}
-					>
-						<FloatingFocusManager context={floatingContext}>
-							<div
-								ref={refs.setFloating}
-								style={{ ...floatingStyles, ...transitionStyles }}
-								className={classNames('user-profile-popover', A11yClassNames.POPUP)}
-								aria-label={props.username ? userProfileAriaLabel : profileAriaLabel}
-								{...getFloatingProps()}
-							>
-								<ProfilePopover
-									userId={props.userId}
-									src={props.src}
-									channelId={props.channelId}
-									hideStatus={props.hideStatus}
-									fromWebhook={props.fromWebhook}
-									hide={handleHide}
-									returnFocus={props.returnFocus}
-									overwriteIcon={props.overwriteIcon}
-									overwriteName={props.overwriteName}
-								/>
-							</div>
-						</FloatingFocusManager>
-					</FloatingOverlay>
+					<FloatingFocusManager context={floatingContext} modal={false}>
+						<div
+							ref={refs.setFloating}
+							style={{ ...floatingStyles, ...transitionStyles, zIndex: 9999 }}
+							className={classNames('user-profile-popover', A11yClassNames.POPUP)}
+							aria-label={props.username ? userProfileAriaLabel : profileAriaLabel}
+							{...getFloatingProps()}
+						>
+							<ProfilePopover
+								userId={props.userId}
+								src={props.src}
+								channelId={props.channelId}
+								hideStatus={props.hideStatus}
+								fromWebhook={props.fromWebhook}
+								hide={handleHide}
+								returnFocus={props.returnFocus}
+								overwriteIcon={props.overwriteIcon}
+								overwriteName={props.overwriteName}
+							/>
+						</div>
+					</FloatingFocusManager>
 				</FloatingPortal>
 			)}
 		</>

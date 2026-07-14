@@ -15,6 +15,7 @@ import MarkdownImage from 'components/markdown_image';
 import PluginLinkTooltip from 'components/plugin_link_tooltip';
 import PostEmoji from 'components/post_emoji';
 import PostEditedIndicator from 'components/post_view/post_edited_indicator';
+import ChannelMention from 'components/channel_mention/channel_mention';
 
 export type Options = Partial<{
 	postId: string;
@@ -146,6 +147,24 @@ export default function messageHtmlToComponent(html: string, options: Options = 
 			},
 		});
 	}
+
+	const channelMentionAttrib = 'data-channel-mention';
+	processingInstructions.push({
+		replaceChildren: true,
+		shouldProcessNode: (node) => node.attribs && node.attribs[channelMentionAttrib],
+		processNode: (node: any, children: any) => {
+			const channelName = node.attribs[channelMentionAttrib];
+			const teamName = node.attribs['data-channel-mention-team'] || '';
+			return (
+				<ChannelMention
+					channelName={channelName}
+					teamName={teamName}
+				>
+					{children}
+				</ChannelMention>
+			);
+		},
+	});
 
 	if (options.atSumOfMembersMentions) {
 		const mentionAttrib = 'data-sum-of-members-mention';
