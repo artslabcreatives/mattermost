@@ -544,6 +544,9 @@ def main():
                 if uids[0] == uids[1]:
                     # Self DM, ignore
                     continue
+                if bot_user_id in uids:
+                    # DM with followup-bot, ignore
+                    continue
                 recipient_id = uids[0] if uids[1] == thread["userid"] else uids[1]
                 recipient_username = user_map.get(recipient_id)
             if not recipient_id or not recipient_username:
