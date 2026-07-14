@@ -363,6 +363,7 @@ func Init(srv *app.Server) (*API, error) {
 	api.InitTermsOfService()
 	api.InitGroup()
 	api.InitAction()
+	api.InitFollowUp()
 	api.InitCloud()
 	api.InitImport()
 	api.InitRemoteCluster()

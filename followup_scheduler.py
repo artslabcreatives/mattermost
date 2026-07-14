@@ -141,6 +141,7 @@ def get_unanswered_threads(bot_user_id):
     # 3. Created in the last CHECK_DAYS days
     # 4. Older than MIN_AGE_HOURS hours
     START_TODAY_TIMESTAMP = 1782950400000 # July 2, 2026 00:00:00 UTC
+    current_time_ms = int(time.time() * 1000)
     time_cutoff_ms = max(int((time.time() - (CHECK_DAYS * 86400)) * 1000), START_TODAY_TIMESTAMP)
     age_cutoff_ms = int((time.time() - (MIN_AGE_HOURS * 3600)) * 1000)
 
@@ -200,6 +201,12 @@ def get_unanswered_threads(bot_user_id):
       AND tl.createat > {time_cutoff_ms}
       AND tl.createat < {age_cutoff_ms}
       AND rp.deleteat = 0
+      AND NOT (rp.props::text LIKE '%"followup_status": "resolved"%')
+      AND (
+          rp.props::text NOT LIKE '%"followup_snooze_until"%'
+          OR
+          CAST(COALESCE(NULLIF(rp.props::jsonb->>'followup_snooze_until', ''), '0') AS BIGINT) < {current_time_ms}
+      )
       AND NOT EXISTS (
           SELECT 1 
           FROM reactions 
@@ -368,7 +375,7 @@ def call_openai_analyzer(api_key, model, thread_history, before_chat=None, after
         print(f"Error calling OpenAI API: {e}")
         return None
 
-def post_reminder(token, bot_user_id, channel_id, thread_id, message, last_picture_update=None):
+def post_reminder(token, bot_user_id, channel_id, thread_id, message, last_picture_update=None, context_thread_id=None):
     url = f"{API_BASE_URL}/posts"
     headers = {
         "Authorization": f"Bearer {token}",
@@ -377,14 +384,52 @@ def post_reminder(token, bot_user_id, channel_id, thread_id, message, last_pictu
     icon_url = f"/api/v4/users/{bot_user_id}/image"
     if last_picture_update:
         icon_url += f"?_={last_picture_update}"
+    
+    props = {
+        "from_webhook": "true",
+        "override_username": BOT_USERNAME,
+        "override_icon_url": icon_url
+    }
+
+    if context_thread_id:
+        # The Mattermost server inside the docker container needs to resolve the callback URL locally.
+        # It always listens on port 8065 inside the container.
+        callback_url = "http://localhost:8065/api/v4/followup/actions"
+        props["attachments"] = [
+            {
+                "actions": [
+                    {
+                        "id": "mark_resolved",
+                        "name": "✓ Mark Resolved",
+                        "type": "button",
+                        "integration": {
+                            "url": callback_url,
+                            "context": {
+                                "action": "mark_resolved",
+                                "thread_id": context_thread_id
+                            }
+                        }
+                    },
+                    {
+                        "id": "snooze",
+                        "name": "⏰ Snooze 24h",
+                        "type": "button",
+                        "integration": {
+                            "url": callback_url,
+                            "context": {
+                                "action": "snooze",
+                                "thread_id": context_thread_id
+                            }
+                        }
+                    }
+                ]
+            }
+        ]
+
     data = {
         "channel_id": channel_id,
         "message": message,
-        "props": {
-            "from_webhook": "true",
-            "override_username": BOT_USERNAME,
-            "override_icon_url": icon_url
-        }
+        "props": props
     }
     if thread_id:
         data["root_id"] = thread_id
@@ -591,12 +636,12 @@ def main():
                 if not dest_channel_id:
                     print(f"  -> Error: Could not get/create DM channel with {recipient_username}.")
                     continue
-                success = post_reminder(token, bot_user_id, dest_channel_id, None, msg, last_picture_update)
+                success = post_reminder(token, bot_user_id, dest_channel_id, None, msg, last_picture_update, context_thread_id=thread_id)
             else:
                 # Ensure the dummy admin is in the channel first
                 ensure_channel_membership(token, ADMIN_USER_ID, thread["channel_id"])
                 # Post reminder using the REST API with bot overrides
-                success = post_reminder(token, bot_user_id, thread["channel_id"], thread_id, msg, last_picture_update)
+                success = post_reminder(token, bot_user_id, thread["channel_id"], thread_id, msg, last_picture_update, context_thread_id=thread_id)
                 
             if success:
                 # Save state so we don't repeat this reminder
