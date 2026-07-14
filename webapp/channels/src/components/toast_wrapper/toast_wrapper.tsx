@@ -74,6 +74,7 @@ type State = {
 	showMessageHistoryToast?: boolean;
 	showUnreadWithBottomStartToast?: boolean;
 	showScrollToBottomToast?: boolean;
+	summarizingChannel: boolean;
 };
 
 export class ToastWrapperClass extends React.PureComponent<Props, State> {
@@ -87,6 +88,7 @@ export class ToastWrapperClass extends React.PureComponent<Props, State> {
 		this.state = {
 			unreadCountInChannel: props.unreadCountInChannel,
 			unreadCount: 0,
+			summarizingChannel: false,
 		};
 	}
 
@@ -288,6 +290,32 @@ export class ToastWrapperClass extends React.PureComponent<Props, State> {
 		}
 	};
 
+	handleSummarizeChannel = async (e: React.MouseEvent<HTMLSpanElement>) => {
+		e.stopPropagation();
+		if (this.state.summarizingChannel) {
+			return;
+		}
+
+		this.setState({ summarizingChannel: true });
+		try {
+			const response = await fetch(`/api/v4/channels/${this.props.channelId}/summarize`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+			});
+			if (!response.ok) {
+				throw new Error('Failed to summarize channel');
+			}
+			this.hideUnreadToast();
+			this.hideNewMessagesToast(false);
+		} catch (err) {
+			console.error('Error generating catch-up summary:', err);
+		} finally {
+			this.setState({ summarizingChannel: false });
+		}
+	};
+
 	newMessagesToastText = (count: number | undefined, since: number) => {
 		if (this.props.width > TOAST_TEXT_COLLAPSE_WIDTH && typeof since !== 'undefined') {
 			return (
@@ -405,6 +433,23 @@ export class ToastWrapperClass extends React.PureComponent<Props, State> {
 			return (
 				<Toast {...unreadToastProps}>
 					{this.newMessagesToastText(unreadCount, lastViewedAt)}
+					{unreadCount >= 15 && (
+						<span
+							role='button'
+							className='toast__summarize-link'
+							style={{marginLeft: '12px', textDecoration: 'underline', cursor: 'pointer', color: 'rgba(255, 255, 255, 0.85)'}}
+							onClick={this.handleSummarizeChannel}
+						>
+							{this.state.summarizingChannel ? (
+								<>
+									<i className='icon-loading icon-spin' style={{marginRight: '4px'}}/>
+									Summarizing...
+								</>
+							) : (
+								'Summarize unreads'
+							)}
+						</span>
+					)}
 				</Toast>
 			);
 		}
@@ -450,6 +495,23 @@ export class ToastWrapperClass extends React.PureComponent<Props, State> {
 					{...showNewMessagesToastOverrides}
 				>
 					{this.newMessagesToastText(unreadCount, lastViewedAt)}
+					{unreadCount >= 15 && (
+						<span
+							role='button'
+							className='toast__summarize-link'
+							style={{marginLeft: '12px', textDecoration: 'underline', cursor: 'pointer', color: 'rgba(255, 255, 255, 0.85)'}}
+							onClick={this.handleSummarizeChannel}
+						>
+							{this.state.summarizingChannel ? (
+								<>
+									<i className='icon-loading icon-spin' style={{marginRight: '4px'}}/>
+									Summarizing...
+								</>
+							) : (
+								'Summarize unreads'
+							)}
+						</span>
+					)}
 				</Toast>
 			);
 		}
