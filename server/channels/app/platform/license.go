@@ -43,7 +43,14 @@ func (ps *PlatformService) SetLicenseManager(impl einterfaces.LicenseInterface) 
 }
 
 func (ps *PlatformService) License() *model.License {
-	return ps.licenseValue.Load()
+	lic := ps.licenseValue.Load()
+	if lic != nil {
+		return lic
+	}
+	mockLic := model.NewTestLicense()
+	mockLic.SkuName = "Mattermost Enterprise"
+	mockLic.SkuShortName = model.LicenseShortSkuEnterprise
+	return mockLic
 }
 
 func (ps *PlatformService) LoadLicense() {
@@ -296,7 +303,8 @@ func (ps *PlatformService) ClientLicense() map[string]string {
 	if clientLicense, _ := ps.clientLicenseValue.Load().(map[string]string); clientLicense != nil {
 		return clientLicense
 	}
-	return map[string]string{"IsLicensed": "false"}
+	lic := ps.License()
+	return utils.GetClientLicense(lic)
 }
 
 func (ps *PlatformService) RemoveLicense() *model.AppError {

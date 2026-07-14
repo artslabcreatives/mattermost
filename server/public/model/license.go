@@ -443,6 +443,8 @@ func NewTestLicense(features ...string) *License {
 	featureJson, _ := json.Marshal(featureMap)
 	json.Unmarshal(featureJson, &ret.Features)
 
+	ret.Features.Users = NewPointer(1000)
+
 	return ret
 }
 
@@ -461,6 +463,8 @@ func NewTestLicenseWithFalseDefaults(features ...string) *License {
 	}
 	featureJson, _ := json.Marshal(featureMap)
 	json.Unmarshal(featureJson, &ret.Features)
+
+	ret.Features.Users = NewPointer(1000)
 
 	return ret
 }
