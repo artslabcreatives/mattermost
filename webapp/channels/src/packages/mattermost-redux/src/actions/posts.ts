@@ -1242,6 +1242,13 @@ export function doPostActionWithCookie(postId: string, actionId: string, actionC
 			});
 		}
 
+		if (data && (data as any).update) {
+			dispatch({
+				type: PostTypes.RECEIVED_POST,
+				data: (data as any).update,
+			});
+		}
+
 		return { data };
 	};
 }

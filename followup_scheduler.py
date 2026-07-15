@@ -400,13 +400,13 @@ def post_reminder(token, bot_user_id, channel_id, thread_id, message, last_pictu
             {
                 "actions": [
                     {
-                        "id": "mark_resolved",
+                        "id": "resolve",
                         "name": "✓ Mark Resolved",
                         "type": "button",
                         "integration": {
                             "url": callback_url,
                             "context": {
-                                "action": "mark_resolved",
+                                "action": "resolve",
                                 "thread_id": context_thread_id
                             }
                         }
