@@ -74,7 +74,7 @@ func doFollowUpAction(c *Context, w http.ResponseWriter, r *http.Request) {
 		props = make(model.StringInterface)
 	}
 
-	if action == "resolve" {
+	if action == "resolve" || action == "mark_resolved" {
 		// Mark thread as resolved in the root post's props and remove any snooze
 		props["followup_status"] = "resolved"
 		delete(props, "followup_snooze_until")
