@@ -686,6 +686,27 @@ func (a *App) getLinkMetadata(rctx request.CTX, requestURL string, timestamp int
 			cacheLinkMetadata(rctx, requestURL, timestamp, og, image, nil)
 			return og, image, nil, nil
 		}
+
+		if !ok {
+			isPermalink := looksLikeAPermalink(requestURL, a.GetSiteURL()) && *a.Config().ServiceSettings.EnablePermalinkPreviews
+			if !isPermalink {
+				// Populate memory cache immediately to prevent duplicate runs
+				cacheLinkMetadata(rctx, requestURL, timestamp, nil, nil, nil)
+				a.Srv().Go(func() {
+					bgRctx := request.EmptyContext(a.Log())
+					var bgOg *opengraph.OpenGraph
+					var bgImage *model.PostImage
+					if oEmbedProvider := oembed.FindEndpointForURL(requestURL); oEmbedProvider != nil {
+						bgOg, _ = a.getLinkMetadataFromOEmbed(bgRctx, requestURL, oEmbedProvider)
+					} else {
+						bgOg, bgImage, _ = a.getLinkMetadataForURL(bgRctx, requestURL)
+						a.saveLinkMetadataToDatabase(requestURL, timestamp, bgOg, bgImage)
+					}
+					cacheLinkMetadata(bgRctx, requestURL, timestamp, bgOg, bgImage, nil)
+				})
+				return nil, nil, nil, nil
+			}
+		}
 	}
 
 	var err error
