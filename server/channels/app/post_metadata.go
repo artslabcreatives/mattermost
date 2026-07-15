@@ -363,7 +363,7 @@ func (a *App) getEmbedForPost(rctx request.CTX, post *model.Post, firstLink stri
 		return nil, nil
 	}
 
-	og, image, permalink, err := a.getLinkMetadata(rctx, firstLink, post.CreateAt, isNewPost, post.GetPreviewedPostProp())
+	og, image, permalink, err := a.getLinkMetadata(rctx, firstLink, post.CreateAt, isNewPost, post.GetPreviewedPostProp(), !isNewPost)
 	if err != nil {
 		return nil, err
 	}
@@ -448,7 +448,7 @@ func (a *App) getImagesForPost(rctx request.CTX, post *model.Post, imageURLs []s
 			continue
 		}
 
-		if _, image, _, err := a.getLinkMetadata(rctx, imageURL, post.CreateAt, isNewPost, post.GetPreviewedPostProp()); err != nil {
+		if _, image, _, err := a.getLinkMetadata(rctx, imageURL, post.CreateAt, isNewPost, post.GetPreviewedPostProp(), !isNewPost); err != nil {
 			appErr, ok := err.(*model.AppError)
 			isNotFound := ok && appErr.StatusCode == http.StatusNotFound
 			// Ignore NotFound errors.
@@ -659,7 +659,7 @@ func (a *App) containsPermalink(rctx request.CTX, post *model.Post) bool {
 	return looksLikeAPermalink(link, a.GetSiteURL())
 }
 
-func (a *App) getLinkMetadata(rctx request.CTX, requestURL string, timestamp int64, isNewPost bool, previewedPostPropVal string) (*opengraph.OpenGraph, *model.PostImage, *model.Permalink, error) {
+func (a *App) getLinkMetadata(rctx request.CTX, requestURL string, timestamp int64, isNewPost bool, previewedPostPropVal string, asyncFetch bool) (*opengraph.OpenGraph, *model.PostImage, *model.Permalink, error) {
 	requestURL = resolveMetadataURL(requestURL, a.GetSiteURL())
 
 	// If it's an embedded image, nothing to do.
@@ -687,7 +687,7 @@ func (a *App) getLinkMetadata(rctx request.CTX, requestURL string, timestamp int
 			return og, image, nil, nil
 		}
 
-		if !ok {
+		if !ok && asyncFetch {
 			isPermalink := looksLikeAPermalink(requestURL, a.GetSiteURL()) && *a.Config().ServiceSettings.EnablePermalinkPreviews
 			if !isPermalink {
 				// Populate memory cache immediately to prevent duplicate runs
