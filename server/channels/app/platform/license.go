@@ -48,8 +48,8 @@ func (ps *PlatformService) License() *model.License {
 		return lic
 	}
 	mockLic := model.NewTestLicense()
-	mockLic.SkuName = "Mattermost Enterprise"
-	mockLic.SkuShortName = model.LicenseShortSkuEnterprise
+	mockLic.SkuName = "Mattermost Enterprise Advanced"
+	mockLic.SkuShortName = model.LicenseShortSkuEnterpriseAdvanced
 	return mockLic
 }
 
