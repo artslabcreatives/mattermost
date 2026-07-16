@@ -37,6 +37,116 @@ import { Client4 } from 'mattermost-redux/client';
 import Constants from 'utils/constants';
 
 // ---------------------------------------------------------------------------
+// Client-side image derivative generation
+// ---------------------------------------------------------------------------
+//
+// The Mattermost server and the S3 bucket can live in different regions, so we
+// never want the server to fetch an uploaded image back just to build its
+// thumbnail/preview. Instead the browser — which already holds the bytes —
+// generates those derivatives and PUTs them straight to S3 (browser → S3) using
+// the presigned URLs returned by createDirectUploadSession. The sizing mirrors
+// the server's own logic so results match legacy (server-side) uploads:
+//   - thumbnail: longer side scaled to fit 120×100, aspect ratio preserved
+//   - preview:   width capped at 1920, aspect ratio preserved
+// PNG originals keep a lossless PNG derivative (matching the server's
+// getFileExtFromMimeType rule); every other type becomes JPEG.
+
+const THUMBNAIL_WIDTH = 120;
+const THUMBNAIL_HEIGHT = 100;
+const PREVIEW_MAX_WIDTH = 1920;
+const JPEG_QUALITY = 0.9;
+
+interface ImageDerivatives {
+	width: number;
+	height: number;
+	thumbBlob: Blob;
+	previewBlob: Blob;
+}
+
+// Only raster images the browser can reliably decode and re-encode with a
+// <canvas>. SVGs have no raster preview on this path and animated GIFs would
+// lose their animation, so both are left without a client preview.
+function isProcessableImage(contentType: string): boolean {
+	return contentType.startsWith('image/') &&
+		contentType !== 'image/svg+xml' &&
+		contentType !== 'image/gif';
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number): Promise<Blob> {
+	return new Promise((resolve, reject) => {
+		canvas.toBlob(
+			(blob) => (blob ? resolve(blob) : reject(new Error('canvas.toBlob returned null'))),
+			type,
+			quality,
+		);
+	});
+}
+
+async function renderToBlob(bitmap: ImageBitmap, w: number, h: number, type: string, quality?: number): Promise<Blob> {
+	const canvas = document.createElement('canvas');
+	canvas.width = w;
+	canvas.height = h;
+	const ctx = canvas.getContext('2d');
+	if (!ctx) {
+		throw new Error('failed to acquire 2d canvas context');
+	}
+	ctx.drawImage(bitmap, 0, 0, w, h);
+	return canvasToBlob(canvas, type, quality);
+}
+
+async function generateImageDerivatives(fileData: Blob, contentType: string): Promise<ImageDerivatives> {
+	const bitmap = await createImageBitmap(fileData);
+	try {
+		const width = bitmap.width;
+		const height = bitmap.height;
+		if (!width || !height) {
+			throw new Error('image has zero dimensions');
+		}
+
+		const outType = contentType === 'image/png' ? 'image/png' : 'image/jpeg';
+		const quality = outType === 'image/jpeg' ? JPEG_QUALITY : undefined;
+
+		// Thumbnail — mirror server GenerateThumbnail: pin the longer side to the
+		// target and let the other scale, preserving aspect ratio (no crop).
+		let thumbW: number;
+		let thumbH: number;
+		if (width > height) {
+			thumbW = THUMBNAIL_WIDTH;
+			thumbH = Math.max(1, Math.round((height * THUMBNAIL_WIDTH) / width));
+		} else {
+			thumbH = THUMBNAIL_HEIGHT;
+			thumbW = Math.max(1, Math.round((width * THUMBNAIL_HEIGHT) / height));
+		}
+
+		// Preview — mirror server GeneratePreview: cap width at 1920, never upscale.
+		let previewW = width;
+		let previewH = height;
+		if (width > PREVIEW_MAX_WIDTH) {
+			previewW = PREVIEW_MAX_WIDTH;
+			previewH = Math.max(1, Math.round((height * PREVIEW_MAX_WIDTH) / width));
+		}
+
+		const thumbBlob = await renderToBlob(bitmap, thumbW, thumbH, outType, quality);
+		const previewBlob = await renderToBlob(bitmap, previewW, previewH, outType, quality);
+
+		return { width, height, thumbBlob, previewBlob };
+	} finally {
+		bitmap.close?.();
+	}
+}
+
+async function putBlobToS3(url: string, blob: Blob): Promise<void> {
+	const res = await fetch(url, {
+		method: 'PUT',
+		body: blob,
+		headers: { 'Content-Type': blob.type || 'application/octet-stream' },
+	});
+	if (!res.ok) {
+		throw new Error(`derivative PUT failed with status ${res.status}`);
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -125,12 +235,13 @@ export function useUppyDirectUpload(
 		uppy.use(AwsS3, {
 			shouldUseMultipart: false, // Use single PUT upload (supports up to 5 GB)
 			getUploadParameters: async (file) => {
+				const contentType = (file.meta?.filetype as string) || file.type || 'application/octet-stream';
 				const data = await Client4.createDirectUploadSession({
 					channel_id: channelIdRef.current,
 					filename: (file.meta?.filename as string) || file.name || 'file',
-					content_type: (file.meta?.filetype as string) || file.type || 'application/octet-stream',
+					content_type: contentType,
 				});
-				
+
 				// Store metadata on the file object to associate with upload-success
 				file.meta = {
 					...file.meta,
@@ -138,6 +249,39 @@ export function useUppyDirectUpload(
 					file_id: data.file_id,
 					object_key: data.object_key,
 				};
+
+				// For images, generate the thumbnail + preview in the browser and
+				// PUT them directly to S3 before the original upload begins. Doing
+				// this here (inside the awaited getUploadParameters) means the
+				// original file's PUT — and therefore the whole batch's 'complete'
+				// event — cannot fire until the derivatives are in place, so a post
+				// is never sent referencing a preview that does not yet exist.
+				//
+				// If generation/upload fails we fall back to has_preview=false: the
+				// image still uploads and displays, just without a stored preview,
+				// rather than failing the upload or leaving a broken thumbnail.
+				if (data.thumbnail_upload_url && data.preview_upload_url && isProcessableImage(contentType)) {
+					try {
+						const derived = await generateImageDerivatives(file.data as Blob, contentType);
+						await Promise.all([
+							putBlobToS3(data.thumbnail_upload_url, derived.thumbBlob),
+							putBlobToS3(data.preview_upload_url, derived.previewBlob),
+						]);
+						file.meta = {
+							...file.meta,
+							img_width: derived.width,
+							img_height: derived.height,
+							has_preview: true,
+						};
+					} catch (err) {
+						// eslint-disable-next-line no-console
+						console.error('Direct upload: image derivative generation failed, uploading without preview:', err);
+						file.meta = {
+							...file.meta,
+							has_preview: false,
+						};
+					}
+				}
 
 				return {
 					method: 'PUT',
@@ -258,6 +402,9 @@ export function useUppyDirectUpload(
 					file_id: fileId,
 					object_key: objectKey,
 					file_size: fileSize,
+					width: (file.meta?.img_width as number) || 0,
+					height: (file.meta?.img_height as number) || 0,
+					has_preview: Boolean(file.meta?.has_preview),
 				}).then((data) => {
 					if (data.file_infos && data.file_infos.length > 0) {
 						return data.file_infos[0] as FileInfo;

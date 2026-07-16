@@ -2758,6 +2758,12 @@ export default class Client4 {
 			file_id: string;
 			upload_url: string;
 			object_key: string;
+
+			// Presigned PUT URLs for the client-generated thumbnail/preview
+			// derivatives. Present only for image uploads.
+			thumbnail_upload_url?: string;
+			preview_upload_url?: string;
+
 			state: string;
 			created_at: number;
 			expires_at: number;
@@ -2770,8 +2776,10 @@ export default class Client4 {
 	/**
 	 * Finalise a direct upload session.
 	 * The server verifies the object exists and registers a FileInfo record.
+	 * For images, width/height are the client-measured dimensions and has_preview
+	 * reports whether the thumbnail/preview derivatives were uploaded to S3.
 	 */
-	completeDirectUploadSession = (params: { upload_id: string; file_id: string; object_key: string; file_size: number }) => {
+	completeDirectUploadSession = (params: { upload_id: string; file_id: string; object_key: string; file_size: number; width?: number; height?: number; has_preview?: boolean }) => {
 		return this.doFetch<{ file_infos: Array<{ id: string;[key: string]: unknown }>; client_ids: string[] }>(
 			`${this.getFilesRoute()}/direct/complete`,
 			{ method: 'post', body: JSON.stringify(params) },

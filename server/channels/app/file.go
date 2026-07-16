@@ -634,6 +634,27 @@ func (a *App) GeneratePresignedUploadURL(rctx request.CTX, channelID, userID, fi
 	}, nil
 }
 
+// directUploadDerivativeKeys returns the S3 object keys for the thumbnail and
+// preview derivatives of a directly-uploaded image. They are siblings of the
+// original object in the same folder and are derived identically to the paths
+// CompleteDirectUpload records on the FileInfo, so that a client-side PUT to
+// these keys makes FileInfo.ThumbnailPath / PreviewPath point at real objects.
+//
+// mimeType MUST be the same value CompleteDirectUpload derives via
+// model.NewInfo(filename).MimeType so the extensions agree.
+func directUploadDerivativeKeys(objectKey, filename, mimeType string) (thumbKey, previewKey string) {
+	safeFilename := filepath.Base(filename)
+	nameWithoutExt := safeFilename
+	if idx := strings.LastIndex(safeFilename, "."); idx > 0 {
+		nameWithoutExt = safeFilename[:idx]
+	}
+	pathPrefix := strings.TrimSuffix(objectKey, safeFilename)
+	ext := getFileExtFromMimeType(mimeType)
+	thumbKey = pathPrefix + nameWithoutExt + "_thumb." + ext
+	previewKey = pathPrefix + nameWithoutExt + "_preview." + ext
+	return thumbKey, previewKey
+}
+
 // CreateDirectUploadSession creates a session-based direct-to-S3 upload record.
 // It generates a presigned PUT URL and stores the session in memory.
 // The session is automatically considered expired after DirectUploadSessionTTLSeconds.
@@ -656,6 +677,32 @@ func (a *App) CreateDirectUploadSession(rctx request.CTX, channelID, userID, fil
 		State:       model.DirectUploadStateCreated,
 		CreatedAt:   model.GetMillisForTime(now),
 		ExpiresAt:   model.GetMillisForTime(now.Add(model.DirectUploadSessionTTLSeconds * time.Second)),
+	}
+
+	// For images, also presign PUT URLs for the thumbnail and preview
+	// derivatives so the browser can generate them and upload them directly to
+	// S3 (browser → S3), avoiding a server round-trip to the object store.
+	// The keys are derived from the FileInfo mime type (extension-based) exactly
+	// as CompleteDirectUpload does, guaranteeing the uploaded objects land on the
+	// paths the FileInfo will reference.
+	if mimeInfo := model.NewInfo(session.Filename); mimeInfo.IsImage() && !mimeInfo.IsSvg() {
+		if backend, ok := a.FileBackend().(filestore.FileBackendWithPresignedPut); ok {
+			thumbKey, previewKey := directUploadDerivativeKeys(info.Key, session.Filename, mimeInfo.MimeType)
+			derivativeContentType := "image/jpeg"
+			if getFileExtFromMimeType(mimeInfo.MimeType) == "png" {
+				derivativeContentType = "image/png"
+			}
+			if thumbURL, tErr := backend.PresignedPutObject(thumbKey, derivativeContentType, 5*time.Minute); tErr == nil {
+				session.ThumbnailUploadURL = thumbURL
+			} else {
+				rctx.Logger().Warn("CreateDirectUploadSession: failed to presign thumbnail URL", mlog.String("key", thumbKey), mlog.Err(tErr))
+			}
+			if previewURL, pErr := backend.PresignedPutObject(previewKey, derivativeContentType, 5*time.Minute); pErr == nil {
+				session.PreviewUploadURL = previewURL
+			} else {
+				rctx.Logger().Warn("CreateDirectUploadSession: failed to presign preview URL", mlog.String("key", previewKey), mlog.Err(pErr))
+			}
+		}
 	}
 
 	a.ch.directUploadSessionsMut.Lock()
@@ -709,7 +756,7 @@ func (a *App) AbortDirectUploadSession(uploadID, userID string) *model.AppError 
 }
 
 // CompleteDirectUploadSession finalises a session-based upload and creates a FileInfo record.
-func (a *App) CompleteDirectUploadSession(rctx request.CTX, uploadID, userID string, fileSize int64) (*model.FileInfo, *model.AppError) {
+func (a *App) CompleteDirectUploadSession(rctx request.CTX, uploadID, userID string, fileSize int64, width, height int, hasPreview bool) (*model.FileInfo, *model.AppError) {
 	session, err := a.GetDirectUploadSession(uploadID)
 	if err != nil {
 		return nil, err
@@ -720,7 +767,7 @@ func (a *App) CompleteDirectUploadSession(rctx request.CTX, uploadID, userID str
 			"api.file.direct_session.forbidden.app_error", nil, "", http.StatusForbidden)
 	}
 
-	info, completeErr := a.CompleteDirectUpload(rctx, session.ChannelID, userID, session.FileID, session.Filename, session.ObjectKey, fileSize)
+	info, completeErr := a.CompleteDirectUpload(rctx, session.ChannelID, userID, session.FileID, session.Filename, session.ObjectKey, fileSize, width, height, hasPreview)
 	if completeErr != nil {
 		return nil, completeErr
 	}
@@ -734,9 +781,16 @@ func (a *App) CompleteDirectUploadSession(rctx request.CTX, uploadID, userID str
 }
 
 // CompleteDirectUpload is called after the client has uploaded a file directly
-// to the object store using a presigned URL.  It creates a FileInfo record and
-// schedules asynchronous image post-processing.
-func (a *App) CompleteDirectUpload(rctx request.CTX, channelID, userID, fileID, filename, key string, fileSize int64) (*model.FileInfo, *model.AppError) {
+// to the object store using a presigned URL. It creates a FileInfo record.
+//
+// Image thumbnails and previews are generated by the browser at upload time and
+// PUT directly to their sibling S3 keys (see CreateDirectUploadSession), which
+// avoids a server round-trip to the object store — important when the server and
+// bucket are in different regions. width/height are the client-measured natural
+// pixel dimensions, and hasPreview reports whether those derivative objects were
+// uploaded. Only when hasPreview is true does the FileInfo advertise a preview,
+// so the client never references a thumbnail/preview object that does not exist.
+func (a *App) CompleteDirectUpload(rctx request.CTX, channelID, userID, fileID, filename, key string, fileSize int64, width, height int, hasPreview bool) (*model.FileInfo, *model.AppError) {
 	// Verify the object actually landed in the store.
 	exists, aErr := a.FileExists(key)
 	if aErr != nil {
@@ -766,14 +820,21 @@ func (a *App) CompleteDirectUpload(rctx request.CTX, channelID, userID, fileID, 
 	info.Size = fileSize
 
 	if info.IsImage() && !info.IsSvg() {
-		nameWithoutExt := safeFilename
-		if idx := strings.LastIndex(safeFilename, "."); idx > 0 {
-			nameWithoutExt = safeFilename[:idx]
+		if width > 0 {
+			info.Width = width
 		}
-		pathPrefix := strings.TrimSuffix(key, safeFilename)
-		info.HasPreviewImage = true
-		info.PreviewPath = pathPrefix + nameWithoutExt + "_preview." + getFileExtFromMimeType(info.MimeType)
-		info.ThumbnailPath = pathPrefix + nameWithoutExt + "_thumb." + getFileExtFromMimeType(info.MimeType)
+		if height > 0 {
+			info.Height = height
+		}
+		// The browser generated and uploaded the thumbnail/preview derivatives.
+		// Only advertise a preview when it confirmed success, otherwise the
+		// referenced objects would not exist and the client would render a blank.
+		if hasPreview {
+			thumbKey, previewKey := directUploadDerivativeKeys(key, safeFilename, info.MimeType)
+			info.HasPreviewImage = true
+			info.ThumbnailPath = thumbKey
+			info.PreviewPath = previewKey
+		}
 	}
 
 	if _, saveErr := a.Srv().Store().FileInfo().Save(rctx, info); saveErr != nil {
@@ -782,38 +843,6 @@ func (a *App) CompleteDirectUpload(rctx request.CTX, channelID, userID, fileID, 
 			return nil, appErr
 		}
 		return nil, model.NewAppError("CompleteDirectUpload", "app.file_info.save.app_error", nil, "", http.StatusInternalServerError).Wrap(saveErr)
-	}
-
-	// Schedule async thumbnail / preview generation for images.
-	if info.IsImage() && !info.IsSvg() {
-		infoCopy := *info
-		safeFilenameCopy := safeFilename
-		a.Srv().Go(func() {
-			bgFile, bgAerr := a.FileReader(infoCopy.Path)
-			if bgAerr != nil {
-				rctx.Logger().Error("CompleteDirectUpload: async image processing failed to open file",
-					mlog.String("path", infoCopy.Path), mlog.Err(bgAerr))
-				return
-			}
-			defer bgFile.Close()
-
-			bgTask := &UploadFileTask{
-				Logger:     rctx.Logger(),
-				Name:       safeFilenameCopy,
-				fileinfo:   &infoCopy,
-				writeFile:  a.WriteFile,
-				imgDecoder: a.ch.imgDecoder,
-				imgEncoder: a.ch.imgEncoder,
-			}
-			bgTask.postprocessImage(bgFile)
-
-			if infoCopy.MiniPreview != nil || !infoCopy.HasPreviewImage {
-				if _, upsertErr := a.Srv().Store().FileInfo().Upsert(rctx, &infoCopy); upsertErr != nil {
-					rctx.Logger().Error("CompleteDirectUpload: failed to upsert file info after postprocessing",
-						mlog.String("file_id", infoCopy.Id), mlog.Err(upsertErr))
-				}
-			}
-		})
 	}
 
 	return info, nil

@@ -381,6 +381,10 @@ func (api *API) finaliseTusUpload(state *tusdState, event tushandler.HookEvent, 
 
 	// Register the FileInfo record.
 	rctx := request.EmptyContext(logger)
+	// TUS is not wired into the webapp client, so it does not supply
+	// client-generated dimensions/derivatives. Pass zero/false; images uploaded
+	// via this path render as attachments without an inline preview rather than
+	// referencing a non-existent thumbnail object.
 	info, aerr := appInst.CompleteDirectUpload(
 		rctx,
 		rec.channelID,
@@ -389,6 +393,9 @@ func (api *API) finaliseTusUpload(state *tusdState, event tushandler.HookEvent, 
 		rec.filename,
 		objectKey,
 		event.Upload.Size,
+		0,
+		0,
+		false,
 	)
 	if aerr != nil {
 		logger.Error("tus: CompleteDirectUpload failed",

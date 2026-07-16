@@ -46,6 +46,14 @@ type DirectUploadSession struct {
 	ObjectKey string `json:"object_key"`
 	// UploadURL is the pre-signed PUT URL the client should upload to.
 	UploadURL string `json:"upload_url"`
+	// ThumbnailUploadURL is the pre-signed PUT URL for the client-generated
+	// thumbnail derivative. Empty for non-image uploads. The object key it
+	// targets is the same sibling path CompleteDirectUpload records as
+	// FileInfo.ThumbnailPath, so a successful PUT makes that path real.
+	ThumbnailUploadURL string `json:"thumbnail_upload_url,omitempty"`
+	// PreviewUploadURL is the pre-signed PUT URL for the client-generated
+	// preview derivative. Empty for non-image uploads.
+	PreviewUploadURL string `json:"preview_upload_url,omitempty"`
 	// State is the current lifecycle state.
 	State DirectUploadState `json:"state"`
 	// CreatedAt is the Unix millisecond timestamp when the session was created.
@@ -69,4 +77,13 @@ type DirectUploadCompleteRequest struct {
 	ObjectKey string `json:"object_key"`
 	// FileSize is the final byte-count of the uploaded object.
 	FileSize int64 `json:"file_size"`
+	// Width and Height are the natural pixel dimensions of an image, measured
+	// by the client at upload time. Zero for non-images or if measurement failed.
+	Width  int `json:"width,omitempty"`
+	Height int `json:"height,omitempty"`
+	// HasPreview reports whether the client successfully generated and uploaded
+	// the thumbnail + preview derivatives to their presigned URLs. Only when this
+	// is true does the server mark the FileInfo as having a preview image, so the
+	// client never renders a preview path whose object does not exist.
+	HasPreview bool `json:"has_preview,omitempty"`
 }

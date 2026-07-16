@@ -1040,7 +1040,7 @@ func completePresignedUpload(c *Context, w http.ResponseWriter, r *http.Request)
 	}
 
 	userID := c.AppContext.Session().UserId
-	info, err := c.App.CompleteDirectUpload(c.AppContext, req.ChannelID, userID, req.FileID, req.Filename, req.Key, req.FileSize)
+	info, err := c.App.CompleteDirectUpload(c.AppContext, req.ChannelID, userID, req.FileID, req.Filename, req.Key, req.FileSize, 0, 0, false)
 	if err != nil {
 		c.Err = err
 		return
@@ -1123,7 +1123,7 @@ return
 }
 
 userID := c.AppContext.Session().UserId
-info, err := c.App.CompleteDirectUploadSession(c.AppContext, req.UploadID, userID, req.FileSize)
+info, err := c.App.CompleteDirectUploadSession(c.AppContext, req.UploadID, userID, req.FileSize, req.Width, req.Height, req.HasPreview)
 if err != nil {
 c.Err = err
 return
