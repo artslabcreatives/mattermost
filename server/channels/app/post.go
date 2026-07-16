@@ -1609,41 +1609,30 @@ func (a *App) AddCursorIdsForPostList(originalList *model.PostList, afterPost, b
 }
 
 func (a *App) GetPostsForChannelAroundLastUnread(rctx request.CTX, channelID, userID string, limitBefore, limitAfter int, skipFetchThreads bool, collapsedThreads, collapsedThreadsExtended bool) (*model.PostList, *model.AppError) {
-	startTime := time.Now()
-	defer func() {
-		mlog.Warn("TIMING GetPostsForChannelAroundLastUnread total", mlog.Duration("duration", time.Since(startTime)))
-	}()
-
 	var lastViewedAt int64
 	var err *model.AppError
-	t0 := time.Now()
 	if lastViewedAt, err = a.Srv().getChannelMemberLastViewedAt(rctx, channelID, userID); err != nil {
 		return nil, err
 	} else if lastViewedAt == 0 {
 		return model.NewPostList(), nil
 	}
-	mlog.Warn("TIMING GetPostsForChannelAroundLastUnread getChannelMemberLastViewedAt", mlog.Duration("duration", time.Since(t0)))
 
-	t1 := time.Now()
 	lastUnreadPostId, err := a.GetPostIdAfterTime(channelID, lastViewedAt, collapsedThreads)
 	if err != nil {
 		return nil, err
 	} else if lastUnreadPostId == "" {
 		return model.NewPostList(), nil
 	}
-	mlog.Warn("TIMING GetPostsForChannelAroundLastUnread GetPostIdAfterTime", mlog.Duration("duration", time.Since(t1)))
 
 	opts := model.GetPostsOptions{
 		SkipFetchThreads:         skipFetchThreads,
 		CollapsedThreads:         collapsedThreads,
 		CollapsedThreadsExtended: collapsedThreadsExtended,
 	}
-	t2 := time.Now()
 	postList, err := a.GetPostThread(rctx, lastUnreadPostId, opts, userID)
 	if err != nil {
 		return nil, err
 	}
-	mlog.Warn("TIMING GetPostsForChannelAroundLastUnread GetPostThread", mlog.Duration("duration", time.Since(t2)))
 
 	// Reset order to only include the last unread post: if the thread appears in the centre
 	// channel organically, those replies will be added below.
@@ -1653,26 +1642,20 @@ func (a *App) GetPostsForChannelAroundLastUnread(rctx request.CTX, channelID, us
 		postList.Order = []string{lastUnreadPostId}
 
 		// BeforePosts will only be accessible if the lastUnreadPostId is itself accessible
-		t3 := time.Now()
 		if postListBefore, err := a.GetPostsBeforePost(rctx, model.GetPostsOptions{ChannelId: channelID, PostId: lastUnreadPostId, Page: PageDefault, PerPage: limitBefore, SkipFetchThreads: skipFetchThreads, CollapsedThreads: collapsedThreads, CollapsedThreadsExtended: collapsedThreadsExtended, UserId: userID}); err != nil {
 			return nil, err
 		} else if postListBefore != nil {
 			postList.Extend(postListBefore)
 		}
-		mlog.Warn("TIMING GetPostsForChannelAroundLastUnread GetPostsBeforePost", mlog.Duration("duration", time.Since(t3)))
 	}
 
-	t4 := time.Now()
 	if postListAfter, err := a.GetPostsAfterPost(rctx, model.GetPostsOptions{ChannelId: channelID, PostId: lastUnreadPostId, Page: PageDefault, PerPage: limitAfter - 1, SkipFetchThreads: skipFetchThreads, CollapsedThreads: collapsedThreads, CollapsedThreadsExtended: collapsedThreadsExtended, UserId: userID}); err != nil {
 		return nil, err
 	} else if postListAfter != nil {
 		postList.Extend(postListAfter)
 	}
-	mlog.Warn("TIMING GetPostsForChannelAroundLastUnread GetPostsAfterPost", mlog.Duration("duration", time.Since(t4)))
 
-	t5 := time.Now()
 	postList.SortByCreateAt()
-	mlog.Warn("TIMING GetPostsForChannelAroundLastUnread SortByCreateAt", mlog.Duration("duration", time.Since(t5)))
 	return postList, nil
 }
 

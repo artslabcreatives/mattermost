@@ -212,11 +212,6 @@ func getPostsForChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	startTime := time.Now()
-	defer func() {
-		c.Logger.Warn("TIMING getPostsForChannel total", mlog.Duration("duration", time.Since(startTime)))
-	}()
-
 	afterPost := r.URL.Query().Get("after")
 	if afterPost != "" && !model.IsValidId(afterPost) {
 		c.SetInvalidParam("after")
@@ -252,7 +247,6 @@ func getPostsForChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t0 := time.Now()
 	channel, err := c.App.GetChannel(c.AppContext, channelId)
 	if err != nil {
 		c.Err = err
@@ -262,12 +256,10 @@ func getPostsForChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 		c.SetPermissionError(model.PermissionReadChannelContent)
 		return
 	}
-	c.Logger.Warn("TIMING getPostsForChannel GetChannel", mlog.Duration("duration", time.Since(t0)))
 
 	var list *model.PostList
 	etag := ""
 
-	t1 := time.Now()
 	if since > 0 {
 		list, err = c.App.GetPostsSince(c.AppContext, model.GetPostsSinceOptions{ChannelId: channelId, Time: since, SkipFetchThreads: skipFetchThreads, CollapsedThreads: collapsedThreads, CollapsedThreadsExtended: collapsedThreadsExtended, UserId: c.AppContext.Session().UserId})
 	} else if afterPost != "" {
@@ -300,13 +292,11 @@ func getPostsForChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 		c.Err = err
 		return
 	}
-	c.Logger.Warn("TIMING getPostsForChannel fetch", mlog.Duration("duration", time.Since(t1)))
 
 	if etag != "" {
 		w.Header().Set(model.HeaderEtagServer, etag)
 	}
 
-	t2 := time.Now()
 	clientPostList := c.App.PreparePostListForClient(c.AppContext, list)
 
 	// Calculate NextPostId and PrevPostId AFTER filtering (including BoR filtering)
@@ -318,13 +308,10 @@ func getPostsForChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 		c.Err = err
 		return
 	}
-	c.Logger.Warn("TIMING getPostsForChannel prepare", mlog.Duration("duration", time.Since(t2)))
 
-	t3 := time.Now()
 	if err := clientPostList.EncodeJSON(w); err != nil {
 		c.Logger.Warn("Error while writing response", mlog.Err(err))
 	}
-	c.Logger.Warn("TIMING getPostsForChannel write", mlog.Duration("duration", time.Since(t3)))
 }
 
 func getPostsForChannelAroundLastUnread(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -333,11 +320,6 @@ func getPostsForChannelAroundLastUnread(c *Context, w http.ResponseWriter, r *ht
 		return
 	}
 
-	startTime := time.Now()
-	defer func() {
-		c.Logger.Warn("TIMING getPostsForChannelAroundLastUnread total", mlog.Duration("duration", time.Since(startTime)))
-	}()
-
 	userId := c.Params.UserId
 	if !c.App.SessionHasPermissionToUser(*c.AppContext.Session(), userId) {
 		c.SetPermissionError(model.PermissionEditOtherUsers)
@@ -345,7 +327,6 @@ func getPostsForChannelAroundLastUnread(c *Context, w http.ResponseWriter, r *ht
 	}
 
 	channelId := c.Params.ChannelId
-	t0 := time.Now()
 	channel, err := c.App.GetChannel(c.AppContext, channelId)
 	if err != nil {
 		c.Err = err
@@ -355,7 +336,6 @@ func getPostsForChannelAroundLastUnread(c *Context, w http.ResponseWriter, r *ht
 		c.SetPermissionError(model.PermissionReadChannelContent)
 		return
 	}
-	c.Logger.Warn("TIMING getPostsForChannelAroundLastUnread GetChannel", mlog.Duration("duration", time.Since(t0)))
 
 	if c.Params.LimitAfter == 0 {
 		c.SetInvalidURLParam("limit_after")
@@ -366,7 +346,6 @@ func getPostsForChannelAroundLastUnread(c *Context, w http.ResponseWriter, r *ht
 	collapsedThreads := r.URL.Query().Get("collapsedThreads") == "true"
 	collapsedThreadsExtended := r.URL.Query().Get("collapsedThreadsExtended") == "true"
 
-	t1 := time.Now()
 	postList, err := c.App.GetPostsForChannelAroundLastUnread(c.AppContext, channelId, userId, c.Params.LimitBefore, c.Params.LimitAfter, skipFetchThreads, collapsedThreads, collapsedThreadsExtended)
 	if err != nil {
 		c.Err = err
@@ -387,9 +366,7 @@ func getPostsForChannelAroundLastUnread(c *Context, w http.ResponseWriter, r *ht
 			return
 		}
 	}
-	c.Logger.Warn("TIMING getPostsForChannelAroundLastUnread GetPostsForChannelAroundLastUnread", mlog.Duration("duration", time.Since(t1)))
 
-	t2 := time.Now()
 	clientPostList := c.App.PreparePostListForClient(c.AppContext, postList)
 
 	// Calculate NextPostId and PrevPostId AFTER filtering (including BoR filtering)
@@ -401,16 +378,13 @@ func getPostsForChannelAroundLastUnread(c *Context, w http.ResponseWriter, r *ht
 		c.Err = err
 		return
 	}
-	c.Logger.Warn("TIMING getPostsForChannelAroundLastUnread prepare", mlog.Duration("duration", time.Since(t2)))
 
-	t3 := time.Now()
 	if etag != "" {
 		w.Header().Set(model.HeaderEtagServer, etag)
 	}
 	if err := clientPostList.EncodeJSON(w); err != nil {
 		c.Logger.Warn("Error while writing response", mlog.Err(err))
 	}
-	c.Logger.Warn("TIMING getPostsForChannelAroundLastUnread write", mlog.Duration("duration", time.Since(t3)))
 }
 
 func getFlaggedPostsForUser(c *Context, w http.ResponseWriter, r *http.Request) {
