@@ -9,11 +9,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
 	"github.com/mattermost/mattermost/server/public/shared/request"
 	"github.com/mattermost/mattermost/server/v8/channels/store"
 )
@@ -29,6 +31,50 @@ type LLMService struct {
 // AgentConfig represents the overall agent configuration structure stored in the database.
 type AgentConfig struct {
 	Services []LLMService `json:"services"`
+}
+
+// resolveOpenAIService returns the active OpenAI configuration for summarization.
+// It first consults the Agents plugin config stored in agents_confighistory, and
+// falls back to the OPENAI_API_KEY / OPENAI_MODEL environment variables (shared
+// with the Follow-up Bot) when no active database config with an OpenAI key is
+// available. This lets summarize work on servers where the Agents plugin is not
+// configured but the OpenAI key is provided via the environment.
+func (a *App) resolveOpenAIService(rctx request.CTX, caller string) (*LLMService, *model.AppError) {
+	// Prefer the active Agents plugin config from the database.
+	if db := a.Srv().Store().GetInternalMasterDB(); db != nil {
+		var configJSON string
+		if rowErr := db.QueryRow("SELECT config FROM agents_confighistory WHERE active = true").Scan(&configJSON); rowErr == nil {
+			var agentConf AgentConfig
+			if unmarshalErr := json.Unmarshal([]byte(configJSON), &agentConf); unmarshalErr == nil {
+				for _, svc := range agentConf.Services {
+					if svc.Type == "openai" && svc.ApiKey != "" {
+						resolved := svc
+						return &resolved, nil
+					}
+				}
+				rctx.Logger().Debug("No OpenAI service configured in active Agents configuration; falling back to environment variables", mlog.String("caller", caller))
+			} else {
+				rctx.Logger().Debug("Failed to unmarshal active Agents configuration; falling back to environment variables", mlog.String("caller", caller), mlog.Err(unmarshalErr))
+			}
+		} else {
+			rctx.Logger().Debug("No active Agents configuration found in database; falling back to environment variables", mlog.String("caller", caller), mlog.Err(rowErr))
+		}
+	} else {
+		rctx.Logger().Debug("Database connection not available; falling back to environment variables", mlog.String("caller", caller))
+	}
+
+	// Fall back to environment configuration.
+	if envKey := os.Getenv("OPENAI_API_KEY"); envKey != "" {
+		rctx.Logger().Debug("Using environment variables for OpenAI service configuration", mlog.String("caller", caller))
+		return &LLMService{
+			Type:         "openai",
+			ApiKey:       envKey,
+			DefaultModel: os.Getenv("OPENAI_MODEL"),
+		}, nil
+	}
+
+	rctx.Logger().Debug("No OpenAI configuration found in either database or environment variables", mlog.String("caller", caller))
+	return nil, model.NewAppError(caller, "app.summarize.config_error", nil, "OpenAI API key not configured: no active Agents config with an OpenAI key and OPENAI_API_KEY is unset", http.StatusBadRequest)
 }
 
 func (a *App) SummarizeThread(rctx request.CTX, postId string, userId string) (string, *model.AppError) {
@@ -100,33 +146,10 @@ func (a *App) SummarizeThread(rctx request.CTX, postId string, userId string) (s
 	}
 	formattedHistory := logBuilder.String()
 
-	// 6. Query active configuration from agents_confighistory
-	var configJSON string
-	db := a.Srv().Store().GetInternalMasterDB()
-	if db == nil {
-		return "", model.NewAppError("SummarizeThread", "app.summarize.db_error", nil, "Database connection not available", http.StatusInternalServerError)
-	}
-
-	rowErr := db.QueryRow("SELECT config FROM agents_confighistory WHERE active = true").Scan(&configJSON)
-	if rowErr != nil {
-		return "", model.NewAppError("SummarizeThread", "app.summarize.config_error", nil, "Failed to get active AI plugin config: "+rowErr.Error(), http.StatusInternalServerError)
-	}
-
-	var agentConf AgentConfig
-	if unmarshalErr := json.Unmarshal([]byte(configJSON), &agentConf); unmarshalErr != nil {
-		return "", model.NewAppError("SummarizeThread", "app.summarize.config_error", nil, "Failed to parse AI plugin config: "+unmarshalErr.Error(), http.StatusInternalServerError)
-	}
-
-	var openaiService *LLMService
-	for _, svc := range agentConf.Services {
-		if svc.Type == "openai" {
-			openaiService = &svc
-			break
-		}
-	}
-
-	if openaiService == nil || openaiService.ApiKey == "" {
-		return "", model.NewAppError("SummarizeThread", "app.summarize.config_error", nil, "OpenAI API key not configured or service not active", http.StatusBadRequest)
+	// 6. Resolve the active OpenAI configuration (DB Agents config, then env fallback).
+	openaiService, cfgErr := a.resolveOpenAIService(rctx, "SummarizeThread")
+	if cfgErr != nil {
+		return "", cfgErr
 	}
 
 	modelName := openaiService.DefaultModel
@@ -273,33 +296,10 @@ func (a *App) SummarizeChannelUnread(rctx request.CTX, channelId string, userId 
 	}
 	formattedHistory := logBuilder.String()
 
-	// 6. Query active configuration from agents_confighistory
-	var configJSON string
-	db := a.Srv().Store().GetInternalMasterDB()
-	if db == nil {
-		return "", model.NewAppError("SummarizeChannelUnread", "app.summarize.db_error", nil, "Database connection not available", http.StatusInternalServerError)
-	}
-
-	rowErr := db.QueryRow("SELECT config FROM agents_confighistory WHERE active = true").Scan(&configJSON)
-	if rowErr != nil {
-		return "", model.NewAppError("SummarizeChannelUnread", "app.summarize.config_error", nil, "Failed to get active AI plugin config: "+rowErr.Error(), http.StatusInternalServerError)
-	}
-
-	var agentConf AgentConfig
-	if unmarshalErr := json.Unmarshal([]byte(configJSON), &agentConf); unmarshalErr != nil {
-		return "", model.NewAppError("SummarizeChannelUnread", "app.summarize.config_error", nil, "Failed to parse AI plugin config: "+unmarshalErr.Error(), http.StatusInternalServerError)
-	}
-
-	var openaiService *LLMService
-	for _, svc := range agentConf.Services {
-		if svc.Type == "openai" {
-			openaiService = &svc
-			break
-		}
-	}
-
-	if openaiService == nil || openaiService.ApiKey == "" {
-		return "", model.NewAppError("SummarizeChannelUnread", "app.summarize.config_error", nil, "OpenAI API key not configured or service not active", http.StatusBadRequest)
+	// 6. Resolve the active OpenAI configuration (DB Agents config, then env fallback).
+	openaiService, cfgErr := a.resolveOpenAIService(rctx, "SummarizeChannelUnread")
+	if cfgErr != nil {
+		return "", cfgErr
 	}
 
 	modelName := openaiService.DefaultModel

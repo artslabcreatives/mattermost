@@ -39,6 +39,8 @@ services:
       - ${MATTERMOST_BLEVE_INDEXES_PATH:-./volumes/app/mattermost/bleve-indexes}:/mattermost/bleve-indexes:rw
     environment:
       - TZ=${TZ:-UTC}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL}
       - MM_SQLSETTINGS_DRIVERNAME=${MM_SQLSETTINGS_DRIVERNAME:-postgres}
       - MM_SQLSETTINGS_DATASOURCE=${MM_SQLSETTINGS_DATASOURCE}
       - MM_SERVICESETTINGS_SITEURL=${MM_SERVICESETTINGS_SITEURL:-http://localhost:8066}

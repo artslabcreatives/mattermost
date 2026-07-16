@@ -42,6 +42,10 @@ services:
     environment:
       # Timezone
       - TZ=${TZ:-UTC}
+
+      # OpenAI Configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL}
       
       # Database settings (connects to host PostgreSQL via localhost)
       - MM_SQLSETTINGS_DRIVERNAME=${MM_SQLSETTINGS_DRIVERNAME:-postgres}
