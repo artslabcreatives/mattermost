@@ -1,0 +1,135 @@
+{
+    "id": "com.artslabcreatives.boardroom",
+    "name": "Board Room",
+    "description": "Book the board room: pick a host, invite teammates, and claim a time slot without double-booking.",
+    "homepage_url": "https://github.com/artslabcreatives/mattermost-plugin-boardroom",
+    "support_url": "https://github.com/artslabcreatives/mattermost-plugin-boardroom/issues",
+    "icon_path": "assets/icon.svg",
+    "version": "0.1.0",
+    "min_server_version": "9.0.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "linux-arm64": "server/dist/plugin-linux-arm64"
+        }
+    },
+    "webapp": {
+        "bundle_path": "webapp/dist/main.js"
+    },
+    "settings_schema": {
+        "header": "Configure the board room's opening hours and booking behaviour. Bookings are kept per team, and only the person who made a booking can change it.",
+        "footer": "",
+        "settings": [
+            {
+                "key": "OpeningHour",
+                "display_name": "Opens at:",
+                "type": "dropdown",
+                "help_text": "The earliest hour the board room can be booked.",
+                "default": "8",
+                "options": [
+                    {"display_name": "00:00", "value": "0"},
+                    {"display_name": "01:00", "value": "1"},
+                    {"display_name": "02:00", "value": "2"},
+                    {"display_name": "03:00", "value": "3"},
+                    {"display_name": "04:00", "value": "4"},
+                    {"display_name": "05:00", "value": "5"},
+                    {"display_name": "06:00", "value": "6"},
+                    {"display_name": "07:00", "value": "7"},
+                    {"display_name": "08:00", "value": "8"},
+                    {"display_name": "09:00", "value": "9"},
+                    {"display_name": "10:00", "value": "10"},
+                    {"display_name": "11:00", "value": "11"},
+                    {"display_name": "12:00", "value": "12"}
+                ]
+            },
+            {
+                "key": "ClosingHour",
+                "display_name": "Closes at:",
+                "type": "dropdown",
+                "help_text": "The latest hour a booking can run until. Must be after the opening hour.",
+                "default": "20",
+                "options": [
+                    {"display_name": "12:00", "value": "12"},
+                    {"display_name": "13:00", "value": "13"},
+                    {"display_name": "14:00", "value": "14"},
+                    {"display_name": "15:00", "value": "15"},
+                    {"display_name": "16:00", "value": "16"},
+                    {"display_name": "17:00", "value": "17"},
+                    {"display_name": "18:00", "value": "18"},
+                    {"display_name": "19:00", "value": "19"},
+                    {"display_name": "20:00", "value": "20"},
+                    {"display_name": "21:00", "value": "21"},
+                    {"display_name": "22:00", "value": "22"},
+                    {"display_name": "23:00", "value": "23"},
+                    {"display_name": "24:00", "value": "24"}
+                ]
+            },
+            {
+                "key": "SlotMinutes",
+                "display_name": "Time slot length:",
+                "type": "dropdown",
+                "help_text": "How finely the day is divided when picking a start and end time.",
+                "default": "30",
+                "options": [
+                    {"display_name": "15 minutes", "value": "15"},
+                    {"display_name": "20 minutes", "value": "20"},
+                    {"display_name": "30 minutes", "value": "30"},
+                    {"display_name": "60 minutes", "value": "60"}
+                ]
+            },
+            {
+                "key": "NotifyOnBook",
+                "display_name": "Notify attendees:",
+                "type": "bool",
+                "help_text": "Send the host and participants a direct message when a booking is created, changed or cancelled.",
+                "default": true
+            },
+            {
+                "key": "RoomTimezone",
+                "display_name": "Room timezone:",
+                "type": "text",
+                "help_text": "IANA timezone of the physical room, e.g. Asia/Colombo. Booking times are wall-clock times in this zone. This is what turns 09:00 into a real time on Google Calendar, so it must be the room's own zone — not the server's.",
+                "placeholder": "Asia/Colombo",
+                "default": "Asia/Colombo"
+            },
+            {
+                "key": "EnableCalendarSync",
+                "display_name": "Sync to Google Calendar:",
+                "type": "bool",
+                "help_text": "Mirror each booking onto one shared Board Room Google account, inviting the host and participants so it reaches their calendars. Fill in the OAuth client below, save, then connect the account from the Board Room panel. Bookings still work if this is off or if Google is unreachable.",
+                "default": false
+            },
+            {
+                "key": "OAuthClientID",
+                "display_name": "Google OAuth client ID:",
+                "type": "text",
+                "help_text": "From a Web application OAuth client in your Google Cloud project. Its authorised redirect URI must be exactly: <SITE_URL>/plugins/com.artslabcreatives.boardroom/oauth/complete",
+                "placeholder": "000000000000-xxxxxxxx.apps.googleusercontent.com",
+                "default": ""
+            },
+            {
+                "key": "OAuthClientSecret",
+                "display_name": "Google OAuth client secret:",
+                "type": "text",
+                "help_text": "The client secret for the OAuth client above.",
+                "placeholder": "GOCSPX-...",
+                "default": ""
+            },
+            {
+                "key": "EncryptionKey",
+                "display_name": "Token encryption key:",
+                "type": "generated",
+                "help_text": "Encrypts the Board Room account's Google token before it is stored in the database. Generated automatically — regenerating it disconnects the calendar and requires reconnecting.",
+                "default": ""
+            },
+            {
+                "key": "AttendeeDomain",
+                "display_name": "Only invite this email domain:",
+                "type": "text",
+                "help_text": "Optional. If set (e.g. artslabcreatives.com), only attendees with an address on this domain are invited, and anyone else is left off the calendar event. Useful when the server has test accounts that have no Google identity and would otherwise make Google reject the whole event. Leave blank to invite everyone.",
+                "placeholder": "artslabcreatives.com",
+                "default": ""
+            }
+        ]
+    }
+}

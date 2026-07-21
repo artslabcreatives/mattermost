@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Board Room">
+  <circle cx="256" cy="256" r="248" fill="#2185e0"/>
+
+  <!-- The cross divides the room into four seats. -->
+  <g stroke="#fff" stroke-width="7" stroke-linecap="round">
+    <line x1="256" y1="118" x2="256" y2="394"/>
+    <line x1="118" y1="256" x2="394" y2="256"/>
+  </g>
+
+  <!-- One seated person per quadrant. -->
+  <g fill="none" stroke="#2185e0" stroke-width="6" stroke-linecap="round">
+    <g transform="translate(186,186)">
+      <circle r="49" fill="#fff" stroke="none"/>
+      <circle cy="-11" r="15"/>
+      <path d="M-26 30a26 26 0 0 1 52 0"/>
+    </g>
+    <g transform="translate(326,186)">
+      <circle r="49" fill="#fff" stroke="none"/>
+      <circle cy="-11" r="15"/>
+      <path d="M-26 30a26 26 0 0 1 52 0"/>
+    </g>
+    <g transform="translate(186,326)">
+      <circle r="49" fill="#fff" stroke="none"/>
+      <circle cy="-11" r="15"/>
+      <path d="M-26 30a26 26 0 0 1 52 0"/>
+    </g>
+    <g transform="translate(326,326)">
+      <circle r="49" fill="#fff" stroke="none"/>
+      <circle cy="-11" r="15"/>
+      <path d="M-26 30a26 26 0 0 1 52 0"/>
+    </g>
+  </g>
+</svg>
