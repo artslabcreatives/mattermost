@@ -1614,3 +1614,57 @@ func TestSearchFilesAcrossTeams(t *testing.T) {
 	require.Len(t, fileInfos.Order, 1, "wrong search")
 	require.Equal(t, fileInfos.FileInfos[fileInfos.Order[0]].ChannelId, channels[0].Id, "wrong search")
 }
+
+func TestGetFileInfoForwardedPost(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+
+	// Create private channel1 for user1
+	channel1 := th.CreateChannelWithClientAndTeam(t, th.Client, model.ChannelTypePrivate, th.BasicTeam.Id)
+
+	// Create user2 and channel2 where user2 is a member, but user2 is NOT in private channel1
+	user2 := th.CreateUser(t)
+	th.LinkUserToTeam(t, user2, th.BasicTeam)
+	channel2 := th.CreateChannelWithClientAndTeam(t, th.Client, model.ChannelTypeOpen, th.BasicTeam.Id)
+	th.AddUserToChannel(t, user2, channel2)
+
+	// User1 uploads a file to channel1
+	data, err := testutils.ReadTestFile("test.png")
+	require.NoError(t, err)
+	fileResp, _, err := th.Client.UploadFile(context.Background(), data, channel1.Id, "test.png")
+	require.NoError(t, err)
+	fileId := fileResp.FileInfos[0].Id
+
+	// User1 creates post1 in channel1 with file attached
+	post1 := &model.Post{
+		ChannelId: channel1.Id,
+		Message:   "Original post with image",
+		FileIds:   []string{fileId},
+	}
+	post1, _, err = th.Client.CreatePost(context.Background(), post1)
+	require.NoError(t, err)
+
+	// User2 attempts to get file info (should fail because user2 is not in channel1)
+	user2Client := th.CreateClient()
+	_, _, err = user2Client.Login(context.Background(), user2.Email, user2.Password)
+	require.NoError(t, err)
+
+	_, resp, err := user2Client.GetFileInfo(context.Background(), fileId)
+	require.Error(t, err)
+	CheckForbiddenStatus(t, resp)
+
+	// User1 forwards the post to channel2 (where user2 IS a member)
+	post2 := &model.Post{
+		ChannelId: channel2.Id,
+		Message:   "Forwarded post",
+		FileIds:   []string{fileId},
+	}
+	_, _, err = th.Client.CreatePost(context.Background(), post2)
+	require.NoError(t, err)
+
+	// Now User2 gets file info (should succeed because the file is in forwarded post in channel2)
+	info, _, err := user2Client.GetFileInfo(context.Background(), fileId)
+	require.NoError(t, err)
+	require.Equal(t, fileId, info.Id)
+}
+

@@ -429,3 +429,44 @@ func (a *App) HasPermissionToChannelMemberCount(rctx request.CTX, userID string,
 
 	return false
 }
+
+func (a *App) SessionHasPermissionToReadFile(rctx request.CTX, session model.Session, fileInfo *model.FileInfo) bool {
+	if session.IsUnrestricted() {
+		return true
+	}
+
+	return a.HasPermissionToReadFile(rctx, session.UserId, fileInfo)
+}
+
+func (a *App) HasPermissionToReadFile(rctx request.CTX, userID string, fileInfo *model.FileInfo) bool {
+	if fileInfo == nil {
+		return false
+	}
+
+	if fileInfo.CreatorId == userID {
+		return true
+	}
+
+	if fileInfo.ChannelId != "" {
+		channel, err := a.GetChannel(rctx, fileInfo.ChannelId)
+		if err == nil && channel != nil && a.HasPermissionToReadChannel(rctx, userID, channel) {
+			return true
+		}
+	}
+
+	channelIDs, err := a.Srv().Store().Post().GetPostChannelsForFile(fileInfo.Id)
+	if err == nil {
+		for _, channelID := range channelIDs {
+			if channelID == fileInfo.ChannelId {
+				continue
+			}
+			channel, err := a.GetChannel(rctx, channelID)
+			if err == nil && channel != nil && a.HasPermissionToReadChannel(rctx, userID, channel) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+

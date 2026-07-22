@@ -1857,7 +1857,12 @@ func (a *App) FilterFilesByChannelPermissions(rctx request.CTX, fileList *model.
 			channelReadPermission[fileInfo.ChannelId] = allowed
 		}
 
-		if channelReadPermission[fileInfo.ChannelId] {
+		allowed := channelReadPermission[fileInfo.ChannelId]
+		if !allowed {
+			allowed = a.HasPermissionToReadFile(rctx, userID, fileInfo)
+		}
+
+		if allowed {
 			filteredFiles[fileID] = fileInfo
 			filteredOrder = append(filteredOrder, fileID)
 		}

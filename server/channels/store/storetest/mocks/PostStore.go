@@ -1446,6 +1446,37 @@ func (_m *PostStore) Update(rctx request.CTX, newPost *model.Post, oldPost *mode
 	return r0, r1
 }
 
+// GetPostChannelsForFile provides a mock function with given fields: fileID
+func (_m *PostStore) GetPostChannelsForFile(fileID string) ([]string, error) {
+	ret := _m.Called(fileID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPostChannelsForFile")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]string, error)); ok {
+		return rf(fileID)
+	}
+	if rf, ok := ret.Get(0).(func(string) []string); ok {
+		r0 = rf(fileID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(fileID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+
 // NewPostStore creates a new instance of PostStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewPostStore(t interface {

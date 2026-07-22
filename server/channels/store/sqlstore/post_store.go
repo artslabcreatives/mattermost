@@ -3473,3 +3473,26 @@ func (s *SqlPostStore) restoreFilesForSubQuery(tx *sqlxTxWrapper, postIdSubQuery
 	_, err := tx.ExecBuilder(queryBuilder)
 	return err
 }
+
+func (s *SqlPostStore) GetPostChannelsForFile(fileID string) ([]string, error) {
+	query := s.getQueryBuilder().
+		Select("DISTINCT ChannelId").
+		From("Posts").
+		Where(sq.And{
+			sq.Eq{"DeleteAt": 0},
+			sq.Like{"FileIds": "%" + fileID + "%"},
+		})
+
+	queryString, args, err := query.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "post_channels_for_file_tosql")
+	}
+
+	var channelIDs []string
+	if err := s.GetReplica().Select(&channelIDs, queryString, args...); err != nil {
+		return nil, errors.Wrapf(err, "failed to find channel IDs for fileId=%s", fileID)
+	}
+
+	return channelIDs, nil
+}
+
