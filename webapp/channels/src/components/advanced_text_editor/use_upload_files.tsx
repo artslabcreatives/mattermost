@@ -44,13 +44,14 @@ const useUploadFiles = (
 	focusTextbox: (forceFocust?: boolean) => void,
 	setServerError: (err: (ServerError & { submittedMessage?: string }) | null) => void,
 	isPostBeingEdited?: boolean,
-): [React.ReactNode, React.ReactNode, React.RefObject<FileUploadClass>] => {
+): [React.ReactNode, React.ReactNode, React.RefObject<FileUploadClass>, boolean] => {
 	const dispatch = useDispatch();
 	const intl = useIntl();
 	const locale = useSelector(getCurrentLocale);
 	const enableDirectUploads = useSelector((state: GlobalState) => getConfig(state).EnableDirectUploads === 'true');
 
 	const [uploadsProgressPercent, setUploadsProgressPercent] = useState<{ [clientID: string]: FilePreviewInfo }>({});
+	const [isFilesPreviewLoading, setIsFilesPreviewLoading] = useState(false);
 
 	const isModalOpenRef = useRef(false);
 	const handleUploadLimitExceeded = useCallback(() => {
@@ -348,6 +349,7 @@ const useUploadFiles = (
 				onRetry={handleRetry}
 				uploadsInProgress={draft.uploadsInProgress}
 				uploadsProgressPercent={uploadsProgressPercent}
+				onPreviewsLoadingChange={setIsFilesPreviewLoading}
 			/>
 		);
 	}
@@ -419,7 +421,7 @@ const useUploadFiles = (
 		}
 	}
 
-	return [attachmentPreview, fileUploadJSX, fileUploadRef];
+	return [attachmentPreview, fileUploadJSX, fileUploadRef, isFilesPreviewLoading];
 };
 
 export default useUploadFiles;

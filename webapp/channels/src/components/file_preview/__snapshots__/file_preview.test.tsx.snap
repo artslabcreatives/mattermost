@@ -19,7 +19,19 @@ exports[`FilePreview should match snapshot 1`] = `
             "backgroundSize": "cover",
           }
         }
-      />
+      >
+        <img
+          alt=""
+          onError={[Function]}
+          onLoad={[Function]}
+          src="/api/v4/files/file_id_1/thumbnail"
+          style={
+            Object {
+              "display": "none",
+            }
+          }
+        />
+      </div>
     </div>
     <div
       className="post-image__details"
@@ -125,7 +137,19 @@ exports[`FilePreview should match snapshot when props are changed 1`] = `
             "backgroundSize": "cover",
           }
         }
-      />
+      >
+        <img
+          alt=""
+          onError={[Function]}
+          onLoad={[Function]}
+          src="/api/v4/files/file_id_1/thumbnail"
+          style={
+            Object {
+              "display": "none",
+            }
+          }
+        />
+      </div>
     </div>
     <div
       className="post-image__details"
@@ -231,7 +255,19 @@ exports[`FilePreview should match snapshot when props are changed 2`] = `
             "backgroundSize": "cover",
           }
         }
-      />
+      >
+        <img
+          alt=""
+          onError={[Function]}
+          onLoad={[Function]}
+          src="/api/v4/files/file_id_1/thumbnail"
+          style={
+            Object {
+              "display": "none",
+            }
+          }
+        />
+      </div>
     </div>
     <div
       className="post-image__details"
@@ -305,7 +341,19 @@ exports[`FilePreview should match snapshot when props are changed 2`] = `
             "backgroundSize": "cover",
           }
         }
-      />
+      >
+        <img
+          alt=""
+          onError={[Function]}
+          onLoad={[Function]}
+          src="/api/v4/files/file_id_2/thumbnail"
+          style={
+            Object {
+              "display": "none",
+            }
+          }
+        />
+      </div>
     </div>
     <div
       className="post-image__details"

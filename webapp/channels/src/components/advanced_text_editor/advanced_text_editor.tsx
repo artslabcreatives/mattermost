@@ -329,7 +329,7 @@ const AdvancedTextEditor = ({
 	} = useRewrite(draft, handleDraftChange, textboxRef, focusTextbox, setServerError);
 	const isDisabled = Boolean(readOnlyChannel || (!enableSharedChannelsDMs && isDMOrGMRemote) || rewriteIsProcessing);
 
-	const [attachmentPreview, fileUploadJSX, fileUploadRef] = useUploadFiles(
+	const [attachmentPreview, fileUploadJSX, fileUploadRef, isFilesPreviewLoading] = useUploadFiles(
 		draft,
 		rootId,
 		channelId,
@@ -384,8 +384,8 @@ const AdvancedTextEditor = ({
 	const handleSubmitWithErrorHandling = useCallback((submittingDraft?: PostDraft, schedulingInfo?: SchedulingInfo, options?: CreatePostOptions) => {
 		const draftToSubmit = submittingDraft || draft;
 
-		// If uploads are in progress, do not allow sending
-		if (draftToSubmit.uploadsInProgress.length > 0) {
+		// If uploads are in progress or previews are loading, do not allow sending
+		if (draftToSubmit.uploadsInProgress.length > 0 || isFilesPreviewLoading) {
 			return;
 		}
 
@@ -652,6 +652,7 @@ const AdvancedTextEditor = ({
 	const disableSendButton = Boolean(
 		isDisabled ||
 		isUploading ||
+		isFilesPreviewLoading ||
 		(!hasMessageContent && !hasUploadedAttachments),
 	) || shouldBlockForPersistentNotifications;
 	const sendButton = readOnlyChannel || isInEditMode ? null : (

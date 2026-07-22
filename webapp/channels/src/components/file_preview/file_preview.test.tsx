@@ -141,4 +141,24 @@ describe('FilePreview', () => {
 		expect(wrapper.find('img').find({ src: getFileUrl(fileId) }).exists()).toBe(true);
 		expect(wrapper.find('div').find('.file-icon.generic').exists()).toBe(false);
 	});
+
+	test('should call onPreviewsLoadingChange with true when preview is loading and false when loaded', () => {
+		const onPreviewsLoadingChange = jest.fn();
+		const props = {
+			...baseProps,
+			onPreviewsLoadingChange,
+		};
+
+		const wrapper = shallow(
+			<FilePreview {...props} />,
+		);
+
+		expect(onPreviewsLoadingChange).toHaveBeenCalledWith(true);
+
+		// Simulate image load event
+		const img = wrapper.find('.post-image img').first();
+		img.simulate('load');
+
+		expect(onPreviewsLoadingChange).toHaveBeenLastCalledWith(false);
+	});
 });

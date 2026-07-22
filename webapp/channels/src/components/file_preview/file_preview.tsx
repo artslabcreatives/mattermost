@@ -32,13 +32,64 @@ type Props = {
 	fileInfos: FilePreviewInfo[];
 	uploadsInProgress?: string[];
 	uploadsProgressPercent?: { [clientID: string]: FilePreviewInfo };
+	onPreviewsLoadingChange?: (loading: boolean) => void;
 }
 
-export default class FilePreview extends React.PureComponent<Props> {
+type State = {
+	loadedImageIds: Record<string, boolean>;
+};
+
+export default class FilePreview extends React.PureComponent<Props, State> {
 	static defaultProps = {
 		fileInfos: [],
 		uploadsInProgress: [],
 		uploadsProgressPercent: {},
+	};
+
+	state: State = {
+		loadedImageIds: {},
+	};
+
+	componentDidMount() {
+		this.checkPreviewsLoading();
+	}
+
+	componentDidUpdate(prevProps: Props, prevState: State) {
+		if (prevProps.fileInfos !== this.props.fileInfos || prevState.loadedImageIds !== this.state.loadedImageIds) {
+			this.checkPreviewsLoading();
+		}
+	}
+
+	checkPreviewsLoading = () => {
+		const { fileInfos, enableSVGs, onPreviewsLoadingChange } = this.props;
+		if (!onPreviewsLoadingChange) {
+			return;
+		}
+
+		const hasLoadingImage = fileInfos.some((info) => {
+			const type = Utils.getFileType(info.extension);
+			const isImage = type === FileTypes.IMAGE || (type === FileTypes.SVG && enableSVGs);
+			if (isImage) {
+				return !this.state.loadedImageIds[info.id];
+			}
+			return false;
+		});
+
+		onPreviewsLoadingChange(hasLoadingImage);
+	};
+
+	handleImageLoaded = (id: string) => {
+		this.setState((prevState) => {
+			if (prevState.loadedImageIds[id]) {
+				return null;
+			}
+			return {
+				loadedImageIds: {
+					...prevState.loadedImageIds,
+					[id]: true,
+				},
+			};
+		});
 	};
 
 	handleRemove = (id: string) => {
@@ -59,6 +110,8 @@ export default class FilePreview extends React.PureComponent<Props> {
 						alt={'file preview'}
 						className='post-image normal'
 						src={getFileUrl(info.id)}
+						onLoad={() => this.handleImageLoaded(info.id)}
+						onError={() => this.handleImageLoaded(info.id)}
 					/>
 				);
 			} else if (type === FileTypes.IMAGE) {
@@ -82,7 +135,15 @@ export default class FilePreview extends React.PureComponent<Props> {
 							backgroundImage: `url(${thumbnailUrl})`,
 							backgroundSize: 'cover',
 						}}
-					/>
+					>
+						<img
+							src={thumbnailUrl}
+							alt=""
+							style={{ display: 'none' }}
+							onLoad={() => this.handleImageLoaded(info.id)}
+							onError={() => this.handleImageLoaded(info.id)}
+						/>
+					</div>
 				);
 			} else {
 				className += ' custom-file';
