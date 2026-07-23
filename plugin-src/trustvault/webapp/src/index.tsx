@@ -19,10 +19,28 @@ interface PluginRegistry {
 
 const TOOLTIP = 'Trustvault';
 
+const apiBase = () => `${(window as any).basename || ''}/plugins/${manifest.id}/api/v1`;
 const iconUrl = () => `${(window as any).basename || ''}/plugins/${manifest.id}/public/icon.svg`;
 
 class TrustvaultPlugin {
-    initialize(registry: PluginRegistry, store: any) {
+    async initialize(registry: PluginRegistry, store: any) {
+        try {
+            const resp = await fetch(`${apiBase()}/check-access`, {
+                credentials: 'include',
+                headers: {'X-Requested-With': 'XMLHttpRequest'},
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (!data || !data.allowed) {
+                    // User is not allowed to see or access Trustvault
+                    return;
+                }
+            }
+        } catch (err) {
+            // Fail safe: if check fails, do not register
+            return;
+        }
+
         if (registry.registerAppBarComponent) {
             registry.registerAppBarComponent({
                 iconUrl: iconUrl(),
