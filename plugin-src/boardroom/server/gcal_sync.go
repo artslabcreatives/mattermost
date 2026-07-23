@@ -214,20 +214,47 @@ func (p *Plugin) processGoogleEvent(event *calendar.Event, teamID string, loc *t
 
 	// Resolve host user
 	hostID := ""
-	if event.Organizer != nil && event.Organizer.Email != "" {
-		if user, err := p.API.GetUserByEmail(event.Organizer.Email); err == nil && user != nil {
+
+	// 1. Try parsing "Host: username" or "Host: @username" from Google event description
+	if notes != "" {
+		for _, line := range strings.Split(notes, "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(strings.ToLower(line), "host:") {
+				parts := strings.SplitN(line, ":", 2)
+				if len(parts) == 2 {
+					rawHost := strings.TrimSpace(parts[1])
+					rawHost = strings.TrimPrefix(rawHost, "@")
+					if user, err := p.API.GetUserByUsername(rawHost); err == nil && user != nil {
+						hostID = user.Id
+						break
+					}
+				}
+			}
+		}
+	}
+
+	conn, _ := p.getConnection()
+	connectedUserID := ""
+	if conn != nil {
+		connectedUserID = conn.ConnectedBy
+	}
+
+	// 2. Try Organizer/Creator email if it matches a distinct Mattermost user
+	if hostID == "" && event.Organizer != nil && event.Organizer.Email != "" {
+		if user, err := p.API.GetUserByEmail(event.Organizer.Email); err == nil && user != nil && user.Id != connectedUserID {
 			hostID = user.Id
 		}
 	}
 	if hostID == "" && event.Creator != nil && event.Creator.Email != "" {
-		if user, err := p.API.GetUserByEmail(event.Creator.Email); err == nil && user != nil {
+		if user, err := p.API.GetUserByEmail(event.Creator.Email); err == nil && user != nil && user.Id != connectedUserID {
 			hostID = user.Id
 		}
 	}
+
+	// 3. Fallback for new events where host cannot be determined
 	if hostID == "" {
-		conn, _ := p.getConnection()
-		if conn != nil && conn.ConnectedBy != "" {
-			hostID = conn.ConnectedBy
+		if connectedUserID != "" {
+			hostID = connectedUserID
 		} else {
 			hostID = p.botID
 		}
@@ -289,7 +316,11 @@ func (p *Plugin) processGoogleEvent(event *calendar.Event, teamID string, loc *t
 		updated.StartMinute = startMinute
 		updated.EndMinute = endMinute
 		updated.Notes = notes
-		updated.HostID = hostID
+		if existing.HostID != "" {
+			updated.HostID = existing.HostID
+		} else {
+			updated.HostID = hostID
+		}
 		updated.ParticipantIDs = participantIDs
 		updated.SyncState = syncSynced
 

@@ -47,7 +47,7 @@ export default function BookingCard({booking, users, canModify, isMine, onEdit, 
     const [confirming, setConfirming] = useState(false);
     const [busy, setBusy] = useState(false);
 
-    const host = users.get(booking.host_id);
+    const host = users.get(booking.host_id) || users.get(booking.created_by);
     const participants = booking.participant_ids.map((id) => users.get(id)).filter(Boolean) as UserProfile[];
     const gcalUrl = getGoogleCalendarUrl(booking, displayName(host));
 
