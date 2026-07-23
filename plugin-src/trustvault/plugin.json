@@ -1,0 +1,18 @@
+{
+    "id": "com.artslabcreatives.trustvault",
+    "name": "Trustvault",
+    "description": "Trustvault application integrated in Mattermost RHS",
+    "homepage_url": "https://trustvault.artslabcreatives.com",
+    "support_url": "https://trustvault.artslabcreatives.com",
+    "icon_path": "public/icon.svg",
+    "min_server_version": "7.0.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "linux-arm64": "server/dist/plugin-linux-arm64"
+        }
+    },
+    "webapp": {
+        "bundle_path": "webapp/dist/main.js"
+    }
+}
