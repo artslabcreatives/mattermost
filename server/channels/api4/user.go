@@ -4,6 +4,7 @@
 package api4
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -60,6 +62,7 @@ func (api *API) InitUser() {
 	api.BaseRoutes.User.Handle("/terms_of_service", api.APISessionRequired(saveUserTermsOfService)).Methods(http.MethodPost)
 	api.BaseRoutes.User.Handle("/terms_of_service", api.APISessionRequired(getUserTermsOfService)).Methods(http.MethodGet)
 	api.BaseRoutes.User.Handle("/reset_failed_attempts", api.APISessionRequired(resetPasswordFailedAttempts)).Methods(http.MethodPost)
+	api.BaseRoutes.User.Handle("/admin_reset_password_webhook", api.APISessionRequired(adminResetPasswordWebhook)).Methods(http.MethodPost)
 
 	api.BaseRoutes.User.Handle("/auth", api.APISessionRequiredTrustRequester(updateUserAuth)).Methods(http.MethodPut)
 
@@ -3965,4 +3968,70 @@ func loginEmailOnly(c *Context, w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		c.Logger.Warn("Error while writing response", mlog.Err(err))
 	}
+}
+
+type AdminResetPasswordWebhookRequest struct {
+	AdminSecurityPassword string `json:"admin_security_password"`
+	NewPassword           string `json:"new_password"`
+}
+
+func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Request) {
+	c.RequireUserId()
+	c.RequireSystemAdminId()
+	if c.Err != nil {
+		return
+	}
+
+	var req AdminResetPasswordWebhookRequest
+	if jsonErr := json.NewDecoder(r.Body).Decode(&req); jsonErr != nil {
+		c.SetInvalidParamWithErr("AdminResetPasswordWebhookRequest", jsonErr)
+		return
+	}
+
+	expectedPass := os.Getenv("ADMIN_RESET_SECURITY_PASSWORD")
+	if expectedPass == "" {
+		expectedPass = os.Getenv("MM_ADMIN_RESET_SECURITY_PASSWORD")
+	}
+
+	if expectedPass == "" || req.AdminSecurityPassword != expectedPass {
+		c.Err = model.NewAppError("adminResetPasswordWebhook", "api.user.admin_reset_password.invalid_security_password.app_error", nil, "invalid admin security password", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := c.App.GetUser(c.Params.UserId)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	if appErr := c.App.UpdatePassword(c.AppContext, user, req.NewPassword); appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	webhookURL := os.Getenv("N8N_PASSWORD_RESET_WEBHOOK_URL")
+	if webhookURL == "" {
+		webhookURL = os.Getenv("MM_N8N_PASSWORD_RESET_WEBHOOK_URL")
+	}
+
+	if webhookURL != "" {
+		payload := map[string]any{
+			"event":        "user_password_reset",
+			"user_id":      user.Id,
+			"username":     user.Username,
+			"email":        user.Email,
+			"new_password": req.NewPassword,
+			"reset_by":     c.AppContext.Session().UserId,
+			"timestamp":    time.Now().Unix(),
+		}
+		jsonPayload, _ := json.Marshal(payload)
+		go func() {
+			resp, httpErr := http.Post(webhookURL, "application/json", bytes.NewBuffer(jsonPayload))
+			if httpErr == nil && resp != nil {
+				_ = resp.Body.Close()
+			}
+		}()
+	}
+
+	ReturnStatusOK(w)
 }

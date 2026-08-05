@@ -42,6 +42,8 @@ services:
       - ${MATTERMOST_BLEVE_INDEXES_PATH:-./volumes/app/mattermost/bleve-indexes}:/mattermost/bleve-indexes:rw
     environment:
       - TZ=${TZ:-UTC}
+      - ADMIN_RESET_SECURITY_PASSWORD=${ADMIN_RESET_SECURITY_PASSWORD}
+      - N8N_PASSWORD_RESET_WEBHOOK_URL=${N8N_PASSWORD_RESET_WEBHOOK_URL}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_MODEL=${OPENAI_MODEL}
       - MM_SQLSETTINGS_DRIVERNAME=${MM_SQLSETTINGS_DRIVERNAME:-postgres}

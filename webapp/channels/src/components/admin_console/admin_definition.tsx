@@ -71,6 +71,7 @@ import DatabaseSettings, {searchableStrings as databaseSearchableStrings} from '
 import DatabaseBackupSettings, {searchableStrings as databaseBackupSearchableStrings} from './database_backup_settings';
 import ElasticSearchSettings, {searchableStrings as elasticSearchSearchableStrings} from './elasticsearch_settings';
 import TypesenseSettings, {searchableStrings as typesenseSearchableStrings} from './typesense_settings';
+import PasswordResetWebhookSettings, {searchableStrings as passwordResetWebhookSearchableStrings} from './password_reset_webhook_settings';
 import {
     AnnouncementBannerFeatureDiscovery,
     ComplianceExportFeatureDiscovery,
@@ -403,6 +404,15 @@ const AdminDefinition: AdminDefinitionType = {
                 schema: {
                     id: 'SystemUsers',
                     component: SystemUsers,
+                },
+            },
+            password_reset_webhook: {
+                url: 'user_management/password_reset_webhook',
+                title: defineMessage({id: 'admin.sidebar.password_reset_webhook', defaultMessage: 'Password Reset & Webhook'}),
+                searchableStrings: passwordResetWebhookSearchableStrings,
+                schema: {
+                    id: 'PasswordResetWebhookSettings',
+                    component: PasswordResetWebhookSettings,
                 },
             },
             system_user_detail: {
