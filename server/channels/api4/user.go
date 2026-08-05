@@ -3977,8 +3977,12 @@ type AdminResetPasswordWebhookRequest struct {
 
 func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Request) {
 	c.RequireUserId()
-	c.RequireSystemAdminId()
 	if c.Err != nil {
+		return
+	}
+
+	if !c.IsSystemAdmin() {
+		c.SetPermissionError(model.PermissionManageSystem)
 		return
 	}
 
