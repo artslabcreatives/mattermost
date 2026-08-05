@@ -42,7 +42,7 @@ export default function PasswordResetWebhookSettings() {
     // Fetch initial list of users for the select box
     useEffect(() => {
         let isMounted = true;
-        Client4.getUsers(0, 200)
+        Client4.getProfiles(0, 200)
             .then((loadedUsers) => {
                 if (isMounted && Array.isArray(loadedUsers)) {
                     setUsers(loadedUsers);
