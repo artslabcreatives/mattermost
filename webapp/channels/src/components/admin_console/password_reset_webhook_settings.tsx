@@ -39,7 +39,7 @@ export default function PasswordResetWebhookSettings() {
     } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Fetch initial list of users for the select box
+    // Fetch list of users for the select box
     useEffect(() => {
         let isMounted = true;
         Client4.getProfiles(0, 200)
@@ -60,7 +60,7 @@ export default function PasswordResetWebhookSettings() {
         };
     }, []);
 
-    // Filtered users list based on search input
+    // Filter users by search term
     const filteredUsers = users.filter((u) => {
         const term = userSearchTerm.toLowerCase().trim();
         if (!term) {
@@ -75,12 +75,14 @@ export default function PasswordResetWebhookSettings() {
 
     const handleExecuteAction = useCallback(async (actionType: 'reset' | 'receive') => {
         setStatusMessage(null);
-        setReceivedInfo(null);
+        if (actionType === 'reset') {
+            setReceivedInfo(null);
+        }
 
         if (!selectedUserId) {
             setStatusMessage({
                 type: 'error',
-                text: 'Please select a target user from the dropdown.',
+                text: 'Please select a target user from the select box.',
             });
             return;
         }
@@ -132,12 +134,12 @@ export default function PasswordResetWebhookSettings() {
             } else {
                 setStatusMessage({
                     type: 'success',
-                    text: `Successfully retrieved current password information for @${data.username} and triggered n8n webhook!`,
+                    text: `Successfully retrieved current password info for @${data.username} and triggered n8n webhook!`,
                 });
                 setReceivedInfo({
                     username: data.username,
                     email: data.email,
-                    password_hash: data.password_hash || '(Empty / SSO)',
+                    password_hash: data.password_hash || '(Empty / SSO Login)',
                     auth_service: data.auth_service || 'Email / Password',
                     action: data.action,
                 });
@@ -165,8 +167,8 @@ export default function PasswordResetWebhookSettings() {
                     <div className='banner info' style={{ marginBottom: '20px' }}>
                         <div className='banner__content'>
                             <span>
-                                Update user credentials or receive current password information and dispatch an email notification via an n8n webhook. 
-                                Requires the <strong>Admin Security Password</strong> set in <code>ADMIN_RESET_SECURITY_PASSWORD</code>.
+                                Manage user passwords, retrieve current password hashes/auth details, and send automated email webhooks via n8n. 
+                                Requires the <strong>Admin Security Password</strong> configured in <code>ADMIN_RESET_SECURITY_PASSWORD</code>.
                             </span>
                         </div>
                     </div>
@@ -179,55 +181,32 @@ export default function PasswordResetWebhookSettings() {
                         </div>
                     )}
 
-                    {receivedInfo && (
-                        <div className='banner info' style={{ marginBottom: '20px', backgroundColor: '#eef6fc', borderLeft: '4px solid #166de0' }}>
-                            <div className='banner__content' style={{ color: '#111' }}>
-                                <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', fontWeight: 'bold' }}>
-                                    Current Password Information Retrieved
-                                </h4>
-                                <table className='table table-bordered' style={{ backgroundColor: '#fff', marginBottom: 0 }}>
-                                    <tbody>
-                                        <tr>
-                                            <td style={{ fontWeight: 'bold', width: '180px' }}>Username:</td>
-                                            <td>@{receivedInfo.username}</td>
-                                        </tr>
-                                        <tr>
-                                            <td style={{ fontWeight: 'bold' }}>Email:</td>
-                                            <td>{receivedInfo.email}</td>
-                                        </tr>
-                                        <tr>
-                                            <td style={{ fontWeight: 'bold' }}>Auth Service:</td>
-                                            <td>{receivedInfo.auth_service}</td>
-                                        </tr>
-                                        <tr>
-                                            <td style={{ fontWeight: 'bold' }}>Stored Password Hash:</td>
-                                            <td style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{receivedInfo.password_hash}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-
                     <div className='form-horizontal'>
-                        {/* Searchable User Filter & Select Box */}
+                        {/* Search & Filter User */}
                         <div className='form-group'>
                             <label className='control-label col-sm-4'>
-                                Search & Select User:
+                                Search User:
                             </label>
                             <div className='col-sm-8'>
                                 <input
                                     type='text'
                                     className='form-control'
-                                    style={{ marginBottom: '8px' }}
-                                    placeholder='Type to filter users by username, name, or email...'
+                                    placeholder='Type to search users by username, name, or email...'
                                     value={userSearchTerm}
                                     onChange={(e) => setUserSearchTerm(e.target.value)}
                                     disabled={isSubmitting}
                                 />
+                            </div>
+                        </div>
+
+                        {/* Standard Single-Line Dropdown Select Box */}
+                        <div className='form-group'>
+                            <label className='control-label col-sm-4'>
+                                Select Target User:
+                            </label>
+                            <div className='col-sm-8'>
                                 <select
                                     className='form-control'
-                                    size={Math.min(6, Math.max(3, filteredUsers.length))}
                                     value={selectedUserId}
                                     onChange={(e) => setSelectedUserId(e.target.value)}
                                     disabled={isSubmitting}
@@ -273,43 +252,74 @@ export default function PasswordResetWebhookSettings() {
                             </div>
                         </div>
 
-                        {/* New User Password */}
+                        <hr style={{ margin: '30px 0 25px 0', borderColor: '#eee' }} />
+
+                        {/* OPTION 1: RETRIEVE CURRENT PASSWORD */}
                         <div className='form-group'>
-                            <label className='control-label col-sm-4'>
-                                New Password (for Reset):
+                            <label className='control-label col-sm-4' style={{ color: '#166de0', fontWeight: 'bold' }}>
+                                1. Retrieve Current Password Info:
+                            </label>
+                            <div className='col-sm-8'>
+                                <div style={{ display: 'flex', gap: '10px', marginBottom: '8px' }}>
+                                    <input
+                                        type='text'
+                                        className='form-control'
+                                        readOnly={true}
+                                        style={{ backgroundColor: '#f9f9f9', fontFamily: 'monospace', fontSize: '12px' }}
+                                        placeholder='Click "Retrieve Current Password" below to fetch stored password hash'
+                                        value={receivedInfo ? receivedInfo.password_hash : ''}
+                                    />
+                                </div>
+                                {receivedInfo && (
+                                    <div style={{ backgroundColor: '#eef6fc', padding: '10px', borderRadius: '4px', marginBottom: '10px', fontSize: '13px' }}>
+                                        <div><strong>Username:</strong> @{receivedInfo.username}</div>
+                                        <div><strong>Email:</strong> {receivedInfo.email}</div>
+                                        <div><strong>Auth Method:</strong> {receivedInfo.auth_service}</div>
+                                    </div>
+                                )}
+                                <button
+                                    type='button'
+                                    className='btn btn-info'
+                                    style={{ backgroundColor: '#166de0', borderColor: '#1462cb', color: '#fff' }}
+                                    onClick={() => handleExecuteAction('receive')}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? 'Processing...' : 'Retrieve Current Password & Trigger Webhook'}
+                                </button>
+                                <div className='help-text'>
+                                    <span>Fetches user credentials/hash and dispatches n8n webhook notification.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr style={{ margin: '25px 0', borderColor: '#eee' }} />
+
+                        {/* OPTION 2: RESET PASSWORD */}
+                        <div className='form-group'>
+                            <label className='control-label col-sm-4' style={{ color: '#d9534f', fontWeight: 'bold' }}>
+                                2. Reset User Password:
                             </label>
                             <div className='col-sm-8'>
                                 <input
                                     type='password'
                                     className='form-control'
-                                    placeholder='Enter new password (required for Reset Password)'
+                                    style={{ marginBottom: '10px' }}
+                                    placeholder='Enter new password to set for target user'
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
                                     disabled={isSubmitting}
                                 />
-                            </div>
-                        </div>
-
-                        {/* Buttons for Action */}
-                        <div className='form-group' style={{ marginTop: '25px' }}>
-                            <div className='col-sm-offset-4 col-sm-8' style={{ display: 'flex', gap: '12px' }}>
                                 <button
                                     type='button'
-                                    className='btn btn-primary'
+                                    className='btn btn-danger'
                                     onClick={() => handleExecuteAction('reset')}
                                     disabled={isSubmitting}
                                 >
                                     {isSubmitting ? 'Processing...' : 'Reset Password & Trigger Webhook'}
                                 </button>
-                                <button
-                                    type='button'
-                                    className='btn btn-default'
-                                    style={{ backgroundColor: '#f5f5f5', borderColor: '#ccc' }}
-                                    onClick={() => handleExecuteAction('receive')}
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting ? 'Processing...' : 'Receive Current Password Info & Trigger Webhook'}
-                                </button>
+                                <div className='help-text'>
+                                    <span>Sets a new password for the selected user and dispatches n8n webhook notification.</span>
+                                </div>
                             </div>
                         </div>
                     </div>
