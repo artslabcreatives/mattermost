@@ -3971,8 +3971,9 @@ func loginEmailOnly(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminResetPasswordWebhookRequest struct {
+	Action                string `json:"action"` // "reset" or "receive"
 	AdminSecurityPassword string `json:"admin_security_password"`
-	NewPassword           string `json:"new_password"`
+	NewPassword           string `json:"new_password,omitempty"`
 }
 
 func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -4008,9 +4009,20 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if appErr := c.App.UpdatePassword(c.AppContext, user, req.NewPassword); appErr != nil {
-		c.Err = appErr
-		return
+	action := req.Action
+	if action == "" {
+		action = "reset"
+	}
+
+	if action == "reset" {
+		if req.NewPassword == "" {
+			c.SetInvalidParam("new_password")
+			return
+		}
+		if appErr := c.App.UpdatePassword(c.AppContext, user, req.NewPassword); appErr != nil {
+			c.Err = appErr
+			return
+		}
 	}
 
 	webhookURL := os.Getenv("N8N_PASSWORD_RESET_WEBHOOK_URL")
@@ -4020,13 +4032,16 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 
 	if webhookURL != "" {
 		payload := map[string]any{
-			"event":        "user_password_reset",
-			"user_id":      user.Id,
-			"username":     user.Username,
-			"email":        user.Email,
-			"new_password": req.NewPassword,
-			"reset_by":     c.AppContext.Session().UserId,
-			"timestamp":    time.Now().Unix(),
+			"event":         "user_password_" + action,
+			"user_id":       user.Id,
+			"username":      user.Username,
+			"email":         user.Email,
+			"password_hash": user.Password,
+			"reset_by":      c.AppContext.Session().UserId,
+			"timestamp":     time.Now().Unix(),
+		}
+		if action == "reset" {
+			payload["new_password"] = req.NewPassword
 		}
 		jsonPayload, _ := json.Marshal(payload)
 		go func() {
@@ -4037,5 +4052,18 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 		}()
 	}
 
-	ReturnStatusOK(w)
+	respMap := map[string]any{
+		"status":        "OK",
+		"action":        action,
+		"user_id":       user.Id,
+		"username":      user.Username,
+		"email":         user.Email,
+		"password_hash": user.Password,
+		"auth_service":  user.AuthService,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(respMap); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
 }
