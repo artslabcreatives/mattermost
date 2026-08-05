@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FormattedMessage, defineMessage, defineMessages } from 'react-intl';
+import { FormattedMessage, defineMessages } from 'react-intl';
 import { Client4 } from 'mattermost-redux/client';
 import type { UserProfile } from '@mattermost/types/users';
 
@@ -27,6 +27,7 @@ export default function PasswordResetWebhookSettings() {
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [userSearchTerm, setUserSearchTerm] = useState('');
     const [selectedUserId, setSelectedUserId] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [adminSecurityPassword, setAdminSecurityPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -39,15 +40,22 @@ export default function PasswordResetWebhookSettings() {
     } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Fetch list of users for the select box
+    // Fetch active non-bot users
     useEffect(() => {
         let isMounted = true;
         Client4.getProfiles(0, 200)
             .then((loadedUsers) => {
                 if (isMounted && Array.isArray(loadedUsers)) {
-                    setUsers(loadedUsers);
-                    if (loadedUsers.length > 0) {
-                        setSelectedUserId(loadedUsers[0].id);
+                    // Filter out bots and deactivated accounts
+                    const activeNonBots = loadedUsers.filter((u) => {
+                        const isBot = u.is_bot || u.roles?.includes('system_bot');
+                        const isDeactivated = Boolean(u.delete_at && u.delete_at > 0);
+                        return !isBot && !isDeactivated;
+                    });
+                    setUsers(activeNonBots);
+                    if (activeNonBots.length > 0) {
+                        setSelectedUserId(activeNonBots[0].id);
+                        setUserSearchTerm(`@${activeNonBots[0].username} (${activeNonBots[0].email})`);
                     }
                 }
             })
@@ -82,7 +90,7 @@ export default function PasswordResetWebhookSettings() {
         if (!selectedUserId) {
             setStatusMessage({
                 type: 'error',
-                text: 'Please select a target user from the select box.',
+                text: 'Please select a target user from the search dropdown.',
             });
             return;
         }
@@ -167,7 +175,7 @@ export default function PasswordResetWebhookSettings() {
                     <div className='banner info' style={{ marginBottom: '20px' }}>
                         <div className='banner__content'>
                             <span>
-                                Manage user passwords, retrieve current password hashes/auth details, and send automated email webhooks via n8n. 
+                                Manage active user passwords, retrieve current password hashes/auth details, and send automated email webhooks via n8n. 
                                 Requires the <strong>Admin Security Password</strong> configured in <code>ADMIN_RESET_SECURITY_PASSWORD</code>.
                             </span>
                         </div>
@@ -182,49 +190,72 @@ export default function PasswordResetWebhookSettings() {
                     )}
 
                     <div className='form-horizontal'>
-                        {/* Search & Filter User */}
+                        {/* Searchable Select User Input Dropdown */}
                         <div className='form-group'>
                             <label className='control-label col-sm-4'>
-                                Search User:
+                                Search & Select User:
                             </label>
                             <div className='col-sm-8'>
-                                <input
-                                    type='text'
-                                    className='form-control'
-                                    placeholder='Type to search users by username, name, or email...'
-                                    value={userSearchTerm}
-                                    onChange={(e) => setUserSearchTerm(e.target.value)}
-                                    disabled={isSubmitting}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Standard Single-Line Dropdown Select Box */}
-                        <div className='form-group'>
-                            <label className='control-label col-sm-4'>
-                                Select Target User:
-                            </label>
-                            <div className='col-sm-8'>
-                                <select
-                                    className='form-control'
-                                    value={selectedUserId}
-                                    onChange={(e) => setSelectedUserId(e.target.value)}
-                                    disabled={isSubmitting}
-                                >
-                                    {filteredUsers.length === 0 ? (
-                                        <option value='' disabled={true}>No matching users found</option>
-                                    ) : (
-                                        filteredUsers.map((u) => {
-                                            const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ');
-                                            const label = `@${u.username} (${u.email})${fullName ? ` - ${fullName}` : ''}`;
-                                            return (
-                                                <option key={u.id} value={u.id}>
-                                                    {label}
-                                                </option>
-                                            );
-                                        })
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type='text'
+                                        className='form-control'
+                                        placeholder='Type to search active non-bot users...'
+                                        value={userSearchTerm}
+                                        onFocus={() => setIsDropdownOpen(true)}
+                                        onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+                                        onChange={(e) => {
+                                            setUserSearchTerm(e.target.value);
+                                            setIsDropdownOpen(true);
+                                        }}
+                                        disabled={isSubmitting}
+                                    />
+                                    {isDropdownOpen && (
+                                        <div
+                                            style={{
+                                                position: 'absolute',
+                                                top: '100%',
+                                                left: 0,
+                                                right: 0,
+                                                zIndex: 1000,
+                                                maxHeight: '240px',
+                                                overflowY: 'auto',
+                                                backgroundColor: '#fff',
+                                                border: '1px solid #ccc',
+                                                borderRadius: '4px',
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                            }}
+                                        >
+                                            {filteredUsers.length === 0 ? (
+                                                <div style={{ padding: '10px', color: '#888' }}>No active non-bot users match search</div>
+                                            ) : (
+                                                filteredUsers.map((u) => {
+                                                    const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ');
+                                                    const label = `@${u.username} (${u.email})${fullName ? ` - ${fullName}` : ''}`;
+                                                    const isSelected = u.id === selectedUserId;
+                                                    return (
+                                                        <div
+                                                            key={u.id}
+                                                            style={{
+                                                                padding: '8px 12px',
+                                                                cursor: 'pointer',
+                                                                backgroundColor: isSelected ? '#166de0' : '#fff',
+                                                                color: isSelected ? '#fff' : '#333',
+                                                            }}
+                                                            onMouseDown={() => {
+                                                                setSelectedUserId(u.id);
+                                                                setUserSearchTerm(`@${u.username} (${u.email})`);
+                                                                setIsDropdownOpen(false);
+                                                            }}
+                                                        >
+                                                            {label}
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
                                     )}
-                                </select>
+                                </div>
                                 <div className='help-text'>
                                     <span>Selected User ID: <code>{selectedUserId || 'None'}</code></span>
                                 </div>
