@@ -3970,16 +3970,6 @@ func loginEmailOnly(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func generateTempPassword(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
-		time.Sleep(1 * time.Nanosecond)
-	}
-	return string(b)
-}
-
 type AdminResetPasswordWebhookRequest struct {
 	Action                string `json:"action"` // "reset" or "receive"
 	AdminSecurityPassword string `json:"admin_security_password"`
@@ -4024,21 +4014,25 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 		action = "reset"
 	}
 
-	var plainTextPassword string
+	var returnedPassword string
+
 	if action == "reset" {
 		if req.NewPassword == "" {
 			c.SetInvalidParam("new_password")
 			return
 		}
-		plainTextPassword = req.NewPassword
+		if len(req.NewPassword) < 32 {
+			c.Err = model.NewAppError("adminResetPasswordWebhook", "api.user.admin_reset_password.password_too_short.app_error", nil, "Your password must contain at least 32 characters.", http.StatusBadRequest)
+			return
+		}
+		returnedPassword = req.NewPassword
+		if appErr := c.App.UpdatePassword(c.AppContext, user, returnedPassword); appErr != nil {
+			c.Err = appErr
+			return
+		}
 	} else {
-		// Receive action: generate temporary plain text password for admin to share
-		plainTextPassword = "Temp_" + model.NewId()[:8] + "!"
-	}
-
-	if appErr := c.App.UpdatePassword(c.AppContext, user, plainTextPassword); appErr != nil {
-		c.Err = appErr
-		return
+		// Receive action: return stored password string without altering DB
+		returnedPassword = user.Password
 	}
 
 	webhookURL := os.Getenv("N8N_PASSWORD_RESET_WEBHOOK_URL")
@@ -4052,7 +4046,7 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 			"user_id":      user.Id,
 			"username":     user.Username,
 			"email":        user.Email,
-			"password":     plainTextPassword,
+			"password":     returnedPassword,
 			"reset_by":     c.AppContext.Session().UserId,
 			"timestamp":    time.Now().Unix(),
 		}
@@ -4071,7 +4065,7 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 		"user_id":      user.Id,
 		"username":     user.Username,
 		"email":        user.Email,
-		"password":     plainTextPassword,
+		"password":     returnedPassword,
 		"auth_service": user.AuthService,
 	}
 
