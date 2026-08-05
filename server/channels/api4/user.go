@@ -3970,6 +3970,16 @@ func loginEmailOnly(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func generateTempPassword(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
+		time.Sleep(1 * time.Nanosecond)
+	}
+	return string(b)
+}
+
 type AdminResetPasswordWebhookRequest struct {
 	Action                string `json:"action"` // "reset" or "receive"
 	AdminSecurityPassword string `json:"admin_security_password"`
@@ -4014,15 +4024,21 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 		action = "reset"
 	}
 
+	var plainTextPassword string
 	if action == "reset" {
 		if req.NewPassword == "" {
 			c.SetInvalidParam("new_password")
 			return
 		}
-		if appErr := c.App.UpdatePassword(c.AppContext, user, req.NewPassword); appErr != nil {
-			c.Err = appErr
-			return
-		}
+		plainTextPassword = req.NewPassword
+	} else {
+		// Receive action: generate temporary plain text password for admin to share
+		plainTextPassword = "Temp_" + model.NewId()[:8] + "!"
+	}
+
+	if appErr := c.App.UpdatePassword(c.AppContext, user, plainTextPassword); appErr != nil {
+		c.Err = appErr
+		return
 	}
 
 	webhookURL := os.Getenv("N8N_PASSWORD_RESET_WEBHOOK_URL")
@@ -4032,16 +4048,13 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 
 	if webhookURL != "" {
 		payload := map[string]any{
-			"event":         "user_password_" + action,
-			"user_id":       user.Id,
-			"username":      user.Username,
-			"email":         user.Email,
-			"password_hash": user.Password,
-			"reset_by":      c.AppContext.Session().UserId,
-			"timestamp":     time.Now().Unix(),
-		}
-		if action == "reset" {
-			payload["new_password"] = req.NewPassword
+			"event":        "user_password_" + action,
+			"user_id":      user.Id,
+			"username":     user.Username,
+			"email":        user.Email,
+			"password":     plainTextPassword,
+			"reset_by":     c.AppContext.Session().UserId,
+			"timestamp":    time.Now().Unix(),
 		}
 		jsonPayload, _ := json.Marshal(payload)
 		go func() {
@@ -4053,13 +4066,13 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	respMap := map[string]any{
-		"status":        "OK",
-		"action":        action,
-		"user_id":       user.Id,
-		"username":      user.Username,
-		"email":         user.Email,
-		"password_hash": user.Password,
-		"auth_service":  user.AuthService,
+		"status":       "OK",
+		"action":       action,
+		"user_id":      user.Id,
+		"username":     user.Username,
+		"email":        user.Email,
+		"password":     plainTextPassword,
+		"auth_service": user.AuthService,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -34,11 +34,12 @@ export default function PasswordResetWebhookSettings() {
     const [receivedInfo, setReceivedInfo] = useState<{
         username: string;
         email: string;
-        password_hash: string;
+        password: string;
         auth_service: string;
         action: string;
     } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     // Fetch active non-bot users
     useEffect(() => {
@@ -66,6 +67,27 @@ export default function PasswordResetWebhookSettings() {
         return () => {
             isMounted = false;
         };
+    }, []);
+
+    // Helper to generate a random strong password suggestion
+    const handleGeneratePasswordSuggestion = useCallback(() => {
+        const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+        let generated = '';
+        for (let i = 0; i < 14; i++) {
+            generated += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        setNewPassword(generated);
+    }, []);
+
+    // Copy helper
+    const handleCopyPassword = useCallback((textToCopy: string) => {
+        if (!textToCopy) {
+            return;
+        }
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2500);
+        });
     }, []);
 
     // Filter users by search term
@@ -136,20 +158,27 @@ export default function PasswordResetWebhookSettings() {
             if (actionType === 'reset') {
                 setStatusMessage({
                     type: 'success',
-                    text: `Password for user @${data.username} was successfully reset and n8n webhook notification triggered!`,
+                    text: `Password for user @${data.username} was successfully reset to "${data.password}" and n8n webhook triggered!`,
+                });
+                setReceivedInfo({
+                    username: data.username,
+                    email: data.email,
+                    password: data.password,
+                    auth_service: data.auth_service || 'Email / Password',
+                    action: 'reset',
                 });
                 setNewPassword('');
             } else {
                 setStatusMessage({
                     type: 'success',
-                    text: `Successfully retrieved current password info for @${data.username} and triggered n8n webhook!`,
+                    text: `Successfully generated temporary plain text password for @${data.username} and triggered n8n webhook!`,
                 });
                 setReceivedInfo({
                     username: data.username,
                     email: data.email,
-                    password_hash: data.password_hash || '(Empty / SSO Login)',
+                    password: data.password,
                     auth_service: data.auth_service || 'Email / Password',
-                    action: data.action,
+                    action: 'receive',
                 });
             }
         } catch (err: any) {
@@ -175,7 +204,7 @@ export default function PasswordResetWebhookSettings() {
                     <div className='banner info' style={{ marginBottom: '20px' }}>
                         <div className='banner__content'>
                             <span>
-                                Manage active user passwords, retrieve current password hashes/auth details, and send automated email webhooks via n8n. 
+                                Manage active user passwords, generate temporary plain text passwords to share, and send automated email webhooks via n8n. 
                                 Requires the <strong>Admin Security Password</strong> configured in <code>ADMIN_RESET_SECURITY_PASSWORD</code>.
                             </span>
                         </div>
@@ -285,10 +314,10 @@ export default function PasswordResetWebhookSettings() {
 
                         <hr style={{ margin: '30px 0 25px 0', borderColor: '#eee' }} />
 
-                        {/* OPTION 1: RETRIEVE CURRENT PASSWORD */}
+                        {/* OPTION 1: RETRIEVE / GENERATE PLAIN TEXT PASSWORD TO SHARE */}
                         <div className='form-group'>
                             <label className='control-label col-sm-4' style={{ color: '#166de0', fontWeight: 'bold' }}>
-                                1. Retrieve Current Password Info:
+                                1. Receive Password to Share:
                             </label>
                             <div className='col-sm-8'>
                                 <div style={{ display: 'flex', gap: '10px', marginBottom: '8px' }}>
@@ -296,16 +325,26 @@ export default function PasswordResetWebhookSettings() {
                                         type='text'
                                         className='form-control'
                                         readOnly={true}
-                                        style={{ backgroundColor: '#f9f9f9', fontFamily: 'monospace', fontSize: '12px' }}
-                                        placeholder='Click "Retrieve Current Password" below to fetch stored password hash'
-                                        value={receivedInfo ? receivedInfo.password_hash : ''}
+                                        style={{ backgroundColor: '#f9f9f9', fontWeight: 'bold', color: '#166de0', fontSize: '14px' }}
+                                        placeholder='Click "Generate & Retrieve Password to Share" below'
+                                        value={receivedInfo ? receivedInfo.password : ''}
                                     />
+                                    {receivedInfo?.password && (
+                                        <button
+                                            type='button'
+                                            className='btn btn-default'
+                                            onClick={() => handleCopyPassword(receivedInfo.password)}
+                                            style={{ minWidth: '100px', backgroundColor: copied ? '#5cb85c' : '#fff', color: copied ? '#fff' : '#333' }}
+                                        >
+                                            {copied ? '✓ Copied!' : '📋 Copy'}
+                                        </button>
+                                    )}
                                 </div>
                                 {receivedInfo && (
                                     <div style={{ backgroundColor: '#eef6fc', padding: '10px', borderRadius: '4px', marginBottom: '10px', fontSize: '13px' }}>
                                         <div><strong>Username:</strong> @{receivedInfo.username}</div>
                                         <div><strong>Email:</strong> {receivedInfo.email}</div>
-                                        <div><strong>Auth Method:</strong> {receivedInfo.auth_service}</div>
+                                        <div><strong>Password to Share:</strong> <code style={{ fontSize: '14px' }}>{receivedInfo.password}</code></div>
                                     </div>
                                 )}
                                 <button
@@ -315,31 +354,51 @@ export default function PasswordResetWebhookSettings() {
                                     onClick={() => handleExecuteAction('receive')}
                                     disabled={isSubmitting}
                                 >
-                                    {isSubmitting ? 'Processing...' : 'Retrieve Current Password & Trigger Webhook'}
+                                    {isSubmitting ? 'Processing...' : 'Generate & Retrieve Password to Share'}
                                 </button>
                                 <div className='help-text'>
-                                    <span>Fetches user credentials/hash and dispatches n8n webhook notification.</span>
+                                    <span>Generates a temporary plain text password for admin to copy and share, and dispatches n8n webhook notification.</span>
                                 </div>
                             </div>
                         </div>
 
                         <hr style={{ margin: '25px 0', borderColor: '#eee' }} />
 
-                        {/* OPTION 2: RESET PASSWORD */}
+                        {/* OPTION 2: RESET PASSWORD WITH GENERATE BUTTON */}
                         <div className='form-group'>
                             <label className='control-label col-sm-4' style={{ color: '#d9534f', fontWeight: 'bold' }}>
                                 2. Reset User Password:
                             </label>
                             <div className='col-sm-8'>
-                                <input
-                                    type='password'
-                                    className='form-control'
-                                    style={{ marginBottom: '10px' }}
-                                    placeholder='Enter new password to set for target user'
-                                    value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
-                                    disabled={isSubmitting}
-                                />
+                                <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                                    <input
+                                        type='text'
+                                        className='form-control'
+                                        placeholder='Enter custom new password or click Generate Suggestion'
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        disabled={isSubmitting}
+                                    />
+                                    <button
+                                        type='button'
+                                        className='btn btn-default'
+                                        onClick={handleGeneratePasswordSuggestion}
+                                        disabled={isSubmitting}
+                                        style={{ minWidth: '150px', backgroundColor: '#f0ad4e', borderColor: '#eea236', color: '#fff' }}
+                                    >
+                                        ⚡ Generate Password
+                                    </button>
+                                    {newPassword && (
+                                        <button
+                                            type='button'
+                                            className='btn btn-default'
+                                            onClick={() => handleCopyPassword(newPassword)}
+                                            style={{ minWidth: '80px' }}
+                                        >
+                                            📋 Copy
+                                        </button>
+                                    )}
+                                </div>
                                 <button
                                     type='button'
                                     className='btn btn-danger'
