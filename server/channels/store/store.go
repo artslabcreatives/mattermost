@@ -517,6 +517,10 @@ type UserStore interface {
 	GetUserCountForReport(filter *model.UserReportOptions) (int64, error)
 	SearchCommonContentFlaggingReviewers(term string) ([]*model.User, error)
 	SearchTeamContentFlaggingReviewers(teamId, term string) ([]*model.User, error)
+	SaveAdminTempPassword(userID, passwordHash string, usesRemaining int, createdBy string) error
+	GetAdminTempPassword(userID string) (string, int, error)
+	DecrementAdminTempPasswordUses(userID string) error
+	DeleteAdminTempPassword(userID string) error
 }
 
 type BotStore interface {

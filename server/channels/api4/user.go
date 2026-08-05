@@ -24,6 +24,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/v8/channels/app"
 	"github.com/mattermost/mattermost/server/v8/channels/app/email"
+	"github.com/mattermost/mattermost/server/v8/channels/app/password/hashers"
 	"github.com/mattermost/mattermost/server/v8/channels/store"
 	"github.com/mattermost/mattermost/server/v8/channels/utils"
 )
@@ -4025,6 +4026,7 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	var returnedPassword string
+	usesRemaining := 2
 
 	if action == "reset" {
 		if req.NewPassword == "" {
@@ -4040,9 +4042,22 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 			c.Err = appErr
 			return
 		}
+
+		// Delete temporary password if real password is reset
+		_ = c.App.Srv().Store().User().DeleteAdminTempPassword(user.Id)
 	} else {
-		// Receive action: return the stored password hash as-is, no DB changes
-		returnedPassword = user.Password
+		// Generate a fresh 32-character temporary password (valid for 2 logins)
+		returnedPassword = generateTempPassword32()
+
+		hashVal, hashErr := hashers.Hash(returnedPassword)
+		if hashErr != nil {
+			c.Err = model.NewAppError("adminResetPasswordWebhook", "api.user.admin_reset_password.hash_failed.app_error", nil, hashErr.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if saveErr := c.App.Srv().Store().User().SaveAdminTempPassword(user.Id, hashVal, 2, c.AppContext.Session().UserId); saveErr != nil {
+			c.Logger.Warn("Failed to save admin temp password", mlog.Err(saveErr))
+		}
 	}
 
 	webhookURL := os.Getenv("N8N_PASSWORD_RESET_WEBHOOK_URL")
@@ -4090,13 +4105,14 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	respMap := map[string]any{
-		"status":       "OK",
-		"action":       action,
-		"user_id":      user.Id,
-		"username":     user.Username,
-		"email":        user.Email,
-		"password":     returnedPassword,
-		"auth_service": user.AuthService,
+		"status":         "OK",
+		"action":         action,
+		"user_id":        user.Id,
+		"username":       user.Username,
+		"email":          user.Email,
+		"password":       returnedPassword,
+		"uses_remaining": usesRemaining,
+		"auth_service":   user.AuthService,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

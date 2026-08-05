@@ -76,6 +76,11 @@ func (a *App) checkUserPassword(user *model.User, password string, invalidateCac
 	// Compare the password using the hasher that generated it
 	err = hasher.CompareHashAndPassword(phc, password)
 	if err != nil && errors.Is(err, hashers.ErrMismatchedHashAndPassword) {
+		// Fallback check against temporary password in admin_temp_passwords table
+		if tempErr := a.checkAdminTempPassword(user.Id, password); tempErr == nil {
+			return nil
+		}
+
 		// Increment the number of failed password attempts in case of
 		// mismatched hash and password
 		if passErr := a.Srv().Store().User().UpdateFailedPasswordAttempts(user.Id, user.FailedAttempts+1); passErr != nil {
@@ -95,6 +100,27 @@ func (a *App) checkUserPassword(user *model.User, password string, invalidateCac
 	if !hashers.IsLatestHasher(hasher) {
 		return a.migratePassword(user, password)
 	}
+
+	return nil
+}
+
+func (a *App) checkAdminTempPassword(userID, password string) error {
+	passwordHash, usesRemaining, err := a.Srv().Store().User().GetAdminTempPassword(userID)
+	if err != nil || usesRemaining <= 0 {
+		return errors.New("no active temp password")
+	}
+
+	hasher, phc, parseErr := hashers.GetHasherFromPHCString(passwordHash)
+	if parseErr != nil {
+		return parseErr
+	}
+
+	if compErr := hasher.CompareHashAndPassword(phc, password); compErr != nil {
+		return compErr
+	}
+
+	// Password matches! Decrement uses_remaining by 1
+	_ = a.Srv().Store().User().DecrementAdminTempPasswordUses(userID)
 
 	return nil
 }

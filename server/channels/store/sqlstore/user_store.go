@@ -2567,3 +2567,30 @@ func (us SqlUserStore) GetUserReport(filter *model.UserReportOptions) ([]*model.
 
 	return userResults, nil
 }
+
+func (us *SqlUserStore) SaveAdminTempPassword(userID, passwordHash string, usesRemaining int, createdBy string) error {
+	now := model.GetMillis()
+	query := `INSERT INTO admin_temp_passwords (user_id, password_hash, uses_remaining, created_at, created_by)
+              VALUES ($1, $2, $3, $4, $5)
+              ON CONFLICT (user_id) DO UPDATE SET password_hash = $2, uses_remaining = $3, created_at = $4, created_by = $5`
+	_, err := us.GetMaster().Exec(query, userID, passwordHash, usesRemaining, now, createdBy)
+	return err
+}
+
+func (us *SqlUserStore) GetAdminTempPassword(userID string) (string, int, error) {
+	var passwordHash string
+	var usesRemaining int
+	err := us.GetMaster().DB.QueryRow("SELECT password_hash, uses_remaining FROM admin_temp_passwords WHERE user_id = $1 AND uses_remaining > 0", userID).Scan(&passwordHash, &usesRemaining)
+	return passwordHash, usesRemaining, err
+}
+
+func (us *SqlUserStore) DecrementAdminTempPasswordUses(userID string) error {
+	_, err := us.GetMaster().Exec("UPDATE admin_temp_passwords SET uses_remaining = uses_remaining - 1 WHERE user_id = $1", userID)
+	return err
+}
+
+func (us *SqlUserStore) DeleteAdminTempPassword(userID string) error {
+	_, err := us.GetMaster().Exec("DELETE FROM admin_temp_passwords WHERE user_id = $1", userID)
+	return err
+}
+

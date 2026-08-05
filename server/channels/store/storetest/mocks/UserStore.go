@@ -2260,6 +2260,27 @@ func (_m *UserStore) VerifyEmail(userID string, email string) (string, error) {
 	return r0, r1
 }
 
+func (_m *UserStore) SaveAdminTempPassword(userID string, passwordHash string, usesRemaining int, createdBy string) error {
+	ret := _m.Called(userID, passwordHash, usesRemaining, createdBy)
+	return ret.Error(0)
+}
+
+func (_m *UserStore) GetAdminTempPassword(userID string) (string, int, error) {
+	ret := _m.Called(userID)
+	return ret.String(0), ret.Int(1), ret.Error(2)
+}
+
+func (_m *UserStore) DecrementAdminTempPasswordUses(userID string) error {
+	ret := _m.Called(userID)
+	return ret.Error(0)
+}
+
+func (_m *UserStore) DeleteAdminTempPassword(userID string) error {
+	ret := _m.Called(userID)
+	return ret.Error(0)
+}
+
+
 // NewUserStore creates a new instance of UserStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewUserStore(t interface {
