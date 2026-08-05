@@ -4053,17 +4053,37 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 
 	if webhookURL != "" {
 		payload := map[string]any{
-			"event":        "user_password_" + action,
-			"user_id":      user.Id,
-			"username":     user.Username,
-			"email":        user.Email,
-			"password":     plainTextPassword,
-			"reset_by":     c.AppContext.Session().UserId,
-			"timestamp":    time.Now().Unix(),
+			"event":     "user_password_" + action,
+			"user_id":   user.Id,
+			"username":  user.Username,
+			"email":     user.Email,
+			"password":  plainTextPassword,
+			"reset_by":  c.AppContext.Session().UserId,
+			"timestamp": time.Now().Unix(),
 		}
 		jsonPayload, _ := json.Marshal(payload)
 		go func() {
-			resp, httpErr := http.Post(webhookURL, "application/json", bytes.NewBuffer(jsonPayload))
+			httpReq, err := http.NewRequest("POST", webhookURL, bytes.NewBuffer(jsonPayload))
+			if err != nil {
+				return
+			}
+			httpReq.Header.Set("Content-Type", "application/json")
+
+			authUser := os.Getenv("N8N_WEBHOOK_BASIC_AUTH_USER")
+			if authUser == "" {
+				authUser = os.Getenv("MM_N8N_WEBHOOK_BASIC_AUTH_USER")
+			}
+			authPass := os.Getenv("N8N_WEBHOOK_BASIC_AUTH_PASSWORD")
+			if authPass == "" {
+				authPass = os.Getenv("MM_N8N_WEBHOOK_BASIC_AUTH_PASSWORD")
+			}
+
+			if authUser != "" || authPass != "" {
+				httpReq.SetBasicAuth(authUser, authPass)
+			}
+
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, httpErr := client.Do(httpReq)
 			if httpErr == nil && resp != nil {
 				_ = resp.Body.Close()
 			}
