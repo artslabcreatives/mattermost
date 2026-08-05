@@ -46,6 +46,12 @@ services:
       # OpenAI Configuration
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_MODEL=${OPENAI_MODEL}
+
+      # Admin Password Reset & n8n Webhook Configuration
+      - ADMIN_RESET_SECURITY_PASSWORD=${ADMIN_RESET_SECURITY_PASSWORD}
+      - N8N_PASSWORD_RESET_WEBHOOK_URL=${N8N_PASSWORD_RESET_WEBHOOK_URL}
+      - N8N_WEBHOOK_BASIC_AUTH_USER=${N8N_WEBHOOK_BASIC_AUTH_USER}
+      - N8N_WEBHOOK_BASIC_AUTH_PASSWORD=${N8N_WEBHOOK_BASIC_AUTH_PASSWORD}
       
       # Database settings (connects to host PostgreSQL via localhost)
       - MM_SQLSETTINGS_DRIVERNAME=${MM_SQLSETTINGS_DRIVERNAME:-postgres}
