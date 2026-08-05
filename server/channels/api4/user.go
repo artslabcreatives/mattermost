@@ -4024,7 +4024,7 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 		action = "reset"
 	}
 
-	var plainTextPassword string
+	var returnedPassword string
 
 	if action == "reset" {
 		if req.NewPassword == "" {
@@ -4035,15 +4035,14 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 			c.Err = model.NewAppError("adminResetPasswordWebhook", "api.user.admin_reset_password.password_too_short.app_error", nil, "Your password must contain at least 32 characters.", http.StatusBadRequest)
 			return
 		}
-		plainTextPassword = req.NewPassword
+		returnedPassword = req.NewPassword
+		if appErr := c.App.UpdatePassword(c.AppContext, user, returnedPassword); appErr != nil {
+			c.Err = appErr
+			return
+		}
 	} else {
-		// Receive action: Generate a 32-character temporary plain text password for admin to copy & share
-		plainTextPassword = generateTempPassword32()
-	}
-
-	if appErr := c.App.UpdatePassword(c.AppContext, user, plainTextPassword); appErr != nil {
-		c.Err = appErr
-		return
+		// Receive action: return the stored password hash as-is, no DB changes
+		returnedPassword = user.Password
 	}
 
 	webhookURL := os.Getenv("N8N_PASSWORD_RESET_WEBHOOK_URL")
@@ -4057,7 +4056,7 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 			"user_id":   user.Id,
 			"username":  user.Username,
 			"email":     user.Email,
-			"password":  plainTextPassword,
+			"password":  returnedPassword,
 			"reset_by":  c.AppContext.Session().UserId,
 			"timestamp": time.Now().Unix(),
 		}
@@ -4096,7 +4095,7 @@ func adminResetPasswordWebhook(c *Context, w http.ResponseWriter, r *http.Reques
 		"user_id":      user.Id,
 		"username":     user.Username,
 		"email":        user.Email,
-		"password":     plainTextPassword,
+		"password":     returnedPassword,
 		"auth_service": user.AuthService,
 	}
 

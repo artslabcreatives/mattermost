@@ -323,7 +323,7 @@ export default function PasswordResetWebhookSettings() {
                         {/* OPTION 1: RECEIVE USER PASSWORD TO SHARE */}
                         <div className='form-group'>
                             <label className='control-label col-sm-4' style={{ color: '#166de0', fontWeight: 'bold' }}>
-                                1. Receive Password to Share:
+                                1. Receive Current Password:
                             </label>
                             <div className='col-sm-8'>
                                 <div style={{ display: 'flex', gap: '10px', marginBottom: '8px' }}>
@@ -332,7 +332,7 @@ export default function PasswordResetWebhookSettings() {
                                         className='form-control'
                                         readOnly={true}
                                         style={{ backgroundColor: '#f9f9f9', fontWeight: 'bold', color: '#166de0', fontSize: '13px' }}
-                                        placeholder='Click "Generate & Receive Password to Share" below'
+                                        placeholder='Click "Receive Current Password" below'
                                         value={receivedInfo ? receivedInfo.password : ''}
                                     />
                                     {receivedInfo?.password && (
@@ -350,7 +350,7 @@ export default function PasswordResetWebhookSettings() {
                                     <div style={{ backgroundColor: '#eef6fc', padding: '10px', borderRadius: '4px', marginBottom: '10px', fontSize: '13px' }}>
                                         <div><strong>Username:</strong> @{receivedInfo.username}</div>
                                         <div><strong>Email:</strong> {receivedInfo.email}</div>
-                                        <div><strong>Password to Share:</strong> <code style={{ fontSize: '12px', wordBreak: 'break-all' }}>{receivedInfo.password}</code></div>
+                                        <div><strong>Stored Password:</strong> <code style={{ fontSize: '12px', wordBreak: 'break-all' }}>{receivedInfo.password}</code></div>
                                     </div>
                                 )}
                                 <button
@@ -360,10 +360,10 @@ export default function PasswordResetWebhookSettings() {
                                     onClick={() => handleExecuteAction('receive')}
                                     disabled={isSubmitting}
                                 >
-                                    {isSubmitting ? 'Processing...' : 'Generate & Receive Password to Share'}
+                                    {isSubmitting ? 'Processing...' : 'Receive Current Password'}
                                 </button>
                                 <div className='help-text'>
-                                    <span>Generates a 32-character temporary plain text password for admin to copy & share, and dispatches n8n webhook notification.</span>
+                                    <span>Retrieves the user's current stored password without modifying it, and dispatches n8n webhook notification.</span>
                                 </div>
                             </div>
                         </div>
