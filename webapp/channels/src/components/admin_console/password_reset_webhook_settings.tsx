@@ -302,7 +302,7 @@ export default function PasswordResetWebhookSettings() {
                         {/* Admin Security Password */}
                         <div className='form-group'>
                             <label className='control-label col-sm-4'>
-                                Admin Security Password (from .env):
+                                Admin Security Password:
                             </label>
                             <div className='col-sm-8'>
                                 <input
@@ -314,9 +314,7 @@ export default function PasswordResetWebhookSettings() {
                                     disabled={isSubmitting}
                                     required={true}
                                 />
-                                <div className='help-text'>
-                                    <span>Master security key set in server environment variables.</span>
-                                </div>
+
                             </div>
                         </div>
 
