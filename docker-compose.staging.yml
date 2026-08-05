@@ -18,6 +18,9 @@ services:
       start_period: 30s
 
   mattermost:
+    build:
+      context: .
+      dockerfile: Dockerfile.prebuilt
     image: mattermost-collab-staging-image
     container_name: mattermost-staging-server
     restart: ${RESTART_POLICY:-unless-stopped}
