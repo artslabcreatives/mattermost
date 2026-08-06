@@ -204,6 +204,7 @@ func (p *Plugin) handleOAuthComplete(w http.ResponseWriter, r *http.Request, use
 	}
 
 	p.client.Log.Info("Board room calendar connected", "email", email, "connected_by", userID)
+	go p.resyncFailedBookings()
 	writeHTMLResult(w, "Board Room calendar connected",
 		"Bookings will now appear on "+email+" and attendees will be invited. You can close this tab.")
 }

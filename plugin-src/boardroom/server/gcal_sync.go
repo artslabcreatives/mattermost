@@ -44,11 +44,13 @@ func (p *Plugin) startBackgroundSync() {
 
 		// Run an initial sync shortly after plugin start
 		p.syncFromGoogle()
+		p.resyncFailedBookings()
 
 		for {
 			select {
 			case <-ticker.C:
 				p.syncFromGoogle()
+				p.resyncFailedBookings()
 			case <-sr.stopChan:
 				return
 			}
@@ -335,5 +337,42 @@ func (p *Plugin) processGoogleEvent(event *calendar.Event, teamID string, loc *t
 
 		p.persistSync(&updated)
 		p.notify(&updated, notifyUpdated, hostID)
+	}
+}
+
+func (p *Plugin) resyncFailedBookings() {
+	cfg := p.getConfiguration()
+	if !cfg.EnableCalendarSync {
+		return
+	}
+	conn, err := p.getConnection()
+	if err != nil || conn == nil {
+		return
+	}
+	loc, err := p.location()
+	if err != nil {
+		return
+	}
+	teamID := p.getDefaultTeamID()
+	if teamID == "" {
+		return
+	}
+
+	now := time.Now().In(loc)
+	from := now.Format("2006-01-02")
+	to := now.AddDate(0, 0, 60).Format("2006-01-02")
+
+	bookings, err := p.store.GetRange(teamID, from, to)
+	if err != nil {
+		return
+	}
+
+	for i := range bookings {
+		b := &bookings[i]
+		if b.SyncState == syncFailed || (b.SyncState != syncSynced && b.GoogleEventID == "") {
+			eventID, syncErr := p.syncUpdate(b)
+			p.applySync(b, eventID, syncErr)
+			p.persistSync(b)
+		}
 	}
 }
