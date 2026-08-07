@@ -104,7 +104,7 @@ function uploadFileChunked(
 						throw new Error(localizeMessage({ id: 'file_upload.generic_error', defaultMessage: 'There was a problem uploading your files.' }));
 					}
 
-					if (!response.ok && response.status !== 204 && response.status !== 201) {
+					if (!response.ok && response.status !== 204 && response.status !== 201 && response.status !== 200) {
 						let errorMessage = localizeMessage({ id: 'file_upload.generic_error', defaultMessage: 'There was a problem uploading your files.' });
 						try {
 							const errorBody = await response.json();
@@ -129,8 +129,8 @@ function uploadFileChunked(
 						chunkTotal,
 					} as FilePreviewInfo);
 
-					// ── Step 3: check for completion (201 Created) ───────────────
-					if (response.status === 201) {
+					// ── Step 3: check for completion (200 OK or 201 Created) ──────
+					if (response.status === 201 || response.status === 200) {
 						const fileInfo: FileInfo = await response.json();
 						dispatch(batchActions([
 							{

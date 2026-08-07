@@ -77,9 +77,11 @@ func WriteStreamResponse(w http.ResponseWriter, r io.Reader, filename string, co
 }
 
 func setHeaders(w http.ResponseWriter, contentType string, forceDownload bool, filename string) {
-	// Only set Cache-Control if it hasn't been set already
+	// Only set Cache-Control if it hasn't been set already.
+	// Files are immutable once uploaded (file ID = permanent, content = permanent),
+	// so we can cache very aggressively to prevent repeated S3 round-trips.
 	if w.Header().Get("Cache-Control") == "" {
-		w.Header().Set("Cache-Control", "private, max-age=86400")
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	}
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
