@@ -2475,6 +2475,13 @@ export default class Client4 {
 		);
 	};
 
+	getFileInfo = (fileId: string) => {
+		return this.doFetch<FileInfo>(
+			`${this.getFileRoute(fileId)}/info`,
+			{ method: 'get' },
+		);
+	};
+
 	getFileInfosForPost = (postId: string) => {
 		return this.doFetch<FileInfo[]>(
 			`${this.getPostRoute(postId)}/files/info`,

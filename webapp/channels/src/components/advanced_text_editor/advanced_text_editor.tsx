@@ -400,7 +400,7 @@ const AdvancedTextEditor = ({
 				messageStatusElement!.textContent = 'Message Sent';
 			}
 		}
-	}, [handleSubmit, draft, errorClass]);
+	}, [handleSubmit, draft, errorClass, isFilesPreviewLoading]);
 
 	// "Also send to channel" is only meaningful for thread replies when collapsed threads is on
 	// (otherwise replies already appear in the channel).

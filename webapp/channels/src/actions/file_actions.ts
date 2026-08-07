@@ -146,11 +146,34 @@ function uploadFileChunked(
 					}
 				}
 
-				// If we exit the loop without a 201 the server should have returned it on the last chunk.
-				// This can happen on 204 for the last partial chunk in some edge cases.
-				// Attempt to retrieve the file info via GET on the session.
+				// If we exit the loop without a 200/201, the server returned 204
+				// for the final chunk. This can happen in some configurations.
+				// Fall back to polling the upload session for the completed FileInfo.
+				try {
+					const completedSession = await Client4.getUploadSession(session.id);
+					// If file_offset === file_size, the upload is complete on the server side.
+					if (completedSession.file_offset >= file.size) {
+						// The session is done — retrieve the file info via GET /files/{id}/info.
+						// When the upload session completes, the server creates a FileInfo
+						// with the same ID as the upload session.
+						const fileInfoResponse: FileInfo = await Client4.getFileInfo(session.id);
+						dispatch(batchActions([
+							{
+								type: FileTypes.RECEIVED_UPLOAD_FILES,
+								data: [{ ...fileInfoResponse, clientId }],
+								channelId,
+								rootId,
+							},
+							{ type: FileTypes.UPLOAD_FILES_SUCCESS },
+						]));
+						onSuccess({ file_infos: [fileInfoResponse], client_ids: [clientId] }, channelId, rootId);
+						return;
+					}
+				} catch { /* session query failed — fall through to error */ }
+
 				const errorMessage = localizeMessage({ id: 'file_upload.generic_error', defaultMessage: 'There was a problem uploading your files.' });
 				throw new Error(errorMessage);
+
 
 			} catch (err: any) {
 				if (signal.aborted) {

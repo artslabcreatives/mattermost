@@ -110,10 +110,10 @@ const useUploadFiles = (
 
 	const handleFileUploadComplete = useCallback((fileInfos: FileInfo[], clientIds: string[], channelId: string, rootId?: string) => {
 		const key = rootId || channelId;
-		const draftToUpdate = storedDrafts.current[key];
-		if (!draftToUpdate) {
-			return;
-		}
+		// Use storedDrafts first (most up-to-date ref), but fall back to the
+		// current draft prop so we never silently skip the cleanup — which would
+		// leave clientIds stuck in uploadsInProgress and block the send button.
+		const draftToUpdate = storedDrafts.current[key] ?? draft;
 
 		const newFileInfos = sortFileInfos([...draftToUpdate.fileInfos || [], ...fileInfos], locale);
 
@@ -137,7 +137,7 @@ const useUploadFiles = (
 			clientIds.forEach((id) => Reflect.deleteProperty(updated, id));
 			return updated;
 		});
-	}, [locale, handleDraftChange, storedDrafts]);
+	}, [draft, locale, handleDraftChange, storedDrafts]);
 
 	// Called by GoldenRetriever (via UppyFileUpload) when interrupted uploads
 	// are restored from IndexedDB on page load.  We add each file to the draft's
