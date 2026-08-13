@@ -385,7 +385,7 @@ func (p *Plugin) handleEditPoll(c *plugin.Context, w http.ResponseWriter, r *htt
 	// Also update the post message
 	post, appErr := p.API.GetPost(poll.ID)
 	if appErr == nil && post != nil {
-		post.Message = fmt.Sprintf("Poll: %s", poll.Question)
+		post.Message = generatePollFallback(poll)
 		p.API.UpdatePost(post)
 	}
 
@@ -418,7 +418,7 @@ func (p *Plugin) saveAndPostPoll(poll *Poll, channelID string) error {
 	post := &model.Post{
 		UserId:    poll.UserID,
 		ChannelId: channelID,
-		Message:   fmt.Sprintf("Poll: %s", poll.Question),
+		Message:   generatePollFallback(poll),
 		Type:      PostTypePoll,
 		Props: model.StringInterface{
 			"poll": pollMap,
@@ -474,10 +474,35 @@ func (p *Plugin) updatePoll(poll *Poll) error {
 			post.Props = make(model.StringInterface)
 		}
 		post.Props["poll"] = pollMap
+		post.Message = generatePollFallback(poll)
 		p.API.UpdatePost(post)
 	}
 
 	return nil
+}
+
+func generatePollFallback(poll *Poll) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("📊 **Poll:** %s\n\n", poll.Question))
+	
+	totalVotes := poll.TotalVotes()
+	
+	for i, opt := range poll.Options {
+		optKey := fmt.Sprintf("%d", i)
+		votes := len(poll.Votes[optKey])
+		percentage := 0
+		if totalVotes > 0 {
+			percentage = (votes * 100) / totalVotes
+		}
+		sb.WriteString(fmt.Sprintf("- **%s**: %d votes (%d%%)\n", opt, votes, percentage))
+	}
+	
+	sb.WriteString(fmt.Sprintf("\n*Total voters: %d*", totalVotes))
+	if poll.Ended {
+		sb.WriteString(" • **(Ended)**")
+	}
+	
+	return sb.String()
 }
 
 func (p *Plugin) respondError(w http.ResponseWriter, code int, msg string) {
