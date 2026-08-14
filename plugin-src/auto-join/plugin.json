@@ -1,0 +1,38 @@
+{
+    "id": "com.artslabcreatives.autojoin",
+    "name": "Auto Join Channels",
+    "description": "Automatically adds new and existing active users to specific general channels.",
+    "homepage_url": "https://artslabcreatives.com",
+    "support_url": "https://artslabcreatives.com",
+    "icon_path": "public/icon.png",
+    "version": "0.1.0",
+    "min_server_version": "7.0.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "linux-arm64": "server/dist/plugin-linux-arm64"
+        }
+    },
+    "settings_schema": {
+        "header": "Auto Join Channels Configuration",
+        "footer": "Configure the channels that all users must belong to. The plugin will check periodically and when a user is created.",
+        "settings": [
+            {
+                "key": "AutoJoinChannels",
+                "display_name": "Auto Join Channels List (IDs or Names):",
+                "type": "text",
+                "help_text": "Comma-separated list of Channel IDs or Channel Names/Handles (e.g. 'town-square, off-topic, general'). Users will be joined to the corresponding teams and channels automatically.",
+                "placeholder": "town-square, off-topic, general",
+                "default": "town-square, off-topic"
+            },
+            {
+                "key": "ScanInterval",
+                "display_name": "Background Scan Interval (Minutes):",
+                "type": "text",
+                "help_text": "How often the background worker scans active users to add missing members to the configured channels. Default: 10 minutes.",
+                "placeholder": "10",
+                "default": "10"
+            }
+        ]
+    }
+}
