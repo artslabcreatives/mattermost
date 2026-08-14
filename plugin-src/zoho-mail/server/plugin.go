@@ -527,7 +527,7 @@ func (p *Plugin) handleEmailDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Fetch attachments list
-	attachURL := fmt.Sprintf("%s/api/accounts/%s/folders/%s/messages/%s/attachments", cfg.MailApiBaseUrl, accountId, folderID, messageID)
+	attachURL := fmt.Sprintf("%s/api/accounts/%s/folders/%s/messages/%s/attachmentinfo", cfg.MailApiBaseUrl, accountId, folderID, messageID)
 	attachReq, _ := http.NewRequest("GET", attachURL, nil)
 	attachReq.Header.Set("Authorization", "Zoho-oauthtoken "+accessToken)
 
@@ -540,16 +540,9 @@ func (p *Plugin) handleEmailDetail(w http.ResponseWriter, r *http.Request) {
 		bodyBytes, _ := io.ReadAll(attachResp.Body)
 		p.API.LogInfo(fmt.Sprintf("Zoho attachments status: %d body: %s", attachResp.StatusCode, string(bodyBytes)))
 		
-		var attachData struct {
-			Data []map[string]interface{} `json:"data"`
-		}
-		if err := json.Unmarshal(bodyBytes, &attachData); err == nil && attachData.Data != nil {
-			attachments = attachData.Data
-		} else {
-			var attachList []map[string]interface{}
-			if err := json.Unmarshal(bodyBytes, &attachList); err == nil {
-				attachments = attachList
-			}
+		var parsed map[string]interface{}
+		if err := json.Unmarshal(bodyBytes, &parsed); err == nil {
+			attachments = extractAttachments(parsed)
 		}
 	}
 
@@ -604,6 +597,41 @@ func (p *Plugin) handleEmailDetail(w http.ResponseWriter, r *http.Request) {
 	resultBytes, _ := json.Marshal(contentResp)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(resultBytes)
+}
+
+func extractAttachments(m map[string]interface{}) []map[string]interface{} {
+	// 1. Check data field
+	if data, ok := m["data"]; ok {
+		// data can be list
+		if list, ok := data.([]interface{}); ok {
+			return convertList(list)
+		}
+		// data can be object
+		if obj, ok := data.(map[string]interface{}); ok {
+			if att, ok := obj["attachments"]; ok {
+				if list, ok := att.([]interface{}); ok {
+					return convertList(list)
+				}
+			}
+		}
+	}
+	// 2. Check attachments field directly at root
+	if att, ok := m["attachments"]; ok {
+		if list, ok := att.([]interface{}); ok {
+			return convertList(list)
+		}
+	}
+	return nil
+}
+
+func convertList(list []interface{}) []map[string]interface{} {
+	var result []map[string]interface{}
+	for _, item := range list {
+		if m, ok := item.(map[string]interface{}); ok {
+			result = append(result, m)
+		}
+	}
+	return result
 }
 
 func (p *Plugin) handleAttachment(w http.ResponseWriter, r *http.Request) {
