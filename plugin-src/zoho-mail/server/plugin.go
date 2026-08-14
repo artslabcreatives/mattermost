@@ -533,15 +533,24 @@ func (p *Plugin) handleEmailDetail(w http.ResponseWriter, r *http.Request) {
 
 	var attachments []map[string]interface{}
 	attachResp, err := client.Do(attachReq)
-	if err == nil && attachResp.StatusCode == http.StatusOK {
+	if err != nil {
+		p.API.LogError("FAILED to fetch attachments: " + err.Error())
+	} else {
 		defer attachResp.Body.Close()
+		bodyBytes, _ := io.ReadAll(attachResp.Body)
+		p.API.LogInfo(fmt.Sprintf("Zoho attachments status: %d body: %s", attachResp.StatusCode, string(bodyBytes)))
+		
 		var attachData struct {
 			Data []map[string]interface{} `json:"data"`
 		}
-		json.NewDecoder(attachResp.Body).Decode(&attachData)
-		attachments = attachData.Data
-	} else if attachResp != nil {
-		attachResp.Body.Close()
+		if err := json.Unmarshal(bodyBytes, &attachData); err == nil && attachData.Data != nil {
+			attachments = attachData.Data
+		} else {
+			var attachList []map[string]interface{}
+			if err := json.Unmarshal(bodyBytes, &attachList); err == nil {
+				attachments = attachList
+			}
+		}
 	}
 
 	// 3. Rewrite inline image URLs in content
