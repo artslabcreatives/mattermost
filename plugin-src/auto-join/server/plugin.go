@@ -219,10 +219,8 @@ func (p *Plugin) addUserToConfiguredChannels(user *model.User) {
 	channels := p.getResolvedChannels()
 	p.addUserToChannels(user, channels)
 }
-
 func (p *Plugin) addUserToChannels(user *model.User, channels []*model.Channel) {
 	for _, channel := range channels {
-		// Verify team membership first (user must belong to team before they can join team channels)
 		if channel.TeamId != "" {
 			_, err := p.API.GetTeamMember(channel.TeamId, user.Id)
 			if err != nil {
@@ -230,7 +228,11 @@ func (p *Plugin) addUserToChannels(user *model.User, channels []*model.Channel) 
 				p.API.LogDebug("Auto Join Channels: adding user to team", "username", user.Username, "team_id", channel.TeamId)
 				_, teamErr := p.API.CreateTeamMember(channel.TeamId, user.Id)
 				if teamErr != nil {
-					p.API.LogError("Auto Join Channels: failed to add user to team", "username", user.Username, "team_id", channel.TeamId, "error", teamErr.Error())
+					// Ignore duplicate/already exists errors
+					errMsg := teamErr.Error()
+					if !strings.Contains(strings.ToLower(errMsg), "already exists") && !strings.Contains(strings.ToLower(errMsg), "duplicate") {
+						p.API.LogError("Auto Join Channels: failed to add user to team", "username", user.Username, "team_id", channel.TeamId, "error", errMsg)
+					}
 					continue
 				}
 			}
@@ -243,7 +245,11 @@ func (p *Plugin) addUserToChannels(user *model.User, channels []*model.Channel) 
 			p.API.LogInfo("Auto Join Channels: adding user to channel", "username", user.Username, "channel_name", channel.Name)
 			_, chanErr := p.API.AddChannelMember(channel.Id, user.Id)
 			if chanErr != nil {
-				p.API.LogError("Auto Join Channels: failed to add user to channel", "username", user.Username, "channel_name", channel.Name, "error", chanErr.Error())
+				// Ignore duplicate/already exists errors
+				errMsg := chanErr.Error()
+				if !strings.Contains(strings.ToLower(errMsg), "exists") && !strings.Contains(strings.ToLower(errMsg), "duplicate") {
+					p.API.LogError("Auto Join Channels: failed to add user to channel", "username", user.Username, "channel_name", channel.Name, "error", errMsg)
+				}
 			}
 		}
 	}
