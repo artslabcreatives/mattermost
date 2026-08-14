@@ -1,0 +1,39 @@
+{
+    "id": "com.artslabcreatives.jothika",
+    "name": "Jothika",
+    "description": "Jothika application integrated in Mattermost RHS",
+    "homepage_url": "https://jothika.artslabcreatives.com",
+    "support_url": "https://jothika.artslabcreatives.com",
+    "icon_path": "public/icon.png",
+    "min_server_version": "7.0.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "linux-arm64": "server/dist/plugin-linux-arm64"
+        }
+    },
+    "webapp": {
+        "bundle_path": "webapp/dist/main.js"
+    },
+    "settings_schema": {
+        "header": "Jothika Access Control Settings",
+        "footer": "Control which users can see and access the Jothika plugin in the sidebar.",
+        "settings": [
+            {
+                "key": "AllowAllUsers",
+                "display_name": "Allow All Users:",
+                "type": "bool",
+                "help_text": "When enabled, all active users can see and access Jothika in the sidebar.",
+                "default": true
+            },
+            {
+                "key": "AllowedUserIDs",
+                "display_name": "Allowed Users (Usernames or User IDs):",
+                "type": "text",
+                "help_text": "Comma-separated list of usernames (e.g. john, mary) or user IDs allowed to see Jothika when 'Allow All Users' is disabled.",
+                "placeholder": "john, mary, santosh",
+                "default": ""
+            }
+        ]
+    }
+}
