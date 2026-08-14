@@ -1,0 +1,53 @@
+{
+    "id": "com.artslabcreatives.zohomail",
+    "name": "Zoho Mail",
+    "description": "Zoho Mail integration for Mattermost Right Hand Sidebar",
+    "homepage_url": "https://artslabcreatives.com",
+    "support_url": "https://artslabcreatives.com",
+    "icon_path": "public/icon.png",
+    "version": "0.1.0",
+    "min_server_version": "7.0.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "linux-arm64": "server/dist/plugin-linux-arm64"
+        }
+    },
+    "webapp": {
+        "bundle_path": "webapp/dist/main.js"
+    },
+    "settings_schema": {
+        "header": "Zoho Mail Settings",
+        "footer": "Configure the Client ID and Secret obtained from the Zoho Developer Console.\n\nRedirect URI to register in Zoho Console:\nhttps://staging.collab.artslabcreatives.com/plugins/com.artslabcreatives.zohomail/api/v1/oauth/callback",
+        "settings": [
+            {
+                "key": "ClientID",
+                "display_name": "Zoho Client ID:",
+                "type": "text",
+                "help_text": "The Client ID obtained from the Zoho Developer Console.",
+                "default": ""
+            },
+            {
+                "key": "ClientSecret",
+                "display_name": "Zoho Client Secret:",
+                "type": "text",
+                "help_text": "The Client Secret obtained from the Zoho Developer Console.",
+                "default": ""
+            },
+            {
+                "key": "ApiBaseUrl",
+                "display_name": "Zoho Accounts API Base URL:",
+                "type": "text",
+                "help_text": "The accounts base URL (e.g. https://accounts.zoho.com or https://accounts.zoho.eu).",
+                "default": "https://accounts.zoho.com"
+            },
+            {
+                "key": "MailApiBaseUrl",
+                "display_name": "Zoho Mail API Base URL:",
+                "type": "text",
+                "help_text": "The mail API base URL (e.g. https://mail.zoho.com or https://mail.zoho.eu).",
+                "default": "https://mail.zoho.com"
+            }
+        ]
+    }
+}
