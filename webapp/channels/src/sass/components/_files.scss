@@ -559,7 +559,7 @@
             }
 
             .post-image__archived {
-                display: inline-block;
+                display: block;
                 overflow: hidden;
                 max-width: 134px;
                 color: rgba(var(--center-channel-color-rgb), 0.75);
@@ -569,7 +569,7 @@
             }
 
             .post-image__type {
-                display: inline-block;
+                display: block;
                 overflow: hidden;
                 max-width: 134px;
                 float: left;
