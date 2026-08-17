@@ -760,3 +760,43 @@
 .small-image__container--min-width {
     width: 48px;
 }
+
+.post-image__header {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-bottom: 6px;
+    width: 100%;
+    max-width: 400px;
+}
+
+.post-image__download-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    background: transparent;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    i {
+        font-size: 14px;
+        margin-top: 1px;
+    }
+
+    &:hover {
+        color: var(--button-bg);
+        background: rgba(var(--button-bg-rgb), 0.08);
+        text-decoration: none;
+    }
+
+    &:focus {
+        outline: none;
+    }
+}
+

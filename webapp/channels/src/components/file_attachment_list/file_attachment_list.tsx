@@ -2,8 +2,9 @@
 // See LICENSE.txt for license information.
 
 import React, { useMemo } from 'react';
+import { FormattedMessage } from 'react-intl';
 
-import { sortFileInfos } from 'mattermost-redux/utils/file_utils';
+import { sortFileInfos, getFileDownloadUrl } from 'mattermost-redux/utils/file_utils';
 
 import FileAttachment from 'components/file_attachment';
 import FilePreviewModal from 'components/file_preview_modal';
@@ -40,6 +41,25 @@ export default function FileAttachmentList(props: Props) {
 	} = props;
 
 	const sortedFileInfos = useMemo(() => sortFileInfos(fileInfos ? [...fileInfos] : [], locale), [fileInfos, locale]);
+	const nonArchivedInfos = useMemo(() => sortedFileInfos.filter((fi) => !fi.archived), [sortedFileInfos]);
+
+	const handleDownloadAll = (e: React.MouseEvent) => {
+		e.preventDefault();
+		if (props.disableDownload) {
+			return;
+		}
+		nonArchivedInfos.forEach((fileInfo, idx) => {
+			setTimeout(() => {
+				const url = (props.overrideGenerateFileDownloadUrl || getFileDownloadUrl)(fileInfo.id);
+				const link = document.createElement('a');
+				link.href = url;
+				link.setAttribute('download', fileInfo.name);
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+			}, idx * 150);
+		});
+	};
 
 	if (fileInfos.length === 0) {
 		return null;
@@ -70,7 +90,6 @@ export default function FileAttachmentList(props: Props) {
 	// ── Multiple images only: photo grid ─────────────────────────────────
 	// When every non-archived attachment is an image (or SVG), show them in
 	// an inline photo grid instead of the compact attachment list.
-	const nonArchivedInfos = sortedFileInfos.filter((fi) => !fi.archived);
 	const allImages =
 		nonArchivedInfos.length > 1 &&
 		nonArchivedInfos.every((fi) => {
@@ -78,12 +97,32 @@ export default function FileAttachmentList(props: Props) {
 			return ft === FileTypes.IMAGE || (ft === FileTypes.SVG && enableSVGs);
 		});
 
+	const showDownloadAll = !props.disableDownload && nonArchivedInfos.length > 1;
+
+	const downloadAllButton = showDownloadAll ? (
+		<div className='post-image__header'>
+			<button
+				className='post-image__download-all'
+				onClick={handleDownloadAll}
+			>
+				<i className='icon icon-download-outline' />
+				<FormattedMessage
+					id='post_info.download_all'
+					defaultMessage='Download all'
+				/>
+			</button>
+		</div>
+	) : null;
+
 	if (allImages && !compactDisplay) {
 		return (
-			<MultiImageView
-				fileInfos={sortedFileInfos}
-				onImageClick={handleImageClick}
-			/>
+			<>
+				{downloadAllButton}
+				<MultiImageView
+					fileInfos={sortedFileInfos}
+					onImageClick={handleImageClick}
+				/>
+			</>
 		);
 	}
 
@@ -122,12 +161,15 @@ export default function FileAttachmentList(props: Props) {
 	}
 
 	return (
-		<div
-			data-testid='fileAttachmentList'
-			className='post-image__columns clearfix'
-		>
-			{postFiles}
-		</div>
+		<>
+			{downloadAllButton}
+			<div
+				data-testid='fileAttachmentList'
+				className='post-image__columns clearfix'
+			>
+				{postFiles}
+			</div>
+		</>
 	);
 }
 
