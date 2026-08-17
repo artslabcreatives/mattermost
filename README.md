@@ -1,127 +1,145 @@
-# [![Mattermost logo](https://user-images.githubusercontent.com/7205829/137170381-fe86eef0-bccc-4fdd-8e92-b258884ebdd7.png)](https://mattermost.com)
+# Mattermost Fork: Collaborative Workspace (Staging & Production)
 
-[Mattermost](https://mattermost.com) is an open core, self-hosted collaboration platform that offers chat, workflow automation, voice calling, screen sharing, and AI integration. This repo is the primary source for core development on the Mattermost platform; it's written in Go and React, runs as a single Linux binary, and relies on PostgreSQL. A new compiled version is released under an MIT license every month on the 16th.
+This repository is a customized, self-hosted fork of **Mattermost Community Edition (v11.4.0)**. It serves as a unified workspace featuring several custom-developed plugins, database optimizations, performance integrations, and developer-friendly utilities.
 
-[Deploy Mattermost on-premises](https://mattermost.com/deploy/?utm_source=github-mattermost-server-readme), or [try it for free in the cloud](https://mattermost.com/sign-up/?utm_source=github-mattermost-server-readme).
-
-<img width="1006" alt="mattermost user interface" src="https://user-images.githubusercontent.com/7205829/136107976-7a894c9e-290a-490d-8501-e5fdbfc3785a.png">
-
-Learn more about the following use cases with Mattermost:
-
-- [DevSecOps](https://mattermost.com/solutions/use-cases/devops/?utm_source=github-mattermost-server-readme)
-- [Incident Resolution](https://mattermost.com/solutions/use-cases/incident-resolution/?utm_source=github-mattermost-server-readme)
-- [IT Service Desk](https://mattermost.com/solutions/use-cases/it-service-desk/?utm_source=github-mattermost-server-readme)
-
-Other useful resources:
-
-- [Download and Install Mattermost](https://docs.mattermost.com/guides/deployment.html) - Install, setup, and configure your own Mattermost instance.
-- [Product documentation](https://docs.mattermost.com/) - Learn how to run a Mattermost instance and take advantage of all the features.
-- [Developer documentation](https://developers.mattermost.com/) - Contribute code to Mattermost or build an integration via APIs, Webhooks, slash commands, Apps, and plugins.
-
-Table of contents
-=================
-
-- [Install Mattermost](#install-mattermost)
-- [Native mobile and desktop apps](#native-mobile-and-desktop-apps)
-- [Get security bulletins](#get-security-bulletins)
-- [Get involved](#get-involved)
-- [Learn more](#learn-more)
-- [License](#license)
-- [Get the latest news](#get-the-latest-news)
-- [Contributing](#contributing)
-
-## 🚀 Quick Production Deployment (Docker Compose)
-
-Deploy Mattermost from source in minutes using Docker Compose:
-
-```bash
-# 1. One-command deployment
-./deploy.sh
-
-# OR manually:
-# 2. Copy and configure environment
-cp .env.example .env
-nano .env  # Edit MM_SITEURL and other settings
-
-# 3. Build and start
-docker compose -f docker-compose.prod.yml up -d --build
-```
-
-**What you get:**
-- ✅ Mattermost Community Edition (built from source)
-- ✅ PostgreSQL 16 database
-- ✅ Persistent data volumes
-- ✅ Production-ready security settings
-- ✅ Email-only login endpoint for development/testing
-
-**Access:** Open `http://your-server:8065` and create your admin account.
-
-**Full Documentation:** See [PRODUCTION_DEPLOY.md](PRODUCTION_DEPLOY.md) for complete setup, HTTPS configuration, backups, and more.
+Staging Server URL: [staging.collab.artslabcreatives.com](https://staging.collab.artslabcreatives.com)
 
 ---
 
-## Install Mattermost
+## 🚀 Quick Start & Deployment
 
-- [Download and Install Mattermost Self-Hosted](https://docs.mattermost.com/guides/deployment.html) - Deploy a Mattermost Self-hosted instance in minutes via Docker, Ubuntu, or tar.
-- [Get started in the cloud](https://mattermost.com/sign-up/?utm_source=github-mattermost-server-readme) to try Mattermost today.
-- [Developer machine setup](https://developers.mattermost.com/contribute/server/developer-setup) - Follow this guide if you want to write code for Mattermost.
+### Full Rebuild & Deploy
+To pull files, back up PostgreSQL, compile frontend and backend assets in parallel, and recreate the Docker containers, run:
+```bash
+sudo ./rebuild.sh
+```
 
+### Staging Deployment (Docker Compose)
+To rebuild and start the staging stack directly:
+```bash
+sudo docker compose -f docker-compose.staging.yml up -d --build
+```
+Local staging port mapping: `http://localhost:8066` pointing to Mattermost port `8065`.
 
-Other install guides:
+### Webapp Build (from `/webapp`)
+```bash
+npm install
+npm run build --workspace=channels              # Production compile
+npm run dev-server --workspace=channels         # Hot-reloading dev server
+```
 
-- [Deploy Mattermost on Docker](https://docs.mattermost.com/install/install-docker.html)
-- [Mattermost Omnibus](https://docs.mattermost.com/install/installing-mattermost-omnibus.html)
-- [Install Mattermost from Tar](https://docs.mattermost.com/install/install-tar.html)
-- [Ubuntu 20.04 LTS](https://docs.mattermost.com/install/installing-ubuntu-2004-LTS.html)
-- [Kubernetes](https://docs.mattermost.com/install/install-kubernetes.html)
-- [Helm](https://docs.mattermost.com/install/install-kubernetes.html#installing-the-operators-via-helm)
-- [Debian Buster](https://docs.mattermost.com/install/install-debian.html)
-- [RHEL 8](https://docs.mattermost.com/install/install-rhel-8.html)
-- [More server install guides](https://docs.mattermost.com/guides/deployment.html)
+### Server Build (from `/server`)
+```bash
+make setup-go-work
+make build-linux-amd64 BUILD_NUMBER=custom BUILD_TAGS="sourceavailable"
+```
 
-## Native mobile and desktop apps
+---
 
-In addition to the web interface, you can also download Mattermost clients for [Android](https://mattermost.com/pl/android-app/), [iOS](https://mattermost.com/pl/ios-app/), [Windows PC](https://docs.mattermost.com/install/desktop-app-install.html#windows-10-windows-8-1), [macOS](https://docs.mattermost.com/install/desktop-app-install.html#macos-10-9), and [Linux](https://docs.mattermost.com/install/desktop-app-install.html#linux).
+## 🛠️ Custom Developed Functionalities
 
-[<img src="https://user-images.githubusercontent.com/30978331/272826427-6200c98f-7319-42c3-86d4-0b33ae99e01a.png" alt="Get Mattermost on Google Play" height="50px"/>](https://mattermost.com/pl/android-app/)  [<img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Get Mattermost on the App Store" height="50px"/>](https://itunes.apple.com/us/app/mattermost/id1257222717?mt=8)  [![Get Mattermost on Windows PC](https://user-images.githubusercontent.com/33878967/33095357-39cab8d2-ceb8-11e7-89a6-67dccc571ca3.png)](https://docs.mattermost.com/install/desktop.html#windows-10-windows-8-1-windows-7)  [![Get Mattermost on Mac OSX](https://user-images.githubusercontent.com/33878967/33095355-39a36f2a-ceb8-11e7-9b33-73d4f6d5d6c1.png)](https://docs.mattermost.com/install/desktop.html#macos-10-9)  [![Get Mattermost on Linux](https://user-images.githubusercontent.com/33878967/33095354-3990e256-ceb8-11e7-965d-b00a16e578de.png)](https://docs.mattermost.com/install/desktop.html#linux)
+We have custom-built and modified various aspects of the Mattermost webapp and server:
 
-## Get security bulletins
+### 1. Download All Option (Multiple Attachments)
+- **Features:** Installs a premium-styled "Download all" action button/link above file attachment lists or photo grids whenever a post contains more than one non-archived attachment.
+- **Implementation:** Staggers downloads by 150ms to bypass browser multi-download security restrictions.
+- **Code Reference:** [`file_attachment_list.tsx`](file:///var/www/mattermost-collab-staging/webapp/channels/src/components/file_attachment_list/file_attachment_list.tsx), [`_files.scss`](file:///var/www/mattermost-collab-staging/webapp/channels/src/sass/components/_files.scss).
 
-Receive notifications of critical security updates. The sophistication of online attackers is perpetually increasing. If you're deploying Mattermost it's highly recommended you subscribe to the Mattermost Security Bulletin mailing list for updates on critical security releases.
+### 2. Auto-Join Channels Plugin
+- **Features:** Server-side plugin that automatically joins newly registered users to a set of predefined channels/teams.
+- **Optimizations:** Filters out duplicate key and membership-already-exists errors to prevent hooks from breaking.
+- **Code Reference:** `plugin-src/auto-join/`.
 
-[Subscribe here](https://mattermost.com/security-updates/#sign-up)
+### 3. Zoho Mail Integration Plugin
+- **Features:** Renders a custom dark-themed Zoho Mail interface directly inside the Mattermost Right-Hand Sidebar (RHS).
+- **Implementation:** Supports folders, inline image link rewriting, attachment proxy, and uses a robust `/attachmentinfo` extractor.
+- **Code Reference:** `plugin-src/zoho-mail/`.
 
-## Get involved
+### 4. Jothika Plugin
+- **Features:** Integrates `jothika.artslabcreatives.com` within the RHS using a custom iframe and dedicated icon.
+- **Code Reference:** `plugin-src/jothika/`.
 
-- [Contribute to Mattermost](https://handbook.mattermost.com/contributors/contributors/ways-to-contribute)
-- [Find "Help Wanted" projects](https://github.com/mattermost/mattermost-server/issues?page=1&q=is%3Aissue+is%3Aopen+%22Help+Wanted%22&utf8=%E2%9C%93)
-- [Join Developer Discussion on a Mattermost server for contributors](https://community.mattermost.com/signup_user_complete/?id=f1924a8db44ff3bb41c96424cdc20676)
-- [Get Help With Mattermost](https://docs.mattermost.com/guides/get-help.html)
+### 5. Burn-on-Read (Self-Destructing) Posts
+- **Features:** Client-side timed self-destructing messages, gated behind `FeatureFlags.BurnOnRead` on the Go server.
+- **Code Reference:** `webapp/channels/src/hooks/useBurnOnReadTimer.ts`, `webapp/channels/src/utils/burn_on_read_expiration_scheduler.ts`.
 
-## Learn more
+### 6. Scoped Channel Search (Typesense)
+- **Features:** An inline scoped local search bar in the channel header (`in:<channel>`) integrated with **Typesense** as a search engine backend.
+- **Staging Typesense Container:** Port `8112`. Already indexes 42,000+ posts with schemas corrected.
+- **Code Reference:** `server/enterprise/typesense/`, `webapp/channels/src/components/channel_header/channel_header.tsx`.
 
-- [API options - webhooks, slash commands, drivers, and web service](https://api.mattermost.com/)
-- [See who's using Mattermost](https://mattermost.com/customers/)
-- [Browse over 700 Mattermost integrations](https://mattermost.com/marketplace/)
+### 7. TUS Resumable Uploads & File Eviction fixes
+- **Features:** Resumable image/file uploads at `/api/v4/files/tus/` using Uppy on the client.
+- **Fixes:** Resolves concurrency race conditions between file upload creation and completion goroutines. Extends metadata cache lifetime to a 5-minute TTL to prevent premature evictions during temporary network interruptions.
+- **Code Reference:** `server/channels/api4/tus_handler.go`.
 
-## License
+### 8. Follow-up Bot Scheduled Reminders
+- **Features:** Runs an hourly cron daemon checking for unanswered posts from the past 30 days and posts AI-powered polite follow-ups via OpenAI API.
+- **Isolation:** Configured to run under the system account `aura` to prevent reminders from showing up as Sahan's own threads/unreads.
+- **Code Reference:** `followup_scheduler.py`, `followup_reminded_threads.json`.
 
-See the [LICENSE file](LICENSE.txt) for license rights and limitations.
+### 9. Modern Image & Video Previews
+- **AVIF Previews:** Decoding failures for modern image formats gracefully fall back to native browser rendering instead of generating broken thumbnails.
+- **Video Previews:** Enforces a clean, uniform 320x180 thumbnail preview format using `object-fit: cover`.
 
-## Get the latest news
+### 10. Email-Only Passwordless Login
+- **Endpoint:** `POST /api/v4/users/login/email_only`
+- **Body:** `{"email": "user@example.com", "redirect_to": "channel_id"}`
+- **Security:** Community Edition build option; has no security checks. Only use in development or safe trusted environments.
 
-- **X** - Follow [Mattermost on X, formerly Twitter](https://twitter.com/mattermost).
-- **Blog** - Get the latest updates from the [Mattermost blog](https://mattermost.com/blog/).
-- **Facebook** - Follow [Mattermost on Facebook](https://www.facebook.com/MattermostHQ).
-- **LinkedIn** - Follow [Mattermost on LinkedIn](https://www.linkedin.com/company/mattermost/).
-- **Email** - Subscribe to our [newsletter](https://mattermost.us11.list-manage.com/subscribe?u=6cdba22349ae374e188e7ab8e&id=2add1c8034) (1 or 2 per month).
-- **Mattermost** - Join the ~contributors channel on [the Mattermost Community Server](https://community.mattermost.com).
-- **IRC** - Join the #matterbridge channel on [Freenode](https://freenode.net/) (thanks to [matterircd](https://github.com/42wim/matterircd)).
-- **YouTube** -  Subscribe to [Mattermost](https://www.youtube.com/@MattermostHQ).
+---
 
-## Contributing
+## ⚡ AWS S3 Storage Acceleration
 
-[![Small Image](https://img.shields.io/badge/Contribute%20with-Gitpod-908a85?logo=gitpod)](https://gitpod.io/#https://github.com/mattermost/mattermost)
+To accelerate file transfers between the Mattermost server (France) and S3 bucket (Singapore), configure one of the options below:
 
-Please see [CONTRIBUTING.md](./CONTRIBUTING.md).
-[Join the Mattermost Contributors server](https://community.mattermost.com/signup_user_complete/?id=codoy5s743rq5mk18i7u5ksz7e) to join community discussions about contributions, development, and more.
+### Option A: AWS S3 Transfer Acceleration (Recommended)
+This routes uploads through AWS's optimized edge locations directly over the AWS private backbone.
+
+```mermaid
+sequenceDiagram
+    participant User as Client Browser
+    participant MM as Mattermost Server (France)
+    participant Edge as AWS Edge Location (Europe)
+    participant S3 as AWS S3 Bucket (Singapore)
+
+    User->>MM: 1. Upload file (via TUS Protocol)
+    Note over MM: File written to local temp storage
+    MM->>Edge: 2. Connect to local AWS Edge (Low Latency ~10ms)
+    Edge->>S3: 3. Route PUT over AWS Backbone Network (Optimized Route)
+    S3-->>Edge: 4. Acknowledgment (200 OK)
+    Edge-->>MM: 5. Acknowledgment (200 OK)
+    MM-->>User: 6. File Info created (Upload Success)
+```
+
+**AWS Console Setup:**
+1. Open S3 properties for `artslab-collab-storage` bucket.
+2. Under **Transfer acceleration**, click **Enable** and save.
+3. Update `.env` to point to:
+   ```env
+   MM_FILESETTINGS_AMAZONS3ENDPOINT=s3-accelerate.amazonaws.com
+   ```
+
+### Option B: CloudFront CDN Proxy
+Set up a CloudFront distribution cache pointing to your S3 bucket. You **must** create an Origin Request Policy forwarding headers (`Host`, `Authorization`, `x-amz-content-sha256`, `x-amz-date`, `x-amz-storage-class`) to prevent `SignatureDoesNotMatch` S3 errors.
+
+---
+
+## 🔍 Debugging & Log Monitoring
+
+Use these utility commands to monitor container health and watch requests:
+
+| Task | Command |
+|---|---|
+| **Live HTTP request logger** | `./watch-requests.sh` |
+| **All staging logs** | `sudo docker compose -f docker-compose.staging.yml logs -f mattermost` |
+| **Errors & Warnings only** | `sudo docker compose -f docker-compose.staging.yml logs -f mattermost 2>&1 \| grep -i "error\\|warn\\|fail"` |
+| **Ping health check** | `curl -sf http://localhost:8065/api/v4/system/ping` |
+| **Reset Admin Password** | `docker exec -it mattermost-server /mattermost/bin/mmctl user reset-password admin@example.com --config /mattermost/config/config.json` |
+
+---
+
+## 🔒 Security Best Practices
+1. Ensure the staging/prod `POSTGRES_PASSWORD` is unique.
+2. Force HTTPS redirects in Nginx reverse proxies.
+3. Configure rate limiting and disable `login/email_only` in production environments.
