@@ -272,6 +272,15 @@ func (ch *Channels) syncPlugins() *model.AppError {
 		return model.NewAppError("SyncPlugins", "app.plugin.disabled.app_error", nil, "", http.StatusNotImplemented)
 	}
 
+	// Install plugins from the file store.
+	// Query S3/file store FIRST. If this fails (e.g. because CloudFront blocks directory listing),
+	// we return nil (log warning) and DO NOT delete the existing local plugins.
+	pluginSignaturePathMap, appErr := ch.getPluginsFromFolder()
+	if appErr != nil {
+		ch.srv.Log().Warn("Failed to list plugins from S3/file store. Skipping plugin synchronization to preserve local plugins.", mlog.Err(appErr))
+		return nil
+	}
+
 	availablePlugins, err := pluginsEnvironment.Available()
 	if err != nil {
 		return model.NewAppError("SyncPlugins", "app.plugin.sync.read_local_folder.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
@@ -292,12 +301,6 @@ func (ch *Channels) syncPlugins() *model.AppError {
 		}(plugin.Manifest.Id)
 	}
 	wg.Wait()
-
-	// Install plugins from the file store.
-	pluginSignaturePathMap, appErr := ch.getPluginsFromFolder()
-	if appErr != nil {
-		return appErr
-	}
 
 	if len(pluginSignaturePathMap) == 0 {
 		ch.srv.Log().Info("No plugins to sync from the file store")
