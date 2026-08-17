@@ -29,7 +29,7 @@ services:
       - "host.docker.internal:host-gateway"
     security_opt:
       - no-new-privileges:true
-    pids_limit: 200
+    pids_limit: 2000
     tmpfs:
       - /tmp
     volumes:
