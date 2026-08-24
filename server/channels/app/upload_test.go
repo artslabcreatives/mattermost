@@ -155,18 +155,27 @@ func TestUploadData(t *testing.T) {
 	require.NoError(t, err2)
 
 	t.Run("write error", func(t *testing.T) {
-		rd := &io.LimitedReader{
-			R: bytes.NewReader(data),
-			N: 1024 * 1024,
+		// Chunks are staged locally, so a file-store write error surfaces when
+		// the completed upload is flushed, not on the first chunk. Use a
+		// dedicated session so the flush failure doesn't advance the shared
+		// session's offset.
+		u := &model.UploadSession{
+			Id:        model.NewId(),
+			Type:      model.UploadTypeAttachment,
+			UserId:    th.BasicUser.Id,
+			ChannelId: th.BasicChannel.Id,
+			Filename:  "upload_write_error",
+			FileSize:  us.FileSize,
 		}
-
-		ok, appErr := th.App.FileExists(us.Path)
-		require.False(t, ok)
+		u, appErr := th.App.CreateUploadSession(th.Context, u)
 		require.Nil(t, appErr)
 
-		u := *us
 		u.Path = ""
-		info, appErr := th.App.UploadData(th.Context, &u, rd)
+		rd := &io.LimitedReader{
+			R: bytes.NewReader(data),
+			N: u.FileSize,
+		}
+		info, appErr := th.App.UploadData(th.Context, u, rd)
 		require.Nil(t, info)
 		require.NotNil(t, appErr)
 		require.NotEqual(t, "app.upload.upload_data.first_part_too_small.app_error", appErr.Id)
