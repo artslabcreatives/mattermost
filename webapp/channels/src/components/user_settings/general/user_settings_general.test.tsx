@@ -878,4 +878,46 @@ describe('components/user_settings/general/UserSettingsGeneral', () => {
 		expect(screen.getByRole('textbox', { name: regularAttribute.name })).toBeInTheDocument();
 		expect(screen.queryByText('This field can only be changed by an administrator.')).not.toBeInTheDocument();
 	});
+
+	test('should not allow editing email', () => {
+		const props = {
+			...requiredProps,
+			user: { ...user, email: 'user@example.com' },
+			activeSection: '',
+		};
+
+		renderWithContext(<UserSettingsGeneral {...props} />);
+		expect(screen.getByText('user@example.com')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /edit email/i })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'emailEdit' })).not.toBeInTheDocument();
+	});
+
+	test('should show mobile number section and allow saving mobile number', async () => {
+		const updateMe = jest.fn().mockResolvedValue({ data: true });
+		const props = {
+			...requiredProps,
+			actions: { ...requiredProps.actions, updateMe },
+			user: { ...user, props: { phone_number: '+1234567890' } },
+			activeSection: 'mobile_number',
+		};
+
+		renderWithContext(<UserSettingsGeneral {...props} />);
+		const input = screen.getByRole('textbox', { name: 'Mobile Number' });
+		expect(input).toBeInTheDocument();
+		expect(input).toHaveValue('+1234567890');
+
+		await userEvent.clear(input);
+		await userEvent.type(input, '+9876543210');
+
+		const saveButton = screen.getByRole('button', { name: 'Save' });
+		await userEvent.click(saveButton);
+
+		expect(updateMe).toHaveBeenCalledWith({
+			...props.user,
+			props: {
+				phone_number: '+9876543210',
+				mobile_number: '+9876543210',
+			},
+		});
+	});
 });

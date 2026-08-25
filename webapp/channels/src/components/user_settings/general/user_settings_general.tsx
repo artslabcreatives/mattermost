@@ -103,6 +103,22 @@ const holders = defineMessages({
 		id: 'user.settings.general.position',
 		defaultMessage: 'Position',
 	},
+	mobileNumber: {
+		id: 'user.settings.general.mobileNumber',
+		defaultMessage: 'Mobile Number',
+	},
+	emptyMobileNumber: {
+		id: 'user.settings.general.emptyMobileNumber',
+		defaultMessage: "Click 'Edit' to add your mobile number",
+	},
+	emptyMobileNumberMobile: {
+		id: 'user.settings.general.mobile.emptyMobileNumber',
+		defaultMessage: 'Click to add your mobile number',
+	},
+	mobileNumberExtra: {
+		id: 'user.settings.general.mobileNumberExtra',
+		defaultMessage: 'Use Mobile Number for your phone or mobile contact number. This will be shown in your profile and direct message info.',
+	},
 });
 
 export type SelectOption = {
@@ -185,6 +201,7 @@ type State = {
 	pictureError?: string | null;
 	serverError?: string;
 	emailError?: string;
+	phoneNumber: string;
 	customAttributeValues: Record<string, string | string[]>;
 }
 
@@ -561,291 +578,12 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 			sectionIsSaving: false,
 			showSpinner: false,
 			serverError: '',
+			phoneNumber: user.props?.phone_number || user.props?.mobile_number || user.props?.phone || user.props?.mobile || '',
 			customAttributeValues: user.custom_profile_attributes || {},
 		};
 	}
 
 	createEmailSection() {
-		const { formatMessage } = this.props.intl;
-
-		const active = this.props.activeSection === 'email';
-		let max = null;
-		if (active) {
-			const emailVerificationEnabled = this.props.requireEmailVerification;
-			const inputs = [];
-
-			let helpText = (
-				<FormattedMessage
-					id='user.settings.general.emailHelp1'
-					defaultMessage='Email is used for sign-in, notifications, and password reset. Email requires verification if changed.'
-				/>
-			);
-
-			if (!emailVerificationEnabled) {
-				helpText = (
-					<FormattedMessage
-						id='user.settings.general.emailHelp3'
-						defaultMessage='Email is used for sign-in, notifications, and password reset.'
-					/>
-				);
-			}
-
-			let submit = null;
-
-			if (this.props.user.auth_service === '') {
-				inputs.push(
-					<div key='currentEmailSetting'>
-						<div className='form-group'>
-							<span className='as-bs-label col-sm-5 control-label'>
-								<FormattedMessage
-									id='user.settings.general.currentEmail'
-									defaultMessage='Current Email'
-								/>
-							</span>
-							<div className='col-sm-7'>
-								<span className='as-bs-label control-label word-break--all text-left'>{this.state.originalEmail}</span>
-							</div>
-						</div>
-					</div>,
-				);
-
-				inputs.push(
-					<div key='emailSetting'>
-						<div className='form-group'>
-							<label
-								className='col-sm-5 control-label'
-								htmlFor='primaryEmail'
-							>
-								<FormattedMessage
-									id='user.settings.general.newEmail'
-									defaultMessage='New Email'
-								/>
-							</label>
-							<div className='col-sm-7'>
-								<Input
-									autoFocus={true}
-									id='primaryEmail'
-									name='primaryEmail'
-									type='email'
-									onChange={this.updateEmail}
-									maxLength={Constants.MAX_EMAIL_LENGTH}
-									value={this.state.email}
-									aria-label={formatMessage({ id: 'user.settings.general.newEmail', defaultMessage: 'New Email' })}
-									validate={(value) => {
-										if (value === '' || !isEmail(value as string)) {
-											return {
-												type: 'error',
-												value: formatMessage(holders.validEmail),
-											};
-										}
-										return undefined;
-									}}
-								/>
-							</div>
-						</div>
-					</div>,
-				);
-
-				inputs.push(
-					<div key='confirmEmailSetting'>
-						<div className='form-group'>
-							<label
-								className='col-sm-5 control-label'
-								htmlFor='confirmEmail'
-							>
-								<FormattedMessage
-									id='user.settings.general.confirmEmail'
-									defaultMessage='Confirm Email'
-								/>
-							</label>
-							<div className='col-sm-7'>
-								<Input
-									id='confirmEmail'
-									name='confirmEmail'
-									type='email'
-									onChange={this.updateConfirmEmail}
-									maxLength={Constants.MAX_EMAIL_LENGTH}
-									value={this.state.confirmEmail}
-									aria-label={formatMessage({ id: 'user.settings.general.confirmEmail', defaultMessage: 'Confirm Email' })}
-									validate={(value) => {
-										if (this.state.email !== value) {
-											return {
-												type: 'error',
-												value: formatMessage(holders.emailMatch),
-											};
-										}
-										return undefined;
-									}}
-								/>
-							</div>
-						</div>
-					</div>,
-				);
-
-				inputs.push(
-					<div key='currentPassword'>
-						<div className='form-group'>
-							<label
-								className='col-sm-5 control-label'
-								htmlFor='currentPassword'
-							>
-								<FormattedMessage
-									id='user.settings.general.currentPassword'
-									defaultMessage='Current Password'
-								/>
-							</label>
-							<div className='col-sm-7'>
-								<Input
-									id='currentPassword'
-									name='currentPassword'
-									type='password'
-									onChange={this.updateCurrentPassword}
-									value={this.state.currentPassword}
-									aria-label={formatMessage({ id: 'user.settings.general.currentPassword', defaultMessage: 'Current Password' })}
-									validate={(value) => {
-										if (value === '') {
-											return {
-												type: 'error',
-												value: formatMessage(holders.emptyPassword),
-											};
-										}
-										return undefined;
-									}}
-								/>
-							</div>
-						</div>
-						{helpText}
-					</div>,
-				);
-
-				submit = this.submitEmail;
-			} else if (this.props.user.auth_service === Constants.GITLAB_SERVICE) {
-				inputs.push(
-					<div
-						key='oauthEmailInfo'
-						className='form-group'
-					>
-						<div className='setting-list__hint pb-3'>
-							<FormattedMessage
-								id='user.settings.general.emailGitlabCantUpdate'
-								defaultMessage='Login occurs through GitLab. Email cannot be updated. Email address used for notifications is {email}.'
-								values={{
-									email: this.state.originalEmail,
-								}}
-							/>
-						</div>
-						{helpText}
-					</div>,
-				);
-			} else if (this.props.user.auth_service === Constants.GOOGLE_SERVICE) {
-				inputs.push(
-					<div
-						key='oauthEmailInfo'
-						className='form-group'
-					>
-						<div className='setting-list__hint pb-3'>
-							<FormattedMessage
-								id='user.settings.general.emailGoogleCantUpdate'
-								defaultMessage='Login occurs through Google. Email cannot be updated. Email address used for notifications is {email}.'
-								values={{
-									email: this.state.originalEmail,
-								}}
-							/>
-						</div>
-						{helpText}
-					</div>,
-				);
-			} else if (this.props.user.auth_service === Constants.OFFICE365_SERVICE) {
-				inputs.push(
-					<div
-						key='oauthEmailInfo'
-						className='form-group'
-					>
-						<div className='setting-list__hint pb-3'>
-							<FormattedMessage
-								id='user.settings.general.emailOffice365CantUpdate'
-								defaultMessage='Login occurs through Entra ID. Email cannot be updated. Email address used for notifications is {email}.'
-								values={{
-									email: this.state.originalEmail,
-								}}
-							/>
-						</div>
-						{helpText}
-					</div>,
-				);
-			} else if (this.props.user.auth_service === Constants.OPENID_SERVICE) {
-				inputs.push(
-					<div
-						key='oauthEmailInfo'
-						className='form-group'
-					>
-						<div className='setting-list__hint pb-3'>
-							<FormattedMessage
-								id='user.settings.general.emailOpenIdCantUpdate'
-								defaultMessage='Login occurs through OpenID Connect. Email cannot be updated. Email address used for notifications is {email}.'
-								values={{
-									email: this.state.originalEmail,
-								}}
-							/>
-						</div>
-						{helpText}
-					</div>,
-				);
-			} else if (this.props.user.auth_service === Constants.LDAP_SERVICE) {
-				inputs.push(
-					<div
-						key='oauthEmailInfo'
-						className='pb-2'
-					>
-						<div className='setting-list__hint pb-3'>
-							<FormattedMessage
-								id='user.settings.general.emailLdapCantUpdate'
-								defaultMessage='Login occurs through AD/LDAP. Email cannot be updated. Email address used for notifications is {email}.'
-								values={{
-									email: this.state.originalEmail,
-								}}
-							/>
-						</div>
-					</div>,
-				);
-			} else if (this.props.user.auth_service === Constants.SAML_SERVICE) {
-				inputs.push(
-					<div
-						key='oauthEmailInfo'
-						className='pb-2'
-					>
-						<div className='setting-list__hint pb-3'>
-							<FormattedMessage
-								id='user.settings.general.emailSamlCantUpdate'
-								defaultMessage='Login occurs through SAML. Email cannot be updated. Email address used for notifications is {email}.'
-								values={{
-									email: this.state.originalEmail,
-								}}
-							/>
-						</div>
-						{helpText}
-					</div>,
-				);
-			}
-
-			max = (
-				<SettingItemMax
-					title={
-						<FormattedMessage
-							id='user.settings.general.email'
-							defaultMessage='Email'
-						/>
-					}
-					inputs={inputs}
-					submit={submit}
-					saving={this.state.sectionIsSaving}
-					serverError={this.state.serverError}
-					updateSection={this.updateSection}
-					isValid={this.isEmailValid()}
-				/>
-			);
-		}
-
 		let describe: JSX.Element | string = '';
 		if (this.props.user.auth_service === '') {
 			describe = this.props.user.email;
@@ -903,7 +641,7 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 
 		return (
 			<SettingItem
-				active={active}
+				active={false}
 				areAllSectionsInactive={this.props.activeSection === ''}
 				title={
 					<FormattedMessage
@@ -914,7 +652,8 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 				describe={describe}
 				section={'email'}
 				updateSection={this.updateSection}
-				max={max}
+				isDisabled={true}
+				max={null}
 			/>
 		);
 	}
@@ -1418,6 +1157,127 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 		);
 	};
 
+	updatePhoneNumber = (e: React.ChangeEvent<HTMLInputElement>) => {
+		this.setState({ phoneNumber: e.target.value });
+	};
+
+	submitPhoneNumber = () => {
+		const user = Object.assign({}, this.props.user);
+		const phoneNumber = this.state.phoneNumber.trim();
+		const currentPhone = user.props?.phone_number || user.props?.mobile_number || user.props?.phone || user.props?.mobile || '';
+
+		if (currentPhone === phoneNumber) {
+			this.updateSection('');
+			return;
+		}
+
+		user.props = {
+			...user.props,
+			phone_number: phoneNumber,
+			mobile_number: phoneNumber,
+		};
+
+		this.submitUser(user, false);
+	};
+
+	createMobileNumberSection = () => {
+		const user = this.props.user;
+		const { formatMessage } = this.props.intl;
+
+		const active = this.props.activeSection === 'mobile_number' || this.props.activeSection === 'mobile';
+		let max = null;
+		if (active) {
+			const inputs = [];
+
+			let mobileNumberLabel: JSX.Element | string = (
+				<FormattedMessage
+					id='user.settings.general.mobileNumber'
+					defaultMessage='Mobile Number'
+				/>
+			);
+			if (this.props.isMobileView) {
+				mobileNumberLabel = '';
+			}
+
+			inputs.push(
+				<div
+					key='mobileNumberSetting'
+					className='form-group'
+				>
+					<label className='col-sm-5 control-label'>{mobileNumberLabel}</label>
+					<div className='col-sm-7'>
+						<Input
+							id='mobile_number'
+							name='mobile_number'
+							autoFocus={true}
+							type='tel'
+							onChange={this.updatePhoneNumber}
+							value={this.state.phoneNumber}
+							maxLength={64}
+							autoCapitalize='off'
+							onFocus={Utils.moveCursorToEnd}
+							aria-label={formatMessage(holders.mobileNumber)}
+						/>
+					</div>
+				</div>,
+			);
+
+			const extraInfo = (
+				<span>
+					<FormattedMessage
+						id='user.settings.general.mobileNumberExtra'
+						defaultMessage='Use Mobile Number to add your contact number. This will be shown in your profile and direct message info.'
+					/>
+				</span>
+			);
+
+			max = (
+				<SettingItemMax
+					title={formatMessage(holders.mobileNumber)}
+					inputs={inputs}
+					submit={this.submitPhoneNumber}
+					saving={this.state.sectionIsSaving}
+					serverError={this.state.serverError}
+					updateSection={this.updateSection}
+					extraInfo={extraInfo}
+				/>
+			);
+		}
+
+		const phoneVal = user.props?.phone_number || user.props?.mobile_number || user.props?.phone || user.props?.mobile;
+		let describe: JSX.Element | string = '';
+		if (phoneVal) {
+			describe = phoneVal;
+		} else {
+			describe = (
+				<FormattedMessage
+					id='user.settings.general.emptyMobileNumber'
+					defaultMessage="Click 'Edit' to add your mobile number"
+				/>
+			);
+			if (this.props.isMobileView) {
+				describe = (
+					<FormattedMessage
+						id='user.settings.general.mobile.emptyMobileNumber'
+						defaultMessage='Click to add your mobile number'
+					/>
+				);
+			}
+		}
+
+		return (
+			<SettingItem
+				active={active}
+				areAllSectionsInactive={this.props.activeSection === ''}
+				title={formatMessage(holders.mobileNumber)}
+				describe={describe}
+				section={'mobile_number'}
+				updateSection={this.updateSection}
+				max={max}
+			/>
+		);
+	};
+
 	createCustomAttributeSection = () => {
 		const { formatMessage } = this.props.intl;
 		if (this.props.customProfileAttributeFields == null) {
@@ -1779,6 +1639,7 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 		const usernameSection = this.createUsernameSection();
 		const positionSection = this.createPositionSection();
 		const emailSection = this.createEmailSection();
+		const mobileNumberSection = this.createMobileNumberSection();
 		const customAttributeSection = this.createCustomAttributeSection();
 		const pictureSection = this.createPictureSection();
 
@@ -1818,6 +1679,8 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 					{positionSection}
 					<div className='divider-light' />
 					{emailSection}
+					<div className='divider-light' />
+					{mobileNumberSection}
 					<div className='divider-light' />
 					{customAttributeSection}
 					{pictureSection}

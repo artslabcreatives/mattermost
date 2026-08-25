@@ -258,4 +258,31 @@ describe('channel_info_rhs/about_area_dm', () => {
 
 		expect(screen.queryByText('my channel header')).not.toBeInTheDocument();
 	});
+
+	test('should display email and mobile number when present', () => {
+		const props = {
+			...defaultProps,
+			dmUser: {
+				...defaultProps.dmUser,
+				user: {
+					...defaultProps.dmUser.user,
+					email: 'test@example.com',
+					props: {
+						phone_number: '+1234567890',
+					},
+				},
+			},
+		};
+		renderWithContext(
+			<AboutAreaDM
+				{...props}
+			/>,
+			initialState,
+		);
+
+		expect(screen.getByText('test@example.com')).toBeInTheDocument();
+		expect(screen.getByText('test@example.com').closest('a')).toHaveAttribute('href', 'mailto:test@example.com');
+		expect(screen.getByText('+1234567890')).toBeInTheDocument();
+		expect(screen.getByText('+1234567890').closest('a')).toHaveAttribute('href', 'tel:+1234567890');
+	});
 });

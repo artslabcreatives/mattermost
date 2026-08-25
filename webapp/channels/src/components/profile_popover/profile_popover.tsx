@@ -36,6 +36,7 @@ import ProfilePopoverLastActive from './profile_popover_last_active';
 import ProfilePopoverName from './profile_popover_name';
 import ProfilePopoverOtherUserRow from './profile_popover_other_user_row';
 import ProfilePopoverOverrideDisclaimer from './profile_popover_override_disclaimer';
+import ProfilePopoverPhone from './profile_popover_phone';
 import ProfilePopoverSelfUserRow from './profile_popover_self_user_row';
 import ProfilePopoverTimezone from './profile_popover_timezone';
 import ProfilePopoverTitle from './profile_popover_title';
@@ -188,6 +189,11 @@ const ProfilePopover = ({
 					haveOverrideProp={haveOverrideProp}
 					isBot={user.is_bot}
 				/>
+				{!user.is_bot && !haveOverrideProp && (
+					<ProfilePopoverPhone
+						userProfile={user}
+					/>
+				)}
 				{pluginItemsVisible && (
 					<div className='user-profile-popover-pluggables'>
 						<Pluggable
