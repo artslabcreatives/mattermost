@@ -8077,6 +8077,10 @@
     "translation": "Failed to update the upload session."
   },
   {
+    "id": "app.upload.upload_data.write_file.app_error",
+    "translation": "Unable to write the uploaded data to disk."
+  },
+  {
     "id": "app.usage.get_storage_usage.app_error",
     "translation": "Failed to get storage usage."
   },

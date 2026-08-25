@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -21,6 +22,58 @@ import (
 )
 
 const minFirstPartSize = 5 * 1024 * 1024 // 5MB
+
+// uploadStagingPath returns the local path where an upload session's chunks
+// are accumulated before the completed file is flushed to the file store.
+func (a *App) uploadStagingPath(us *model.UploadSession) string {
+	dir := *a.Config().FileSettings.Directory
+	if dir == "" {
+		dir = os.TempDir()
+	}
+	return filepath.Join(dir, ".upload-staging", filepath.Base(us.Id))
+}
+
+// writeUploadChunkLocal appends one chunk to the staging file, verifying that
+// the bytes already staged match the session's FileOffset so a lost or
+// truncated staging file fails loudly instead of producing a corrupt upload.
+func writeUploadChunkLocal(stagingPath string, r io.Reader, offset int64) (int64, *model.AppError) {
+	if mkdirErr := os.MkdirAll(filepath.Dir(stagingPath), 0700); mkdirErr != nil {
+		return 0, model.NewAppError("UploadData", "app.upload.upload_data.write_file.app_error", nil, "", http.StatusInternalServerError).Wrap(mkdirErr)
+	}
+
+	flags := os.O_CREATE | os.O_WRONLY
+	if offset == 0 {
+		flags |= os.O_TRUNC
+	}
+	f, openErr := os.OpenFile(stagingPath, flags, 0600)
+	if openErr != nil {
+		return 0, model.NewAppError("UploadData", "app.upload.upload_data.write_file.app_error", nil, "", http.StatusInternalServerError).Wrap(openErr)
+	}
+
+	if st, statErr := f.Stat(); statErr != nil {
+		f.Close()
+		return 0, model.NewAppError("UploadData", "app.upload.upload_data.write_file.app_error", nil, "", http.StatusInternalServerError).Wrap(statErr)
+	} else if st.Size() != offset {
+		f.Close()
+		return 0, model.NewAppError("UploadData", "app.upload.upload_data.write_file.app_error", nil,
+			"staged data does not match session offset; the upload must be restarted", http.StatusInternalServerError)
+	}
+
+	if _, seekErr := f.Seek(offset, io.SeekStart); seekErr != nil {
+		f.Close()
+		return 0, model.NewAppError("UploadData", "app.upload.upload_data.write_file.app_error", nil, "", http.StatusInternalServerError).Wrap(seekErr)
+	}
+
+	written, copyErr := io.Copy(f, r)
+	closeErr := f.Close()
+	if copyErr != nil {
+		return written, model.NewAppError("UploadData", "app.upload.upload_data.write_file.app_error", nil, "", http.StatusInternalServerError).Wrap(copyErr)
+	}
+	if closeErr != nil {
+		return written, model.NewAppError("UploadData", "app.upload.upload_data.write_file.app_error", nil, "", http.StatusInternalServerError).Wrap(closeErr)
+	}
+	return written, nil
+}
 
 func (a *App) genFileInfoFromReader(name string, file io.ReadSeeker, size int64) (*model.FileInfo, error) {
 	ext := strings.ToLower(filepath.Ext(name))
@@ -232,17 +285,25 @@ func (a *App) UploadData(rctx request.CTX, us *model.UploadSession, rd io.Reader
 	}
 	var err *model.AppError
 	var written int64
-	if us.FileOffset == 0 {
-		// new upload
-		written, err = a.WriteFile(lr, uploadPath)
+
+	// Chunks are staged on local disk and flushed to the file store in a
+	// single write once the last chunk arrives. Appending chunks directly to
+	// S3 costs several sequential round trips per chunk (HEAD gate, part PUT,
+	// multipart compose), each serialized with the client's next chunk, which
+	// made chunked uploads take 5-7s per 5 MiB regardless of client bandwidth.
+	// The staging file lives under FileSettings.Directory (a persistent volume)
+	// so in-progress sessions survive restarts. Single app node assumed.
+	stagingPath := a.uploadStagingPath(us)
+	if us.FileOffset < us.FileSize {
+		written, err = writeUploadChunkLocal(stagingPath, lr, us.FileOffset)
 		if err != nil && written == 0 {
 			return nil, err
 		}
-		if written < minFirstPartSize && written != us.FileSize {
-			if fileErr := a.RemoveFile(uploadPath); fileErr != nil {
+		if us.FileOffset == 0 && written < minFirstPartSize && written != us.FileSize {
+			if fileErr := os.Remove(stagingPath); fileErr != nil {
 				rctx.Logger().Warn("Failed to remove initial upload chunk that was too small",
 					mlog.Err(fileErr),
-					mlog.String("upload_path", uploadPath),
+					mlog.String("staging_path", stagingPath),
 					mlog.String("upload_id", us.Id),
 					mlog.String("filename", us.Filename),
 					mlog.Int("chunk_size", int(written)),
@@ -256,9 +317,6 @@ func (a *App) UploadData(rctx request.CTX, us *model.UploadSession, rd io.Reader
 			return nil, model.NewAppError("UploadData", "app.upload.upload_data.first_part_too_small.app_error",
 				map[string]any{"Size": minFirstPartSize}, errStr, http.StatusBadRequest)
 		}
-	} else if us.FileOffset < us.FileSize {
-		// resume upload
-		written, err = a.AppendFile(lr, uploadPath)
 	}
 	if written > 0 {
 		us.FileOffset += written
@@ -275,13 +333,23 @@ func (a *App) UploadData(rctx request.CTX, us *model.UploadSession, rd io.Reader
 		return nil, nil
 	}
 
-	// upload is done, create FileInfo
-	file, err := a.FileReader(uploadPath)
-	if err != nil {
-		return nil, model.NewAppError("UploadData", "app.upload.upload_data.read_file.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	// upload is done: flush the staged file to the file store in one write.
+	// WriteFile gets a known object size from the *os.File, so the S3 backend
+	// can do a proper concurrent multipart upload.
+	file, openErr := os.Open(stagingPath)
+	if openErr != nil {
+		return nil, model.NewAppError("UploadData", "app.upload.upload_data.read_file.app_error", nil, "", http.StatusInternalServerError).Wrap(openErr)
+	}
+	if _, appErr := a.WriteFile(file, uploadPath); appErr != nil {
+		file.Close()
+		return nil, appErr
 	}
 
-	// generate file info
+	// generate file info from the local copy (avoids re-downloading from S3)
+	if _, seekErr := file.Seek(0, io.SeekStart); seekErr != nil {
+		file.Close()
+		return nil, model.NewAppError("UploadData", "app.upload.upload_data.read_file.app_error", nil, "", http.StatusInternalServerError).Wrap(seekErr)
+	}
 	info, genErr := a.genFileInfoFromReader(us.Filename, file, us.FileSize)
 	file.Close()
 	if genErr != nil {
@@ -311,9 +379,9 @@ func (a *App) UploadData(rctx request.CTX, us *model.UploadSession, rd io.Reader
 		nameWithoutExtension := info.Name[:strings.LastIndex(info.Name, ".")]
 		info.PreviewPath = filepath.Dir(info.Path) + "/" + nameWithoutExtension + "_preview." + getFileExtFromMimeType(info.MimeType)
 		info.ThumbnailPath = filepath.Dir(info.Path) + "/" + nameWithoutExtension + "_thumb." + getFileExtFromMimeType(info.MimeType)
-		imgData, fileErr := a.ReadFile(uploadPath)
-		if fileErr != nil {
-			return nil, fileErr
+		imgData, imgErr := os.ReadFile(stagingPath)
+		if imgErr != nil {
+			return nil, model.NewAppError("UploadData", "app.upload.upload_data.read_file.app_error", nil, "", http.StatusInternalServerError).Wrap(imgErr)
 		}
 		a.HandleImages(rctx, []string{info.PreviewPath}, []string{info.ThumbnailPath}, [][]byte{imgData})
 	}
@@ -333,6 +401,11 @@ func (a *App) UploadData(rctx request.CTX, us *model.UploadSession, rd io.Reader
 		default:
 			return nil, model.NewAppError("uploadData", "app.upload.upload_data.save.app_error", nil, "", http.StatusInternalServerError).Wrap(storeErr)
 		}
+	}
+
+	if rmErr := os.Remove(stagingPath); rmErr != nil && !os.IsNotExist(rmErr) {
+		rctx.Logger().Warn("Failed to remove upload staging file",
+			mlog.Err(rmErr), mlog.String("staging_path", stagingPath))
 	}
 
 	if *a.Config().FileSettings.ExtractContent {
