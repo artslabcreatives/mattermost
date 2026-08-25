@@ -14,6 +14,8 @@ import ProfilePicture from 'components/profile_picture';
 import BotTag from 'components/widgets/tag/bot_tag';
 import GuestTag from 'components/widgets/tag/guest_tag';
 
+import * as Utils from 'utils/utils';
+
 import type { DMUser } from './channel_info_rhs';
 import EditableArea from './components/editable_area';
 import LineLimiter from './components/linelimiter';
@@ -68,6 +70,40 @@ const UserPosition = styled.div`
     }
 `;
 
+const UserContactInfo = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+`;
+
+const ContactItem = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 20px;
+    color: rgba(var(--center-channel-color-rgb), 0.75);
+
+    i {
+        font-size: 16px;
+        color: rgba(var(--center-channel-color-rgb), 0.56);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    a {
+        color: var(--link-color);
+        text-decoration: none;
+        word-break: break-all;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+`;
+
 const ChannelId = styled.div`
     margin-bottom: 12px;
     font-size: 11px;
@@ -86,6 +122,9 @@ interface Props {
 
 const AboutAreaDM = ({ channel, dmUser, actions }: Props) => {
 	const { formatMessage } = useIntl();
+
+	const email = dmUser.user.is_bot ? '' : Utils.getEmail(dmUser.user);
+	const phoneNumber = dmUser.user.is_bot ? '' : (dmUser.user.props?.phone_number || dmUser.user.props?.mobile_number || dmUser.user.props?.phone || dmUser.user.props?.mobile || (dmUser.user.custom_profile_attributes && Object.values(dmUser.user.custom_profile_attributes).find((v) => typeof v === 'string' && v.trim().length > 0) as string) || '');
 
 	return (
 		<>
@@ -112,6 +151,37 @@ const AboutAreaDM = ({ channel, dmUser, actions }: Props) => {
 					</UserPosition>
 				</UserInfo>
 			</UserInfoContainer>
+
+			{(email || phoneNumber) && !dmUser.user.is_bot && (
+				<UserContactInfo>
+					{email && (
+						<ContactItem title={email}>
+							<i
+								className='icon icon-email-outline'
+								aria-hidden='true'
+							/>
+							<a
+								href={`mailto:${email}`}
+								target='_blank'
+								rel='noopener noreferrer'
+							>
+								{email}
+							</a>
+						</ContactItem>
+					)}
+					{phoneNumber && (
+						<ContactItem title={phoneNumber}>
+							<i
+								className='icon icon-phone-outline'
+								aria-hidden='true'
+							/>
+							<a href={`tel:${phoneNumber}`}>
+								{phoneNumber}
+							</a>
+						</ContactItem>
+					)}
+				</UserContactInfo>
+			)}
 
 			{!dmUser.user.is_bot && (
 				<ChannelHeader>

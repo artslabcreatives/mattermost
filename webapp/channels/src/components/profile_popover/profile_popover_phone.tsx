@@ -7,12 +7,13 @@ import type { UserPropertyField } from '@mattermost/types/properties';
 import type { UserProfile } from '@mattermost/types/users';
 
 type Props = {
-	attribute: UserPropertyField;
+	attribute?: UserPropertyField;
 	userProfile: UserProfile;
+	phone?: string;
 }
 
-const ProfilePopoverPhone = ({ attribute, userProfile }: Props) => {
-	const phone = userProfile.custom_profile_attributes?.[attribute.id] as string;
+const ProfilePopoverPhone = ({ attribute, userProfile, phone: phoneProp }: Props) => {
+	const phone = phoneProp || (attribute ? (userProfile.custom_profile_attributes?.[attribute.id] as string) : (userProfile.props?.phone_number || userProfile.props?.mobile_number || userProfile.props?.phone || userProfile.props?.mobile));
 
 	if (!phone) {
 		return null;
