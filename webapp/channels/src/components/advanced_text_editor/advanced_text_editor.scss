@@ -280,3 +280,8 @@
         accent-color: var(--button-bg);
     }
 }
+
+// Auto-send opt-in shown under the file strip while uploads are running
+.AdvancedTextEditor__auto-send {
+    padding: 4px 16px 8px;
+}
