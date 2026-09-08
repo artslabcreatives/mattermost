@@ -40,6 +40,10 @@ Object.defineProperty(window, 'location', {
 // use node-fetch despite some mismatched parameters.
 globalThis.fetch = nodeFetch as unknown as typeof fetch;
 
+// jsdom doesn't provide TextEncoder/TextDecoder, which @uppy/aws-s3 needs at import time
+globalThis.TextEncoder = util.TextEncoder as unknown as typeof globalThis.TextEncoder;
+globalThis.TextDecoder = util.TextDecoder as unknown as typeof globalThis.TextDecoder;
+
 const supportedCommands = ['copy', 'insertText'];
 
 Object.defineProperty(document, 'queryCommandSupported', {

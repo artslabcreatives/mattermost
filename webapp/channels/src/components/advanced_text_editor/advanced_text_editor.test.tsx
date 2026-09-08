@@ -5,13 +5,14 @@ import React from 'react';
 
 import Permissions from 'mattermost-redux/constants/permissions';
 
+import { onSubmit } from 'actions/views/create_comment';
 import { removeDraft, updateDraft } from 'actions/views/drafts';
 
 import type { FileUpload } from 'components/file_upload/file_upload';
 import type Textbox from 'components/textbox/textbox';
 
 import mergeObjects from 'packages/mattermost-redux/test/merge_objects';
-import { renderWithContext, userEvent, screen } from 'tests/react_testing_utils';
+import { renderWithContext, userEvent, screen, waitFor } from 'tests/react_testing_utils';
 import Constants, { Locations, StoragePrefixes } from 'utils/constants';
 import { TestHelper } from 'utils/test_helper';
 
@@ -25,6 +26,42 @@ jest.mock('actions/views/drafts', () => ({
 	updateDraft: jest.fn((...args) => ({ type: 'MOCK_UPDATE_DRAFT', args })),
 	removeDraft: jest.fn((...args) => ({ type: 'MOCK_REMOVE_DRAFT', args })),
 }));
+
+jest.mock('actions/views/create_comment', () => ({
+	...jest.requireActual('actions/views/create_comment'),
+	onSubmit: jest.fn(() => () => Promise.resolve({ data: true })),
+}));
+
+// Replace FileUpload with a stub exposing buttons that fire the same
+// onFileUpload callback the real component calls when an upload finishes
+// (with file infos) or when it ends without any file making it (empty list).
+jest.mock('components/file_upload', () => {
+	const react = jest.requireActual('react');
+	const MockFileUpload = react.forwardRef((props: any, ref: any) => {
+		react.useImperativeHandle(ref, () => ({
+			cancelUpload: jest.fn(),
+			retryUpload: jest.fn(),
+		}));
+		return react.createElement(
+			react.Fragment,
+			null,
+			react.createElement('button', {
+				'data-testid': 'mockFinishUpload',
+				onClick: () => props.onFileUpload(
+					[{ id: 'generated_file_id', name: 'file.txt', extension: 'txt', size: 10, create_at: 1 }],
+					['clientid1'],
+					props.channelId,
+					props.rootId,
+				),
+			}),
+			react.createElement('button', {
+				'data-testid': 'mockEndUploadWithoutFiles',
+				onClick: () => props.onFileUpload([], ['clientid1'], props.channelId, props.rootId),
+			}),
+		);
+	});
+	return { __esModule: true, default: MockFileUpload };
+});
 
 jest.mock('utils/exec_commands.ts', () => ({
 	focusAndInsertText: (element: HTMLElement, text: string) => {
@@ -44,6 +81,7 @@ jest.mock('utils/exec_commands.ts', () => ({
 
 const mockedRemoveDraft = jest.mocked(removeDraft);
 const mockedUpdateDraft = jest.mocked(updateDraft);
+const mockedOnSubmit = jest.mocked(onSubmit);
 
 const currentUserId = 'current_user_id';
 const channelId = 'current_channel_id';
@@ -613,6 +651,90 @@ describe('components/avanced_text_editor/advanced_text_editor', () => {
 			// The caret should now be after the emoji
 			expect(textbox.selectionStart).toEqual(12);
 			expect(textbox.selectionEnd).toEqual(textbox.selectionEnd);
+		});
+	});
+
+	describe('auto-send on upload complete', () => {
+		const autoSendCheckboxName = /send automatically when upload completes/i;
+
+		const stateWithDraft = (draft: Partial<PostDraft>) => mergeObjects(initialState, {
+			storage: {
+				storage: {
+					[StoragePrefixes.DRAFT + channelId]: {
+						value: TestHelper.getPostDraftMock(draft),
+					},
+				},
+			},
+		});
+
+		it('should show the auto-send checkbox only while uploads are in progress', () => {
+			renderWithContext(
+				<AdvancedTextEditor {...baseProps} />,
+				stateWithDraft({
+					message: 'hello',
+					uploadsInProgress: ['clientid1'],
+				}),
+			);
+
+			expect(screen.getByRole('checkbox', { name: autoSendCheckboxName })).toBeInTheDocument();
+		});
+
+		it('should not show the auto-send checkbox without uploads in progress', () => {
+			renderWithContext(
+				<AdvancedTextEditor {...baseProps} />,
+				initialState,
+			);
+
+			expect(screen.queryByRole('checkbox', { name: autoSendCheckboxName })).not.toBeInTheDocument();
+		});
+
+		it('should submit automatically when the last upload finishes and the checkbox is checked', async () => {
+			renderWithContext(
+				<AdvancedTextEditor {...baseProps} />,
+				stateWithDraft({
+					message: 'hello',
+					uploadsInProgress: ['clientid1'],
+				}),
+			);
+
+			await userEvent.click(screen.getByRole('checkbox', { name: autoSendCheckboxName }));
+			await userEvent.click(screen.getByTestId('mockFinishUpload'));
+
+			await waitFor(() => expect(mockedOnSubmit).toHaveBeenCalled());
+		});
+
+		it('should not submit automatically when the checkbox is unchecked', async () => {
+			renderWithContext(
+				<AdvancedTextEditor {...baseProps} />,
+				stateWithDraft({
+					message: 'hello',
+					uploadsInProgress: ['clientid1'],
+				}),
+			);
+
+			await userEvent.click(screen.getByTestId('mockFinishUpload'));
+
+			await waitFor(() => expect(screen.queryByRole('checkbox', { name: autoSendCheckboxName })).not.toBeInTheDocument());
+			expect(mockedOnSubmit).not.toHaveBeenCalled();
+		});
+
+		it('should not submit automatically when the uploads end without any finished file', async () => {
+			renderWithContext(
+				<AdvancedTextEditor {...baseProps} />,
+				stateWithDraft({
+					message: 'hello',
+					uploadsInProgress: ['clientid1'],
+				}),
+			);
+
+			await userEvent.click(screen.getByRole('checkbox', { name: autoSendCheckboxName }));
+			await userEvent.click(screen.getByTestId('mockEndUploadWithoutFiles'));
+
+			await waitFor(() => expect(screen.queryByRole('checkbox', { name: autoSendCheckboxName })).not.toBeInTheDocument());
+			expect(mockedOnSubmit).not.toHaveBeenCalled();
+
+			// The typed message must survive
+			expect(screen.getByPlaceholderText('Write to Test Channel')).toHaveValue('hello');
 		});
 	});
 });

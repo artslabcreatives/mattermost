@@ -236,6 +236,7 @@ const AdvancedTextEditor = ({
 	const [isMessageLong, setIsMessageLong] = useState(false);
 	const [renderScrollbar, setRenderScrollbar] = useState(false);
 	const [keepEditorInFocus, setKeepEditorInFocus] = useState(false);
+	const [autoSendOnUploadComplete, setAutoSendOnUploadComplete] = useState(false);
 
 	const readOnlyChannel = !canPost;
 	const hasDraftMessage = Boolean(draft.message);
@@ -638,6 +639,9 @@ const AdvancedTextEditor = ({
 
 		setDraft(draftOnOpen);
 
+		// A pending auto-send only applies to the channel/thread it was armed in
+		setAutoSendOnUploadComplete(false);
+
 		return () => {
 			if (draftOnOpen !== draftRef.current) {
 				handleDraftChange(draftRef.current, { instant: true, show: true });
@@ -647,6 +651,39 @@ const AdvancedTextEditor = ({
 
 	const hasUploadedAttachments = draft.fileInfos.length > 0;
 	const isUploading = draft.uploadsInProgress.length > 0;
+
+	const handleToggleAutoSend = useCallback(() => {
+		setAutoSendOnUploadComplete((prev) => !prev);
+	}, []);
+
+	// An upload failure must never trigger an automatic send
+	useEffect(() => {
+		if (serverError) {
+			setAutoSendOnUploadComplete(false);
+		}
+	}, [serverError]);
+
+	// When the user opted in, send the message as soon as every upload has finished.
+	// Failed uploads stay in uploadsInProgress, so this never fires while a file is
+	// in a failed state.
+	useEffect(() => {
+		if (!autoSendOnUploadComplete || isUploading || isFilesPreviewLoading) {
+			return;
+		}
+
+		// Uploads are done — consume the opt-in either way so it can't fire twice
+		// or linger after the user cleared the attachments.
+		setAutoSendOnUploadComplete(false);
+
+		// Only send if at least one file actually finished uploading — if the
+		// user cancelled every upload, keep the draft instead of auto-sending
+		// a bare message.
+		if (serverError || draft.fileInfos.length === 0) {
+			return;
+		}
+
+		handleSubmitWithErrorHandling();
+	}, [autoSendOnUploadComplete, isUploading, isFilesPreviewLoading, serverError, draft, handleSubmitWithErrorHandling]);
 	const hasMessageContent = Boolean(draft.message.trim().length);
 	const shouldBlockForPersistentNotifications = !isValidPersistentNotifications && hasMessageContent;
 	const disableSendButton = Boolean(
@@ -879,6 +916,20 @@ const AdvancedTextEditor = ({
 							isInEditMode={isInEditMode}
 						/>
 						{attachmentPreview}
+						{!isInEditMode && isUploading && (
+							<label className='AdvancedTextEditor__send-to-channel AdvancedTextEditor__auto-send'>
+								<input
+									type='checkbox'
+									className='AdvancedTextEditor__send-to-channel-checkbox'
+									checked={autoSendOnUploadComplete}
+									onChange={handleToggleAutoSend}
+								/>
+								<FormattedMessage
+									id='advanced_create_post.sendOnUploadComplete'
+									defaultMessage='Send automatically when upload completes'
+								/>
+							</label>
+						)}
 						{!isDisabled && (showFormattingBar || showPreview) && (
 							<TexteditorActions
 								placement='top'

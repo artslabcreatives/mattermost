@@ -37,7 +37,7 @@ const config = {
         ['jest-junit', {outputDirectory: 'build', outputName: 'test-results.xml'}],
     ],
     transformIgnorePatterns: [
-        'node_modules/(?!react-native|react-router|pdfjs-dist|p-queue|p-timeout|@mattermost/compass-icons|cidr-regex|ip-regex|serialize-error)',
+        'node_modules/(?!react-native|react-router|pdfjs-dist|p-queue|p-timeout|@mattermost/compass-icons|cidr-regex|ip-regex|serialize-error|@uppy|nanoid|exifr|preact|p-retry|is-network-error)',
     ],
     transform: {
         '^.+\\.(js|jsx|ts|tsx|mjs)$': 'babel-jest',
