@@ -169,6 +169,7 @@ var config = {
                 {from: 'src/images/img_trans.gif', to: 'images'},
                 {from: 'src/images/logo-email.png', to: 'images'},
                 {from: 'src/images/favicon', to: 'images/favicon'},
+                {from: 'src/images/og-image.png', to: 'images'},
                 {from: 'src/images/appIcons.png', to: 'images'},
                 {from: 'src/images/logo-email.png', to: 'images'},
                 {from: 'src/images/browser-icons', to: 'images/browser-icons'},

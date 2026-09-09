@@ -60,6 +60,14 @@ services:
       # Site configuration
       - MM_SERVICESETTINGS_SITEURL=${MM_SERVICESETTINGS_SITEURL:-http://localhost:8065}
       - MM_SERVICESETTINGS_LISTENADDRESS=:8065
+
+      # Link-preview (Open Graph / Twitter card) branding. Kept separate from
+      # SiteName so the browser tab and emails keep saying "Aura". Unset values
+      # fall back to the defaults compiled into channels/web/static.go.
+      - ARTSLAB_OG_TITLE=${ARTSLAB_OG_TITLE:-}
+      - ARTSLAB_OG_DESCRIPTION=${ARTSLAB_OG_DESCRIPTION:-}
+      - ARTSLAB_OG_IMAGE=${ARTSLAB_OG_IMAGE:-}
+      - ARTSLAB_OG_IMAGE_ALT=${ARTSLAB_OG_IMAGE_ALT:-}
       - MM_SERVICESETTINGS_ENABLEDEVELOPER=${MM_ENABLE_DEVELOPER:-false}
       - MM_DEVELOPERSETTINGS_ENABLELOCALMODE=true
       
