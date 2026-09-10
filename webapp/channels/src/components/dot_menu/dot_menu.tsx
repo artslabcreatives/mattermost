@@ -13,6 +13,7 @@ import {
 	ContentCopyIcon,
 	DotsHorizontalIcon,
 	EmoticonPlusOutlineIcon,
+	InformationOutlineIcon,
 	LinkVariantIcon,
 	MarkAsUnreadIcon,
 	MessageArrowRightOutlineIcon,
@@ -36,6 +37,7 @@ import DeletePostModal from 'components/delete_post_modal';
 import FlagPostModal from 'components/flag_message_modal/flag_post_modal';
 import ForwardPostModal from 'components/forward_post_modal';
 import * as Menu from 'components/menu';
+import MessageInfoModal from 'components/message_info_modal';
 import MoveThreadModal from 'components/move_thread_modal';
 import ChannelPermissionGate from 'components/permissions_gates/channel_permission_gate';
 
@@ -344,6 +346,17 @@ export class DotMenuClass extends React.PureComponent<Props, State> {
 		};
 
 		this.props.actions.openModal(forwardPostModalData);
+	};
+
+	handleMessageInfoClick = (): void => {
+		this.props.handleDropdownOpened?.(false);
+		this.props.actions.openModal({
+			modalId: ModalIdentifiers.MESSAGE_INFO_MODAL,
+			dialogType: MessageInfoModal,
+			dialogProps: {
+				post: this.props.post,
+			},
+		});
 	};
 
 	handleEditMenuItemActivated = (): void => {
@@ -718,6 +731,20 @@ export class DotMenuClass extends React.PureComponent<Props, State> {
 						onClick={this.copyLink}
 					/>
 				}
+				{!isSystemMessage && this.props.post.user_id === this.props.userId && (
+					<Menu.Item
+						id={`message_info_${this.props.post.id}`}
+						data-testid={`message_info_${this.props.post.id}`}
+						labels={
+							<FormattedMessage
+								id='post_info.message_info'
+								defaultMessage='Message Info'
+							/>}
+						leadingElement={<InformationOutlineIcon size={18} />}
+						trailingElements={<ShortcutKey shortcutKey='I' />}
+						onClick={this.handleMessageInfoClick}
+					/>
+				)}
 				{!isSystemMessage && !isBurnOnReadPost && <Menu.Separator />}
 				{this.state.canEdit &&
 					<Menu.Item

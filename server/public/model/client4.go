@@ -8014,3 +8014,13 @@ func (c *Client4) BurnPost(ctx context.Context, postID string) (*Response, error
 	defer closeBody(r)
 	return BuildResponse(r), nil
 }
+
+func (c *Client4) GetPostSeenReceipts(ctx context.Context, postID string) (*PostSeenReceipts, *Response, error) {
+	r, err := c.doAPIGet(ctx, c.postRoute(postID).Join("seen"), "")
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+
+	return DecodeJSONFromResponse[*PostSeenReceipts](r)
+}

@@ -54,6 +54,7 @@ func (api *API) InitPost() {
 	api.BaseRoutes.Posts.Handle("/rewrite", api.APISessionRequired(rewriteMessage)).Methods(http.MethodPost)
 	api.BaseRoutes.Post.Handle("/reveal", api.APISessionRequired(revealPost)).Methods(http.MethodGet)
 	api.BaseRoutes.Post.Handle("/burn", api.APISessionRequired(burnPost)).Methods(http.MethodDelete)
+	api.BaseRoutes.Post.Handle("/seen", api.APISessionRequired(getPostSeenReceipts)).Methods(http.MethodGet)
 }
 
 func createPostChecks(where string, c *Context, post *model.Post) {
@@ -1585,4 +1586,43 @@ func burnPost(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	auditRec.Success()
 	ReturnStatusOK(w)
+}
+
+func getPostSeenReceipts(c *Context, w http.ResponseWriter, r *http.Request) {
+	c.RequirePostId()
+	if c.Err != nil {
+		return
+	}
+
+	userId := c.AppContext.Session().UserId
+	postId := c.Params.PostId
+
+	post, err := c.App.GetPostIfAuthorized(c.AppContext, postId, c.AppContext.Session(), false)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	// Permission check: only the author of the post (or system admin) can view seen receipts
+	if post.UserId != userId && !c.App.SessionHasPermissionTo(*c.AppContext.Session(), model.PermissionManageSystem) {
+		c.Err = model.NewAppError("getPostSeenReceipts", "api.post.seen_receipts.forbidden", nil, "Only the author of this message can view seen receipts", http.StatusForbidden)
+		return
+	}
+
+	receipts, appErr := c.App.GetPostSeenReceipts(c.AppContext, post)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	js, jsonErr := json.Marshal(receipts)
+	if jsonErr != nil {
+		c.Err = model.NewAppError("getPostSeenReceipts", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(jsonErr)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write(js); err != nil {
+		c.Logger.Warn("Error while writing seen receipts response", mlog.Err(err))
+	}
 }

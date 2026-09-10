@@ -110,7 +110,7 @@ import type {
 	PluginsResponse,
 	PluginStatus,
 } from '@mattermost/types/plugins';
-import type { Post, PostList, PostSearchResults, PostsUsageResponse, TeamsUsageResponse, PaginatedPostList, FilesUsageResponse, PostAcknowledgement, PostAnalytics, PostInfo } from '@mattermost/types/posts';
+import type { Post, PostList, PostSearchResults, PostsUsageResponse, TeamsUsageResponse, PaginatedPostList, FilesUsageResponse, PostAcknowledgement, PostAnalytics, PostInfo, PostSeenReceipts } from '@mattermost/types/posts';
 import type { PreferenceType } from '@mattermost/types/preferences';
 import type { ProductNotices } from '@mattermost/types/product_notices';
 import type {
@@ -2353,6 +2353,13 @@ export default class Client4 {
 		return this.doFetch(
 			`${this.getPostRoute(postId)}/burn`,
 			{ method: 'delete' },
+		);
+	};
+
+	getPostSeenReceipts = (postId: string) => {
+		return this.doFetch<PostSeenReceipts>(
+			`${this.getPostRoute(postId)}/seen`,
+			{ method: 'get' },
 		);
 	};
 
