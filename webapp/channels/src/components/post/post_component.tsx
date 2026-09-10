@@ -57,6 +57,7 @@ import type { PostActionComponent, PostPluginComponent } from 'types/store/plugi
 import { withPostErrorBoundary } from './post_error_boundary';
 import PostOptions from './post_options';
 import PostUserProfile from './user_profile';
+import PostReadReceipt from './post_read_receipt';
 
 export type Props = {
 	post: Post;
@@ -759,6 +760,9 @@ function PostComponent(props: Props) {
 										timestampProps={{ ...props.timestampProps, style: props.isConsecutivePost && !props.compactDisplay ? 'narrow' : undefined }}
 									/>
 								}
+								{props.currentUserId === post.user_id && !isSystemMessage && !(Posts.POST_DELETED === post.state || isPostPendingOrFailed(post)) && (
+									<PostReadReceipt post={post} />
+								)}
 								{priority}
 								{burnOnReadBadge}
 								{burnOnReadTimerChip}

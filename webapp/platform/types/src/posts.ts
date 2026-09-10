@@ -233,3 +233,28 @@ export type NotificationResult = {
     reason?: string;
     data?: string;
 }
+
+export type PostReaderInfo = {
+    user_id: string;
+    username: string;
+    first_name: string;
+    last_name: string;
+    nickname: string;
+    viewed_at: number;
+};
+
+export type PostDeliveredInfo = {
+    user_id: string;
+    username: string;
+    first_name: string;
+    last_name: string;
+    nickname: string;
+};
+
+export type PostSeenReceipts = {
+    post_id: string;
+    channel_id: string;
+    create_at: number;
+    read_by: PostReaderInfo[];
+    delivered_to: PostDeliveredInfo[];
+};

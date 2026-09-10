@@ -5357,6 +5357,7 @@
   "post_info.message.visible": "(Only visible to you)",
   "post_info.message.visible.compact": " (Only visible to you)",
   "post_info.move_thread": "Move Thread",
+  "post_info.message_info": "Message Info",
   "post_info.permalink": "Copy Link",
   "post_info.pin": "Pin to Channel",
   "post_info.post_reminder.menu": "Remind",
