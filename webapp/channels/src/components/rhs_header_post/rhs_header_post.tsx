@@ -15,8 +15,6 @@ import { getThreadPopoutTitle } from 'components/thread_popout/thread_popout';
 import FollowButton from 'components/threading/common/follow_button';
 import WithTooltip from 'components/with_tooltip';
 
-import { Client4 } from 'mattermost-redux/client';
-
 import { getHistory } from 'utils/browser_history';
 import { RHSStates } from 'utils/constants';
 import { popoutThread } from 'utils/popouts/popout_windows';
@@ -46,36 +44,7 @@ type Props = WrappedComponentProps & {
 	focusPost: (postId: string, returnTo: string, currentUserId: string, option?: { skipRedirectReplyPermalink: boolean }) => Promise<void>;
 };
 
-type State = {
-	summarizing: boolean;
-};
-
-class RhsHeaderPost extends React.PureComponent<Props, State> {
-	state: State = {
-		summarizing: false,
-	};
-
-	handleSummarizeClick = async () => {
-		if (this.state.summarizing) {
-			return;
-		}
-		this.setState({ summarizing: true });
-		try {
-			const resp = await fetch(`/api/v4/posts/${this.props.rootPostId}/summarize`, {
-				method: 'POST',
-				headers: {
-					'X-CSRF-Token': Client4.csrf,
-				},
-			});
-			if (!resp.ok) {
-				console.error('Failed to summarize thread');
-			}
-		} catch (err) {
-			console.error('Failed to summarize thread', err);
-		} finally {
-			this.setState({ summarizing: false });
-		}
-	};
+class RhsHeaderPost extends React.PureComponent<Props> {
 
 	handleBack = (e: React.MouseEvent) => {
 		e.preventDefault();
@@ -135,13 +104,6 @@ class RhsHeaderPost extends React.PureComponent<Props, State> {
 				defaultMessage='Close'
 			/>
 		);
-		const summarizeTooltip = (
-			<FormattedMessage
-				id='rhs_header.summarizeTooltip'
-				defaultMessage='Summarize Thread'
-			/>
-		);
-		const summarizeIconLabel = formatMessage({ id: 'rhs_header.summarizeTooltip.icon', defaultMessage: 'Summarize Thread Icon' });
 
 		let backToResultsTooltip;
 
@@ -253,23 +215,6 @@ class RhsHeaderPost extends React.PureComponent<Props, State> {
 						/>
 					) : null}
 					<PopoutButton onClick={this.popout} />
-					<WithTooltip
-						title={summarizeTooltip}
-					>
-						<button
-							type='button'
-							className='sidebar--right__summarize btn btn-icon btn-sm'
-							aria-label={summarizeIconLabel}
-							onClick={this.handleSummarizeClick}
-							disabled={this.state.summarizing}
-						>
-							{this.state.summarizing ? (
-								<i className='icon icon-loading icon-spin' />
-							) : (
-								<i className='icon icon-file-text-outline' />
-							)}
-						</button>
-					</WithTooltip>
 					<WithTooltip
 						title={rhsHeaderTooltipContent}
 					>
