@@ -509,10 +509,14 @@ function renderReminderACKMessage(post: Post, currentTeamName: string, isMilitar
 	);
 }
 
-export function renderReminderSystemBotMessage(post: Post, currentTeam: Team): ReactNode {
+export function renderReminderSystemBotMessage(post: Post, currentTeam?: Team): ReactNode {
+	if (post.message) {
+		return renderFormattedText(post.message, undefined, post);
+	}
 	const username = post.props.username ? renderUsername(post.props.username) : '';
-	const teamUrl = `${getSiteURL()}/${post.props.team_name || currentTeam.name}`;
-	const link = `${teamUrl}/pl/${post.props.post_id}`;
+	const teamName = post.props.team_name || currentTeam?.name || '';
+	const teamUrl = teamName ? `${getSiteURL()}/${teamName}` : getSiteURL();
+	const link = (post.props.permalink as string) || `${teamUrl}/pl/${post.props.post_id}`;
 	const permaLink = renderFormattedText(`[${link}](${link})`);
 	return (
 		<FormattedMessage

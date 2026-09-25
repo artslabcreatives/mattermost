@@ -2520,6 +2520,15 @@ func (a *App) SetPostReminder(rctx request.CTX, postID, userID string, targetTim
 		permalink = fmt.Sprintf("%s/%s/pl/%s", siteURL, metadata.TeamName, postID)
 	}
 
+	channelName := ""
+	if chObj, chErr := a.GetChannel(rctx, metadata.ChannelID); chErr == nil && chObj != nil {
+		channelName = chObj.Name
+	}
+	channelRef := ""
+	if channelName != "" {
+		channelRef = fmt.Sprintf(" in ~%s", channelName)
+	}
+
 	// Send an ack message.
 	ephemeralPost := &model.Post{
 		Type:      model.PostTypeEphemeral,
@@ -2530,13 +2539,15 @@ func (a *App) SetPostReminder(rctx request.CTX, postID, userID string, targetTim
 		ChannelId: metadata.ChannelID,
 		// It's okay to keep this non-translated. This is just a fallback.
 		// The webapp will parse the timestamp and show that in user's local timezone.
-		Message: fmt.Sprintf("You will be reminded about %s by @%s at %s", permalink, metadata.Username, parsedTime),
+		Message: fmt.Sprintf("⏰ Aura will remind you about this message from @%s%s at %s", metadata.Username, channelRef, parsedTime),
 		Props: model.StringInterface{
-			"target_time": targetTime,
-			"team_name":   metadata.TeamName,
-			"post_id":     postID,
-			"username":    metadata.Username,
-			"type":        model.PostTypeReminder,
+			"target_time":  targetTime,
+			"team_name":    metadata.TeamName,
+			"post_id":      postID,
+			"username":     metadata.Username,
+			"channel_name": channelName,
+			"permalink":    permalink,
+			"type":         model.PostTypeReminder,
 		},
 	}
 
@@ -2554,11 +2565,45 @@ func (a *App) SetPostReminder(rctx request.CTX, postID, userID string, targetTim
 	return nil
 }
 
+func (a *App) DeletePostReminder(rctx request.CTX, postID, userID string) *model.AppError {
+	err := a.Srv().Store().Post().DeletePostReminder(postID, userID)
+	if err != nil {
+		return model.NewAppError("DeletePostReminder", model.NoTranslation, nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+	return nil
+}
+
+func (a *App) GetPostRemindersForUser(rctx request.CTX, userID string) ([]*model.PostReminderDetail, *model.AppError) {
+	reminders, err := a.Srv().Store().Post().GetPostRemindersForUser(userID)
+	if err != nil {
+		return nil, model.NewAppError("GetPostRemindersForUser", model.NoTranslation, nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+
+	siteURL := *a.Config().ServiceSettings.SiteURL
+	for _, r := range reminders {
+		if r.TeamName == "" {
+			r.Permalink = fmt.Sprintf("%s/pl/%s", siteURL, r.PostId)
+		} else {
+			r.Permalink = fmt.Sprintf("%s/%s/pl/%s", siteURL, r.TeamName, r.PostId)
+		}
+	}
+
+	return reminders, nil
+}
+
 func (a *App) CheckPostReminders(rctx request.CTX) {
 	rctx = rctx.WithLogger(rctx.Logger().With(mlog.String("component", "post_reminders")))
-	systemBot, appErr := a.GetSystemBot(rctx)
-	if appErr != nil {
-		rctx.Logger().Error("Failed to get system bot", mlog.Err(appErr))
+
+	// Prefer "aura" user or bot, fallback to systemBot
+	var botUserID string
+	if auraUser, err := a.GetUserByUsername("aura"); err == nil && auraUser != nil {
+		botUserID = auraUser.Id
+	} else if auraBot, err := a.GetOrCreateSystemOwnedBot(rctx, "aura", "Aura"); err == nil && auraBot != nil {
+		botUserID = auraBot.UserId
+	} else if systemBot, appErr := a.GetSystemBot(rctx); appErr == nil && systemBot != nil {
+		botUserID = systemBot.UserId
+	} else {
+		rctx.Logger().Error("Failed to get bot for post reminders")
 		return
 	}
 
@@ -2585,10 +2630,10 @@ func (a *App) CheckPostReminders(rctx request.CTX) {
 
 	siteURL := *a.Config().ServiceSettings.SiteURL
 	for userID, postIDs := range groupedReminders {
-		ch, appErr := a.GetOrCreateDirectChannel(request.EmptyContext(a.Log()), userID, systemBot.UserId)
+		ch, appErr := a.GetOrCreateDirectChannel(request.EmptyContext(a.Log()), userID, botUserID)
 		if appErr != nil {
 			rctx.Logger().Error("Failed to get direct channel", mlog.Err(appErr))
-			return
+			continue
 		}
 
 		for _, postID := range postIDs {
@@ -2598,21 +2643,66 @@ func (a *App) CheckPostReminders(rctx request.CTX) {
 				continue
 			}
 
-			T := i18n.GetUserTranslations(metadata.UserLocale)
+			var permalink string
+			if metadata.TeamName == "" {
+				permalink = fmt.Sprintf("%s/pl/%s", siteURL, postID)
+			} else {
+				permalink = fmt.Sprintf("%s/%s/pl/%s", siteURL, metadata.TeamName, postID)
+			}
+
+			// Retrieve target post and channel for rich snippet and context
+			channelName := ""
+			channelDisplayName := ""
+			if chObj, chErr := a.GetChannel(rctx, metadata.ChannelID); chErr == nil && chObj != nil {
+				channelName = chObj.Name
+				channelDisplayName = chObj.DisplayName
+			}
+
+			messageSnippet := ""
+			if targetPost, postErr := a.GetSinglePost(rctx, postID, false); postErr == nil && targetPost != nil {
+				msg := strings.TrimSpace(targetPost.Message)
+				runes := []rune(msg)
+				if len(runes) > 240 {
+					messageSnippet = string(runes[:240]) + "..."
+				} else {
+					messageSnippet = msg
+				}
+			}
+
+			var quoteBlock string
+			if messageSnippet != "" {
+				lines := strings.Split(messageSnippet, "\n")
+				for i, l := range lines {
+					lines[i] = "> " + l
+				}
+				quoteBlock = strings.Join(lines, "\n")
+			}
+
+			channelRef := ""
+			if channelName != "" {
+				channelRef = fmt.Sprintf(" in ~%s", channelName)
+			}
+
+			var messageText string
+			if quoteBlock != "" {
+				messageText = fmt.Sprintf("⏰ **Reminder**: You asked me to remind you about this message from @%s%s:\n\n%s\n\n[View full message](%s)", metadata.Username, channelRef, quoteBlock, permalink)
+			} else {
+				messageText = fmt.Sprintf("⏰ **Reminder**: You asked me to remind you about this message from @%s%s: [View full message](%s)", metadata.Username, channelRef, permalink)
+			}
+
 			dm := &model.Post{
 				ChannelId: ch.Id,
-				Message: T("app.post_reminder_dm", model.StringInterface{
-					"SiteURL":  siteURL,
-					"TeamName": metadata.TeamName,
-					"PostId":   postID,
-					"Username": metadata.Username,
-				}),
-				Type:   model.PostTypeReminder,
-				UserId: systemBot.UserId,
+				Message:   messageText,
+				Type:      model.PostTypeReminder,
+				UserId:    botUserID,
 				Props: model.StringInterface{
-					"team_name": metadata.TeamName,
-					"post_id":   postID,
-					"username":  metadata.Username,
+					"team_name":            metadata.TeamName,
+					"post_id":              postID,
+					"username":             metadata.Username,
+					"channel_name":         channelName,
+					"channel_display_name": channelDisplayName,
+					"message_snippet":      messageSnippet,
+					"permalink":            permalink,
 				},
 			}
 

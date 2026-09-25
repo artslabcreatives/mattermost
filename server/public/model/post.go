@@ -197,6 +197,21 @@ type PostReminder struct {
 	UserId string `json:",omitempty"`
 }
 
+type PostReminderDetail struct {
+	PostId             string `json:"post_id"`
+	UserId             string `json:"user_id"`
+	TargetTime         int64  `json:"target_time"`
+	ChannelId          string `json:"channel_id"`
+	ChannelName        string `json:"channel_name"`
+	ChannelDisplayName string `json:"channel_display_name"`
+	TeamName           string `json:"team_name"`
+	Username           string `json:"username"`
+	UserDisplayName    string `json:"user_display_name"`
+	Message            string `json:"message"`
+	Permalink          string `json:"permalink" db:"-"`
+	PostCreateAt       int64  `json:"post_create_at"`
+}
+
 type PostPriority struct {
 	Priority                *string `json:"priority"`
 	RequestedAck            *bool   `json:"requested_ack"`

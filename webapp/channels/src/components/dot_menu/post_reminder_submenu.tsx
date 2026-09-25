@@ -152,8 +152,8 @@ function PostReminderSubmenu(props: Props) {
 			})}
 			labels={
 				<FormattedMessage
-					id='post_info.post_reminder.menu'
-					defaultMessage='Remind'
+					id='post_info.post_reminder.menu_remind_me'
+					defaultMessage='Remind me'
 				/>
 			}
 			leadingElement={<ClockOutlineIcon size={18} />}

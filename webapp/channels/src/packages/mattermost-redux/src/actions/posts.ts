@@ -1212,6 +1212,33 @@ export function addPostReminder(userId: string, postId: string, timestamp: numbe
 	};
 }
 
+export function getPostReminders(userId: string): ActionFuncAsync {
+	return async (dispatch, getState) => {
+		let data;
+		try {
+			data = await Client4.getPostReminders(userId);
+		} catch (error) {
+			forceLogoutIfNecessary(error, dispatch, getState);
+			dispatch(logError(error));
+			return { error };
+		}
+		return { data };
+	};
+}
+
+export function deletePostReminder(userId: string, postId: string): ActionFuncAsync {
+	return async (dispatch, getState) => {
+		try {
+			await Client4.deletePostReminder(userId, postId);
+		} catch (error) {
+			forceLogoutIfNecessary(error, dispatch, getState);
+			dispatch(logError(error));
+			return { error };
+		}
+		return { data: true };
+	};
+}
+
 export function doPostAction(postId: string, actionId: string, selectedOption = '') {
 	return doPostActionWithCookie(postId, actionId, '', selectedOption);
 }

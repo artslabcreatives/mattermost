@@ -1416,6 +1416,54 @@ func (_m *PostStore) SetPostReminder(reminder *model.PostReminder) error {
 	return r0
 }
 
+// DeletePostReminder provides a mock function with given fields: postID, userID
+func (_m *PostStore) DeletePostReminder(postID string, userID string) error {
+	ret := _m.Called(postID, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeletePostReminder")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(postID, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// GetPostRemindersForUser provides a mock function with given fields: userID
+func (_m *PostStore) GetPostRemindersForUser(userID string) ([]*model.PostReminderDetail, error) {
+	ret := _m.Called(userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPostRemindersForUser")
+	}
+
+	var r0 []*model.PostReminderDetail
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]*model.PostReminderDetail, error)); ok {
+		return rf(userID)
+	}
+	if rf, ok := ret.Get(0).(func(string) []*model.PostReminderDetail); ok {
+		r0 = rf(userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.PostReminderDetail)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Update provides a mock function with given fields: rctx, newPost, oldPost
 func (_m *PostStore) Update(rctx request.CTX, newPost *model.Post, oldPost *model.Post) (*model.Post, error) {
 	ret := _m.Called(rctx, newPost, oldPost)

@@ -3323,6 +3323,44 @@ func (s *SqlPostStore) GetPostReminderMetadata(postID string) (*store.PostRemind
 	return meta, nil
 }
 
+func (s *SqlPostStore) DeletePostReminder(postId, userId string) error {
+	_, err := s.GetMaster().Exec(`DELETE FROM PostReminders WHERE PostId = ? AND UserId = ?`, postId, userId)
+	if err != nil {
+		return errors.Wrapf(err, "failed to delete post reminder for postId %s and userId %s", postId, userId)
+	}
+	return nil
+}
+
+func (s *SqlPostStore) GetPostRemindersForUser(userId string) ([]*model.PostReminderDetail, error) {
+	reminders := []*model.PostReminderDetail{}
+	query := `
+		SELECT 
+			pr.PostId,
+			pr.UserId,
+			pr.TargetTime,
+			c.Id AS ChannelId,
+			c.Name AS ChannelName,
+			c.DisplayName AS ChannelDisplayName,
+			COALESCE(t.Name, '') AS TeamName,
+			COALESCE(u.Username, '') AS Username,
+			COALESCE(NULLIF(TRIM(CONCAT(u.FirstName, ' ', u.LastName)), ''), u.Username, '') AS UserDisplayName,
+			COALESCE(p.Message, '') AS Message,
+			p.CreateAt AS PostCreateAt
+		FROM PostReminders pr
+		JOIN Posts p ON pr.PostId = p.Id
+		JOIN Channels c ON p.ChannelId = c.Id
+		LEFT JOIN Teams t ON c.TeamId = t.Id
+		LEFT JOIN Users u ON p.UserId = u.Id
+		WHERE pr.UserId = ? AND p.DeleteAt = 0
+		ORDER BY pr.TargetTime ASC`
+
+	err := s.GetReplica().Select(&reminders, query, userId)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, errors.Wrapf(err, "failed to get post reminders for userId %s", userId)
+	}
+	return reminders, nil
+}
+
 func (s *SqlPostStore) RefreshPostStats() error {
 	if s.DriverName() == model.DatabaseDriverPostgres {
 		// CONCURRENTLY is not used deliberately because as per Postgres docs,

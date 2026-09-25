@@ -16,6 +16,7 @@ import LoadingScreen from 'components/loading_screen';
 import PostEditHistory from 'components/post_edit_history';
 import ResizableRhs from 'components/resizable_sidebar/resizable_rhs';
 import RhsCard from 'components/rhs_card';
+import RhsReminders from 'components/rhs_reminders';
 import RhsThread from 'components/rhs_thread';
 import Search from 'components/search/index';
 
@@ -45,6 +46,7 @@ export type Props = {
 	isChannelMembers: boolean;
 	isPluginView: boolean;
 	isPostEditHistory: boolean;
+	isReminders: boolean;
 	previousRhsState: RhsState;
 	rhsChannel?: Channel;
 	selectedPostId: string;
@@ -283,6 +285,8 @@ export default class SidebarRight extends React.PureComponent<Props, State> {
 			isPostEditHistory,
 		} = this.props;
 
+		const isReminders = this.props.isReminders;
+
 		if (!isOpen) {
 			return null;
 		}
@@ -315,6 +319,8 @@ export default class SidebarRight extends React.PureComponent<Props, State> {
 			content = <ChannelMembersRhs />;
 		} else if (isPostEditHistory) {
 			content = <PostEditHistory />;
+		} else if (isReminders) {
+			content = <RhsReminders />;
 		}
 
 		const isRHSLoading = Boolean(
@@ -325,7 +331,7 @@ export default class SidebarRight extends React.PureComponent<Props, State> {
 
 		const channelDisplayName = rhsChannel ? rhsChannel.display_name : '';
 
-		const isSidebarRightExpanded = (postRightVisible || postCardVisible || isPluginView || searchVisible || isPostEditHistory) && isExpanded;
+		const isSidebarRightExpanded = (postRightVisible || postCardVisible || isPluginView || searchVisible || isPostEditHistory || isReminders) && isExpanded;
 		const containerClassName = classNames('sidebar--right', 'move--left is-open', {
 			'sidebar--right--expanded expanded': isSidebarRightExpanded,
 		});

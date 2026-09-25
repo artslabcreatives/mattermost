@@ -258,3 +258,19 @@ export type PostSeenReceipts = {
     read_by: PostReaderInfo[];
     delivered_to: PostDeliveredInfo[];
 };
+
+export type PostReminderDetail = {
+    post_id: string;
+    user_id: string;
+    target_time: number;
+    channel_id: string;
+    channel_name: string;
+    channel_display_name: string;
+    team_name: string;
+    username: string;
+    user_display_name: string;
+    message: string;
+    permalink: string;
+    post_create_at: number;
+};
+

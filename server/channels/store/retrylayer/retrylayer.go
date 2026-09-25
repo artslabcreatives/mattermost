@@ -8384,6 +8384,48 @@ func (s *RetryLayerPostStore) GetPostReminders(now int64) ([]*model.PostReminder
 
 }
 
+func (s *RetryLayerPostStore) DeletePostReminder(postID, userID string) error {
+
+	tries := 0
+	for {
+		err := s.PostStore.DeletePostReminder(postID, userID)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerPostStore) GetPostRemindersForUser(userID string) ([]*model.PostReminderDetail, error) {
+
+	tries := 0
+	for {
+		result, err := s.PostStore.GetPostRemindersForUser(userID)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerPostStore) GetPosts(rctx request.CTX, options model.GetPostsOptions, allowFromCache bool, sanitizeOptions map[string]bool) (*model.PostList, error) {
 
 	tries := 0

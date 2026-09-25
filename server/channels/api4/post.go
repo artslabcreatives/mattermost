@@ -42,6 +42,8 @@ func (api *API) InitPost() {
 	api.BaseRoutes.Post.Handle("/restore/{restore_version_id:[A-Za-z0-9]+}", api.APISessionRequired(restorePostVersion)).Methods(http.MethodPost)
 	api.BaseRoutes.PostForUser.Handle("/set_unread", api.APISessionRequired(setPostUnread)).Methods(http.MethodPost)
 	api.BaseRoutes.PostForUser.Handle("/reminder", api.APISessionRequired(setPostReminder)).Methods(http.MethodPost)
+	api.BaseRoutes.PostForUser.Handle("/reminder", api.APISessionRequired(deletePostReminder)).Methods(http.MethodDelete)
+	api.BaseRoutes.PostsForUser.Handle("/reminders", api.APISessionRequired(getPostRemindersForUser)).Methods(http.MethodGet)
 
 	api.BaseRoutes.Post.Handle("/pin", api.APISessionRequired(pinPost)).Methods(http.MethodPost)
 	api.BaseRoutes.Post.Handle("/unpin", api.APISessionRequired(unpinPost)).Methods(http.MethodPost)
@@ -1111,6 +1113,61 @@ func setPostReminder(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	ReturnStatusOK(w)
+}
+
+func deletePostReminder(c *Context, w http.ResponseWriter, r *http.Request) {
+	c.RequireUserId().RequirePostId()
+	if c.Err != nil {
+		return
+	}
+
+	if c.AppContext.Session().UserId != c.Params.UserId && !c.App.SessionHasPermissionToUser(*c.AppContext.Session(), c.Params.UserId) {
+		c.SetPermissionError(model.PermissionEditOtherUsers)
+		return
+	}
+
+	appErr := c.App.DeletePostReminder(c.AppContext, c.Params.PostId, c.Params.UserId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	ReturnStatusOK(w)
+}
+
+func getPostRemindersForUser(c *Context, w http.ResponseWriter, r *http.Request) {
+	c.RequireUserId()
+	if c.Err != nil {
+		return
+	}
+
+	if c.AppContext.Session().UserId != c.Params.UserId && !c.App.SessionHasPermissionToUser(*c.AppContext.Session(), c.Params.UserId) {
+		c.SetPermissionError(model.PermissionEditOtherUsers)
+		return
+	}
+
+	reminders, appErr := c.App.GetPostRemindersForUser(c.AppContext, c.Params.UserId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	// Filter out any reminders in channels where user has lost read permissions
+	accessibleReminders := make([]*model.PostReminderDetail, 0, len(reminders))
+	for _, reminder := range reminders {
+		channel, chErr := c.App.GetChannel(c.AppContext, reminder.ChannelId)
+		if chErr == nil && channel != nil && c.App.SessionHasPermissionToReadChannel(c.AppContext, *c.AppContext.Session(), channel) {
+			accessibleReminders = append(accessibleReminders, reminder)
+		}
+	}
+
+	js, jsonErr := json.Marshal(accessibleReminders)
+	if jsonErr != nil {
+		c.Err = model.NewAppError("getPostRemindersForUser", "api.marshal_error", nil, "", http.StatusInternalServerError).Wrap(jsonErr)
+		return
+	}
+
+	w.Write(js)
 }
 
 func saveIsPinnedPost(c *Context, w http.ResponseWriter, isPinned bool) {

@@ -1807,7 +1807,7 @@ func runPostReminderJob(a *App) {
 		rctx := request.EmptyContext(a.Log())
 		withMut(&a.ch.postReminderMut, func() {
 			fn := func() { a.CheckPostReminders(rctx) }
-			a.ch.postReminderTask = model.CreateRecurringTaskFromNextIntervalTime("Check Post reminders", fn, 5*time.Minute)
+			a.ch.postReminderTask = model.CreateRecurringTaskFromNextIntervalTime("Check Post reminders", fn, 1*time.Minute)
 		})
 	} else {
 		mlog.Debug("Skipping post reminder job startup since this is not the leader node")
@@ -1819,7 +1819,7 @@ func runPostReminderJob(a *App) {
 			rctx := request.EmptyContext(a.Log())
 			withMut(&a.ch.postReminderMut, func() {
 				fn := func() { a.CheckPostReminders(rctx) }
-				a.ch.postReminderTask = model.CreateRecurringTaskFromNextIntervalTime("Check Post reminders", fn, 5*time.Minute)
+				a.ch.postReminderTask = model.CreateRecurringTaskFromNextIntervalTime("Check Post reminders", fn, 1*time.Minute)
 			})
 		} else {
 			mlog.Debug("This is no longer leader node. Cancelling the post reminder task", mlog.Bool("isLeader", a.IsLeader()))

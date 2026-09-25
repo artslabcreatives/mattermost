@@ -6820,6 +6820,38 @@ func (s *TimerLayerPostStore) GetPostReminders(now int64) ([]*model.PostReminder
 	return result, err
 }
 
+func (s *TimerLayerPostStore) DeletePostReminder(postID, userID string) error {
+	start := time.Now()
+
+	err := s.PostStore.DeletePostReminder(postID, userID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PostStore.DeletePostReminder", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerPostStore) GetPostRemindersForUser(userID string) ([]*model.PostReminderDetail, error) {
+	start := time.Now()
+
+	result, err := s.PostStore.GetPostRemindersForUser(userID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PostStore.GetPostRemindersForUser", success, elapsed)
+	}
+	return result, err
+}
+
 func (s *TimerLayerPostStore) GetPosts(rctx request.CTX, options model.GetPostsOptions, allowFromCache bool, sanitizeOptions map[string]bool) (*model.PostList, error) {
 	start := time.Now()
 

@@ -422,6 +422,8 @@ type PostStore interface {
 	GetPostReminders(now int64) ([]*model.PostReminder, error)
 	DeleteAllPostRemindersForPost(postId string) error
 	GetPostReminderMetadata(postID string) (*PostReminderMetadata, error)
+	GetPostRemindersForUser(userID string) ([]*model.PostReminderDetail, error)
+	DeletePostReminder(postID, userID string) error
 	// GetNthRecentPostTime returns the CreateAt time of the nth most recent post.
 	GetNthRecentPostTime(n int64) (int64, error)
 	// RefreshPostStats refreshes the various materialized views for admin console post stats.

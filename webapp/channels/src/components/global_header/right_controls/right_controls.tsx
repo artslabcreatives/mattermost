@@ -24,6 +24,7 @@ import type { GlobalState } from 'types/store';
 import AtMentionsButton from './at_mentions_button/at_mentions_button';
 import PlanUpgradeButton from './plan_upgrade_button';
 import SavedPostsButton from './saved_posts_button/saved_posts_button';
+import RemindersButton from './reminders_button';
 import SettingsButton from './settings_button';
 
 const RightControlsContainer = styled.div`
@@ -66,6 +67,7 @@ const RightControls = ({ productId = null }: Props): JSX.Element => {
 				<>
 					<AtMentionsButton />
 					<SavedPostsButton />
+					<RemindersButton />
 				</>
 			) : (
 				<Pluggable

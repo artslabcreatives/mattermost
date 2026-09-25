@@ -110,7 +110,7 @@ import type {
 	PluginsResponse,
 	PluginStatus,
 } from '@mattermost/types/plugins';
-import type { Post, PostList, PostSearchResults, PostsUsageResponse, TeamsUsageResponse, PaginatedPostList, FilesUsageResponse, PostAcknowledgement, PostAnalytics, PostInfo, PostSeenReceipts } from '@mattermost/types/posts';
+import type { Post, PostList, PostSearchResults, PostsUsageResponse, TeamsUsageResponse, PaginatedPostList, FilesUsageResponse, PostAcknowledgement, PostAnalytics, PostInfo, PostSeenReceipts, PostReminderDetail } from '@mattermost/types/posts';
 import type { PreferenceType } from '@mattermost/types/preferences';
 import type { ProductNotices } from '@mattermost/types/product_notices';
 import type {
@@ -2528,6 +2528,20 @@ export default class Client4 {
 		return this.doFetch<StatusOK>(
 			`${this.getUserRoute(userId)}/posts/${postId}/reminder`,
 			{ method: 'post', body: JSON.stringify({ target_time: timestamp }) },
+		);
+	};
+
+	getPostReminders = (userId: string) => {
+		return this.doFetch<PostReminderDetail[]>(
+			`${this.getUserRoute(userId)}/posts/reminders`,
+			{ method: 'get' },
+		);
+	};
+
+	deletePostReminder = (userId: string, postId: string) => {
+		return this.doFetch<StatusOK>(
+			`${this.getUserRoute(userId)}/posts/${postId}/reminder`,
+			{ method: 'delete' },
 		);
 	};
 
