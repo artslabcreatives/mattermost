@@ -4,9 +4,11 @@
 package model
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestChannelModeratedPermissionsChangedByPatch(t *testing.T) {
@@ -304,4 +306,47 @@ func TestAddAncillaryPermissions(t *testing.T) {
 			assert.Equal(t, permissions, tc.Expected)
 		})
 	}
+}
+
+func TestSystemAdminIncludesManageOAuth(t *testing.T) {
+	roles := MakeDefaultRoles()
+
+	t.Run("system_admin includes manage_oauth by default", func(t *testing.T) {
+		role, ok := roles[SystemAdminRoleId]
+		require.True(t, ok, "system_admin role should exist in MakeDefaultRoles")
+		assert.True(t, slices.Contains(role.Permissions, PermissionManageOAuth.Id),
+			"system_admin should include manage_oauth")
+		assert.True(t, slices.ContainsFunc(AllPermissions, func(permission *Permission) bool {
+			return permission.Id == PermissionManageOAuth.Id
+		}), "manage_oauth should be part of AllPermissions")
+		assert.False(t, slices.ContainsFunc(DeprecatedPermissions, func(permission *Permission) bool {
+			return permission.Id == PermissionManageOAuth.Id
+		}), "manage_oauth should not remain deprecated")
+	})
+}
+
+func TestLegacyHRAnalyticsPermissionsRemainValid(t *testing.T) {
+	legacyPermissions := []*Permission{
+		PermissionSysconsoleReadReportingHRAnalytics,
+		PermissionSysconsoleWriteReportingHRAnalytics,
+	}
+
+	for _, permission := range legacyPermissions {
+		assert.True(t, slices.ContainsFunc(DeprecatedPermissions, func(candidate *Permission) bool {
+			return candidate.Id == permission.Id
+		}), "%s should remain valid as a deprecated permission", permission.Id)
+		assert.False(t, slices.ContainsFunc(AllPermissions, func(candidate *Permission) bool {
+			return candidate.Id == permission.Id
+		}), "%s should not be granted to default roles", permission.Id)
+	}
+
+	role := &Role{
+		Name:        "hr_analytics_viewer",
+		DisplayName: "HR Analytics Viewer",
+		Permissions: []string{
+			PermissionSysconsoleReadReportingHRAnalytics.Id,
+			PermissionSysconsoleWriteReportingHRAnalytics.Id,
+		},
+	}
+	require.True(t, role.IsValidWithoutId(), "a stored role containing legacy HR analytics permissions should remain valid")
 }

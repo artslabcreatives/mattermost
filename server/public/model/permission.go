@@ -192,6 +192,9 @@ var PermissionSysconsoleWriteBilling *Permission
 var PermissionSysconsoleReadReporting *Permission
 var PermissionSysconsoleWriteReporting *Permission
 
+var PermissionSysconsoleReadReportingHRAnalytics *Permission
+var PermissionSysconsoleWriteReportingHRAnalytics *Permission
+
 var PermissionSysconsoleReadReportingSiteStatistics *Permission
 var PermissionSysconsoleWriteReportingSiteStatistics *Permission
 
@@ -1438,6 +1441,20 @@ func initializePermissions() {
 		"authentication.permissions.use_group_mentions.description",
 		PermissionScopeSystem,
 	}
+	// DEPRECATED: retained so roles created by the customized deployment remain valid.
+	PermissionSysconsoleReadReportingHRAnalytics = &Permission{
+		"sysconsole_read_reporting_hr_analytics",
+		"",
+		"",
+		PermissionScopeSystem,
+	}
+	// DEPRECATED: retained so roles created by the customized deployment remain valid.
+	PermissionSysconsoleWriteReportingHRAnalytics = &Permission{
+		"sysconsole_write_reporting_hr_analytics",
+		"",
+		"",
+		PermissionScopeSystem,
+	}
 	PermissionSysconsoleReadReportingSiteStatistics = &Permission{
 		"sysconsole_read_reporting_site_statistics",
 		"",
@@ -2492,6 +2509,7 @@ func initializePermissions() {
 		PermissionReadOtherUsersTeams,
 		PermissionGetPublicLink,
 		PermissionManageSystemWideOAuth,
+		PermissionManageOAuth,
 		PermissionCreateTeam,
 		PermissionListUsersWithoutTeam,
 		PermissionCreateUserAccessToken,
@@ -2646,7 +2664,6 @@ func initializePermissions() {
 		PermissionManageIncomingWebhooks,
 		PermissionManageOutgoingWebhooks,
 		PermissionManageSlashCommands,
-		PermissionManageOAuth,
 		PermissionManageEmojis,
 		PermissionManageOthersEmojis,
 		PermissionSysconsoleReadAuthentication,
@@ -2657,6 +2674,8 @@ func initializePermissions() {
 		PermissionSysconsoleWriteEnvironment,
 		PermissionSysconsoleReadReporting,
 		PermissionSysconsoleWriteReporting,
+		PermissionSysconsoleReadReportingHRAnalytics,
+		PermissionSysconsoleWriteReportingHRAnalytics,
 		PermissionSysconsoleReadAbout,
 		PermissionSysconsoleWriteAbout,
 		PermissionSysconsoleReadExperimental,
