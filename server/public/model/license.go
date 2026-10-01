@@ -425,12 +425,12 @@ func (l *License) HasSharedChannels() bool {
 // NewTestLicense returns a license that expires in the future and has the given features.
 func NewTestLicense(features ...string) *License {
 	ret := &License{
-		ExpiresAt: GetMillis() + 90*DayInMilliseconds,
+		ExpiresAt: time.Date(2030, time.December, 30, 12, 0, 0, 0, time.UTC).UnixMilli(),
 		Customer: &Customer{
 			Id:      "some ID",
 			Email:   "admin@example.com",
-			Name:    "Main Contact Person",
-			Company: "My awesome Company",
+			Name:    "ItsME",
+			Company: "Hi.com",
 		},
 		Features: &Features{},
 	}

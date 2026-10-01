@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
@@ -50,6 +51,9 @@ func (ps *PlatformService) License() *model.License {
 	mockLic := model.NewTestLicense()
 	mockLic.SkuName = "Mattermost Enterprise Advanced"
 	mockLic.SkuShortName = model.LicenseShortSkuEnterpriseAdvanced
+	mockLic.Customer.Name = "ItsME"
+	mockLic.Customer.Company = "Hi.com"
+	mockLic.ExpiresAt = time.Date(2030, time.December, 30, 12, 0, 0, 0, time.UTC).UnixMilli()
 	return mockLic
 }
 

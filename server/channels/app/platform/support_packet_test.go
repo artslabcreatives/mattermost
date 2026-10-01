@@ -194,7 +194,7 @@ func TestGetSupportPacketDiagnostics(t *testing.T) {
 		assert.Equal(t, 2, d.Version)
 
 		/* License */
-		assert.Equal(t, "My awesome Company", d.License.Company)
+		assert.Equal(t, "Hi.com", d.License.Company)
 		assert.Equal(t, licenseUsers, d.License.Users)
 		assert.Equal(t, model.LicenseShortSkuEnterprise, d.License.SkuShortName)
 		assert.Equal(t, false, d.License.IsTrial)
