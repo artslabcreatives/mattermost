@@ -157,3 +157,15 @@ $app-bar-width: 44px;
 .app-bar__top::-webkit-scrollbar {
     display: none;
 }
+
+// Hide the App Bar inside the Hub drawer iframe (see utils/embed.tsx).
+// Prefixed with html to outrank the margin reset in sass/base/_structure.scss
+html body.embedded-hub {
+    .app-bar {
+        display: none;
+    }
+
+    #root:has(.app-bar) .main-wrapper {
+        margin-right: 4px;
+    }
+}

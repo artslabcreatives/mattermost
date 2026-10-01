@@ -11,6 +11,7 @@ import store from 'stores/redux_store';
 import App from 'components/app';
 
 import {AnnouncementBarTypes} from 'utils/constants';
+import {HUB_EMBED_BODY_CLASS, isEmbeddedInHub} from 'utils/embed';
 import {setCSRFFromCookie} from 'utils/utils';
 
 // Import our styles
@@ -48,6 +49,11 @@ function preRenderSetup(onPreRenderSetupReady: () => void) {
     };
 
     setCSRFFromCookie();
+
+    // Lets styles hide parts of the UI when shown inside the Hub drawer
+    if (isEmbeddedInHub()) {
+        document.body.classList.add(HUB_EMBED_BODY_CLASS);
+    }
 
     onPreRenderSetupReady();
 }
