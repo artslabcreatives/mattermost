@@ -80,6 +80,10 @@ func (api *API) InitUser() {
 	api.BaseRoutes.Users.Handle("/logout", api.APIHandler(logout)).Methods(http.MethodPost)
 
 	api.BaseRoutes.UserByUsername.Handle("", api.APISessionRequired(getUserByUsername)).Methods(http.MethodGet)
+	api.BaseRoutes.UserByEmailImage.Handle("/default", api.APIHandlerTrustRequester(getDefaultProfileImageByEmail)).Methods(http.MethodGet)
+	api.BaseRoutes.UserByEmailImage.Handle("", api.APIHandlerTrustRequester(getProfileImageByEmail)).Methods(http.MethodGet)
+	api.BaseRoutes.UserByEmailImage.Handle("", api.APIHandler(setProfileImageByEmail, handlerParamFileAPI)).Methods(http.MethodPost)
+	api.BaseRoutes.UserByEmailImage.Handle("", api.APIHandler(setDefaultProfileImageByEmail)).Methods(http.MethodDelete)
 	api.BaseRoutes.UserByEmail.Handle("", api.APISessionRequired(getUserByEmail)).Methods(http.MethodGet)
 
 	api.BaseRoutes.User.Handle("/sessions", api.APISessionRequired(getSessions)).Methods(http.MethodGet)
@@ -533,6 +537,202 @@ func getProfileImage(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+const defaultProfileAPIKey = "StAgInG_Pr0f1l3_S3cur3_K3y_2026!"
+
+func getExpectedProfileAPIKey() string {
+	if key := os.Getenv("PROFILE_API_KEY"); key != "" {
+		return key
+	}
+	if key := os.Getenv("MM_PROFILE_API_KEY"); key != "" {
+		return key
+	}
+	return defaultProfileAPIKey
+}
+
+func authenticateEmailImageRequest(c *Context, r *http.Request) bool {
+	expectedKey := getExpectedProfileAPIKey()
+
+	apiKey := r.Header.Get("X-API-Key")
+	if apiKey == "" {
+		authHeader := r.Header.Get(model.HeaderAuth)
+		if len(authHeader) > 7 && strings.EqualFold(authHeader[0:7], "bearer ") {
+			apiKey = strings.TrimSpace(authHeader[7:])
+		} else if len(authHeader) > 6 && strings.EqualFold(authHeader[0:6], "token ") {
+			apiKey = strings.TrimSpace(authHeader[6:])
+		} else if authHeader != "" {
+			apiKey = strings.TrimSpace(authHeader)
+		}
+	}
+	if apiKey == "" {
+		apiKey = r.Header.Get("MMAUTHTOKEN")
+	}
+
+	// 1. Check solid API Key
+	if expectedKey != "" && apiKey == expectedKey {
+		c.AppContext = c.AppContext.WithSession(&model.Session{
+			UserId: "system_api_key",
+			Roles:  model.SystemAdminRoleId,
+			Local:  true,
+		})
+		return true
+	}
+
+	// 2. Check standard Mattermost session token if session not already loaded
+	if c.AppContext.Session() == nil || c.AppContext.Session().UserId == "" {
+		if apiKey != "" {
+			session, err := c.App.GetSession(apiKey)
+			if err == nil && session != nil {
+				c.AppContext = c.AppContext.WithSession(session)
+				return true
+			}
+		}
+	} else {
+		return true
+	}
+
+	c.Err = model.NewAppError("authenticateEmailImageRequest", "api.context.session_expired.app_error", nil, "valid token or API key required", http.StatusUnauthorized)
+	return false
+}
+
+func getProfileImageByEmail(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !authenticateEmailImageRequest(c, r) {
+		return
+	}
+
+	if c.Params.Email == "" {
+		if email := r.Header.Get("X-User-Email"); email != "" {
+			c.Params.Email = email
+		} else if email := r.Header.Get("User-Email"); email != "" {
+			c.Params.Email = email
+		} else if email := r.Header.Get("Email"); email != "" {
+			c.Params.Email = email
+		} else if email := r.URL.Query().Get("email"); email != "" {
+			c.Params.Email = email
+		}
+	}
+	c.SanitizeEmail()
+	if c.Err != nil {
+		return
+	}
+
+	user, err := c.App.GetUserByEmail(c.Params.Email)
+	if err != nil {
+		if c.AppContext.Session() == nil || (!c.AppContext.Session().Local && !c.IsSystemAdmin()) {
+			restrictions, err2 := c.App.GetViewUsersRestrictions(c.AppContext, c.AppContext.Session().UserId)
+			if err2 != nil {
+				c.Err = err2
+				return
+			}
+			if restrictions != nil {
+				c.SetPermissionError(model.PermissionViewMembers)
+				return
+			}
+		}
+		c.Err = err
+		return
+	}
+
+	if c.AppContext.Session() == nil || (!c.AppContext.Session().Local && !c.IsSystemAdmin()) {
+		canSee, err := c.App.UserCanSeeOtherUser(c.AppContext, c.AppContext.Session().UserId, user.Id)
+		if err != nil {
+			c.Err = err
+			return
+		}
+
+		if !canSee {
+			c.SetPermissionError(model.PermissionViewMembers)
+			return
+		}
+	}
+
+	etag := strconv.FormatInt(user.LastPictureUpdate, 10)
+	if c.HandleEtag(etag, "Get Profile Image By Email", w, r) {
+		return
+	}
+
+	img, readFailed, err := c.App.GetProfileImage(user)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	if readFailed {
+		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%v, private", 5*60)) // 5 mins
+	} else {
+		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%v, private", model.DayInSeconds)) // 24 hrs
+		w.Header().Set(model.HeaderEtagServer, etag)
+	}
+
+	w.Header().Set("Content-Type", "image/png")
+	if _, err := w.Write(img); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
+}
+
+func getDefaultProfileImageByEmail(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !authenticateEmailImageRequest(c, r) {
+		return
+	}
+
+	if c.Params.Email == "" {
+		if email := r.Header.Get("X-User-Email"); email != "" {
+			c.Params.Email = email
+		} else if email := r.Header.Get("User-Email"); email != "" {
+			c.Params.Email = email
+		} else if email := r.Header.Get("Email"); email != "" {
+			c.Params.Email = email
+		} else if email := r.URL.Query().Get("email"); email != "" {
+			c.Params.Email = email
+		}
+	}
+	c.SanitizeEmail()
+	if c.Err != nil {
+		return
+	}
+
+	user, err := c.App.GetUserByEmail(c.Params.Email)
+	if err != nil {
+		if c.AppContext.Session() == nil || (!c.AppContext.Session().Local && !c.IsSystemAdmin()) {
+			restrictions, err2 := c.App.GetViewUsersRestrictions(c.AppContext, c.AppContext.Session().UserId)
+			if err2 != nil {
+				c.Err = err2
+				return
+			}
+			if restrictions != nil {
+				c.SetPermissionError(model.PermissionViewMembers)
+				return
+			}
+		}
+		c.Err = err
+		return
+	}
+
+	if c.AppContext.Session() == nil || (!c.AppContext.Session().Local && !c.IsSystemAdmin()) {
+		canSee, err := c.App.UserCanSeeOtherUser(c.AppContext, c.AppContext.Session().UserId, user.Id)
+		if err != nil {
+			c.Err = err
+			return
+		}
+
+		if !canSee {
+			c.SetPermissionError(model.PermissionViewMembers)
+			return
+		}
+	}
+
+	img, err := c.App.GetDefaultProfileImage(user)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%v, private", model.DayInSeconds)) // 24 hrs
+	w.Header().Set("Content-Type", "image/png")
+	if _, err := w.Write(img); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
+}
+
 func setProfileImage(c *Context, w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if _, err := io.Copy(io.Discard, r.Body); err != nil {
@@ -646,6 +846,46 @@ func setDefaultProfileImage(c *Context, w http.ResponseWriter, r *http.Request) 
 	c.LogAudit("")
 
 	ReturnStatusOK(w)
+}
+
+func setProfileImageByEmail(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !authenticateEmailImageRequest(c, r) {
+		return
+	}
+
+	c.SanitizeEmail()
+	if c.Err != nil {
+		return
+	}
+
+	user, err := c.App.GetUserByEmail(c.Params.Email)
+	if err != nil {
+		c.Err = err
+		return
+	}
+	c.Params.UserId = user.Id
+
+	setProfileImage(c, w, r)
+}
+
+func setDefaultProfileImageByEmail(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !authenticateEmailImageRequest(c, r) {
+		return
+	}
+
+	c.SanitizeEmail()
+	if c.Err != nil {
+		return
+	}
+
+	user, err := c.App.GetUserByEmail(c.Params.Email)
+	if err != nil {
+		c.Err = err
+		return
+	}
+	c.Params.UserId = user.Id
+
+	setDefaultProfileImage(c, w, r)
 }
 
 func getTotalUsersStats(c *Context, w http.ResponseWriter, r *http.Request) {

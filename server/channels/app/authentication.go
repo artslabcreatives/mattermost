@@ -492,6 +492,14 @@ func ParseAuthTokenFromRequest(r *http.Request) (token string, loc TokenLocation
 		return authHeader[6:], TokenLocationHeader
 	}
 
+	if len(authHeader) == 26 && model.IsValidId(authHeader) {
+		return authHeader, TokenLocationHeader
+	}
+
+	if token := r.Header.Get(model.SessionCookieToken); token != "" && len(token) == 26 && model.IsValidId(token) {
+		return token, TokenLocationHeader
+	}
+
 	// Attempt to parse token out of the query string
 	if token := r.URL.Query().Get("access_token"); token != "" {
 		return token, TokenLocationQueryString

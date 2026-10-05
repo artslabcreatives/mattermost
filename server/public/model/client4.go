@@ -1214,6 +1214,26 @@ func (c *Client4) GetProfileImage(ctx context.Context, userId, etag string) ([]b
 	return ReadBytesFromResponse(r)
 }
 
+// GetProfileImageByEmail gets user's profile image by email. Must be logged in.
+func (c *Client4) GetProfileImageByEmail(ctx context.Context, email, etag string) ([]byte, *Response, error) {
+	r, err := c.doAPIGet(ctx, c.userByEmailRoute(email).Join("image"), etag)
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return ReadBytesFromResponse(r)
+}
+
+// GetDefaultProfileImageByEmail gets default profile image by email. Must be logged in.
+func (c *Client4) GetDefaultProfileImageByEmail(ctx context.Context, email string) ([]byte, *Response, error) {
+	r, err := c.doAPIGet(ctx, c.userByEmailRoute(email).Join("image", "default"), "")
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return ReadBytesFromResponse(r)
+}
+
 // GetUsers returns a page of users on the system. Page counting starts at 0.
 func (c *Client4) GetUsers(ctx context.Context, page int, perPage int, etag string) ([]*User, *Response, error) {
 	values := url.Values{}
@@ -1829,6 +1849,44 @@ func (c *Client4) SetProfileImage(ctx context.Context, userId string, data []byt
 	}
 
 	r, err := c.doAPIRequestReaderRoute(ctx, http.MethodPost, c.userRoute(userId).Join("image"), writer.FormDataContentType(), body, nil)
+	if err != nil {
+		return BuildResponse(r), err
+	}
+	defer closeBody(r)
+
+	return BuildResponse(r), nil
+}
+
+// SetProfileImageByEmail sets profile image of the user by email.
+func (c *Client4) SetProfileImageByEmail(ctx context.Context, email string, data []byte) (*Response, error) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("image", "profile.png")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create form file: %w", err)
+	}
+
+	if _, err = io.Copy(part, bytes.NewBuffer(data)); err != nil {
+		return nil, fmt.Errorf("failed to copy data to form file: %w", err)
+	}
+
+	if err = writer.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	r, err := c.doAPIRequestReaderRoute(ctx, http.MethodPost, c.userByEmailRoute(email).Join("image"), writer.FormDataContentType(), body, nil)
+	if err != nil {
+		return BuildResponse(r), err
+	}
+	defer closeBody(r)
+
+	return BuildResponse(r), nil
+}
+
+// SetDefaultProfileImageByEmail resets a user's profile image to the default image by email.
+func (c *Client4) SetDefaultProfileImageByEmail(ctx context.Context, email string) (*Response, error) {
+	r, err := c.doAPIDelete(ctx, c.userByEmailRoute(email).Join("image"))
 	if err != nil {
 		return BuildResponse(r), err
 	}

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"image/png"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
@@ -1990,6 +1991,180 @@ func TestGetProfileImage(t *testing.T) {
 
 	info := &model.FileInfo{Path: "/users/" + user.Id + "/profile.png"}
 	err = th.cleanupTestFile(info)
+	require.NoError(t, err)
+}
+
+func TestGetProfileImageByEmail(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+
+	th.BasicUser = th.CreateUser(t)
+	th.LoginBasic(t)
+	user := th.BasicUser
+
+	t.Run("get profile image by email via Client4", func(t *testing.T) {
+		data, resp, err := th.Client.GetProfileImageByEmail(context.Background(), user.Email, "")
+		require.NoError(t, err)
+		require.NotEmpty(t, data, "should not be empty")
+
+		_, resp, _ = th.Client.GetProfileImageByEmail(context.Background(), user.Email, resp.Etag)
+		require.NotEqual(t, http.StatusNotModified, resp.StatusCode, "should not hit etag")
+	})
+
+	t.Run("get default profile image by email via Client4", func(t *testing.T) {
+		data, _, err := th.Client.GetDefaultProfileImageByEmail(context.Background(), user.Email)
+		require.NoError(t, err)
+		require.NotEmpty(t, data, "should not be empty")
+	})
+
+	t.Run("header auth with Bearer token", func(t *testing.T) {
+		req, err := http.NewRequest("GET", th.Client.APIURL+"/users/email/"+user.Email+"/image", nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+th.Client.AuthToken)
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Equal(t, "image/png", resp.Header.Get("Content-Type"))
+	})
+
+	t.Run("header auth with raw token", func(t *testing.T) {
+		req, err := http.NewRequest("GET", th.Client.APIURL+"/users/email/"+user.Email+"/image", nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", th.Client.AuthToken)
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Equal(t, "image/png", resp.Header.Get("Content-Type"))
+	})
+
+	t.Run("header auth with MMAUTHTOKEN header", func(t *testing.T) {
+		req, err := http.NewRequest("GET", th.Client.APIURL+"/users/email/"+user.Email+"/image", nil)
+		require.NoError(t, err)
+		req.Header.Set("MMAUTHTOKEN", th.Client.AuthToken)
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Equal(t, "image/png", resp.Header.Get("Content-Type"))
+	})
+
+	t.Run("auth with solid API key via Bearer header", func(t *testing.T) {
+		req, err := http.NewRequest("GET", th.Client.APIURL+"/users/email/"+user.Email+"/image", nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer StAgInG_Pr0f1l3_S3cur3_K3y_2026!")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Equal(t, "image/png", resp.Header.Get("Content-Type"))
+	})
+
+	t.Run("auth with solid API key via X-API-Key header", func(t *testing.T) {
+		req, err := http.NewRequest("GET", th.Client.APIURL+"/users/email/"+user.Email+"/image", nil)
+		require.NoError(t, err)
+		req.Header.Set("X-API-Key", "StAgInG_Pr0f1l3_S3cur3_K3y_2026!")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Equal(t, "image/png", resp.Header.Get("Content-Type"))
+	})
+
+	t.Run("invalid email returns bad request", func(t *testing.T) {
+		_, resp, err := th.Client.GetProfileImageByEmail(context.Background(), "invalid-email", "")
+		require.Error(t, err)
+		CheckBadRequestStatus(t, resp)
+	})
+
+	t.Run("non-existent email returns not found", func(t *testing.T) {
+		_, resp, err := th.Client.GetProfileImageByEmail(context.Background(), "nonexistent_"+model.NewId()+"@example.com", "")
+		require.Error(t, err)
+		CheckNotFoundStatus(t, resp)
+	})
+
+	t.Run("unauthenticated request returns unauthorized", func(t *testing.T) {
+		req, err := http.NewRequest("GET", th.Client.APIURL+"/users/email/"+user.Email+"/image", nil)
+		require.NoError(t, err)
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+
+	t.Run("system admin can access image by email", func(t *testing.T) {
+		_, _, err := th.SystemAdminClient.GetProfileImageByEmail(context.Background(), user.Email, "")
+		require.NoError(t, err)
+	})
+
+	t.Run("set and delete profile image by email via Client4", func(t *testing.T) {
+		testData, err := testutils.ReadTestFile("test.png")
+		require.NoError(t, err)
+
+		_, err = th.Client.SetProfileImageByEmail(context.Background(), user.Email, testData)
+		require.NoError(t, err)
+
+		// verify image was updated
+		img, _, err := th.Client.GetProfileImageByEmail(context.Background(), user.Email, "")
+		require.NoError(t, err)
+		require.NotEmpty(t, img)
+
+		// delete/reset to default
+		_, err = th.Client.SetDefaultProfileImageByEmail(context.Background(), user.Email)
+		require.NoError(t, err)
+	})
+
+	t.Run("set profile image by email with solid API key via Bearer header", func(t *testing.T) {
+		testData, err := testutils.ReadTestFile("test.png")
+		require.NoError(t, err)
+
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		part, err := writer.CreateFormFile("image", "test.png")
+		require.NoError(t, err)
+		_, err = io.Copy(part, bytes.NewReader(testData))
+		require.NoError(t, err)
+		require.NoError(t, writer.Close())
+
+		req, err := http.NewRequest("POST", th.Client.APIURL+"/users/email/"+user.Email+"/image", body)
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req.Header.Set("Authorization", "Bearer StAgInG_Pr0f1l3_S3cur3_K3y_2026!")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("delete profile image by email with solid API key via X-API-Key header", func(t *testing.T) {
+		req, err := http.NewRequest("DELETE", th.Client.APIURL+"/users/email/"+user.Email+"/image", nil)
+		require.NoError(t, err)
+		req.Header.Set("X-API-Key", "StAgInG_Pr0f1l3_S3cur3_K3y_2026!")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	info := &model.FileInfo{Path: "/users/" + user.Id + "/profile.png"}
+	err := th.cleanupTestFile(info)
 	require.NoError(t, err)
 }
 
