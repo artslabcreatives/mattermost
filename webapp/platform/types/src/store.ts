@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import type {AdminState} from './admin';
+import type {LLMService} from './agents';
 import type {AppsState} from './apps';
 import type {Bot} from './bots';
 import type {ChannelBookmarksState} from './channel_bookmarks';
@@ -19,7 +20,9 @@ import type {JobsState} from './jobs';
 import type {LimitsState} from './limits';
 import type {PostsState} from './posts';
 import type {PreferenceType} from './preferences';
-import type {Recap} from './recaps';
+import type {PropertiesState} from './properties';
+import type {Recap, ScheduledRecap, RecapLimitStatus} from './recaps';
+import type {RenderPermissionsState} from './render_permissions';
 import type {
     AdminRequestsStatuses, ChannelsRequestsStatuses,
     FilesRequestsStatuses, GeneralRequestsStatuses,
@@ -49,6 +52,8 @@ export type GlobalState = {
         recaps: {
             byId: Record<string, Recap>;
             allIds: string[];
+            scheduledRecaps: Record<string, ScheduledRecap>;
+            limitStatus: RecapLimitStatus | null;
         };
         agents: {
             agents: Array<{
@@ -58,6 +63,8 @@ export type GlobalState = {
                 service_id: string;
                 service_type: string;
             }>;
+            llmServices: LLMService[];
+            agentsStatus: {available: boolean; reason?: string};
         };
         bots: {
             accounts: Record<string, Bot>;
@@ -98,6 +105,8 @@ export type GlobalState = {
             remotesByRemoteId?: Record<string, RemoteClusterInfo>;
         };
         contentFlagging: ContentFlaggingState;
+        properties: PropertiesState;
+        renderPermissions: RenderPermissionsState;
     };
     errors: any[];
     requests: {

@@ -3,13 +3,38 @@
 
 import {defineConfig, devices} from '@playwright/test';
 
-import {duration, testConfig} from '@mattermost/playwright-lib';
+import {
+    assertUpgradeFromFreshStart,
+    assertUpgradeToRequiresPriorFromRun,
+    duration,
+    isUpgradeFromProjectSelected,
+    isUpgradeToPhaseProjectSelected,
+    logUpgradeFromServerImage,
+    logUpgradeToServerImage,
+    testConfig,
+} from '@mattermost/playwright-lib';
+
+if (isUpgradeFromProjectSelected()) {
+    assertUpgradeFromFreshStart();
+    logUpgradeFromServerImage();
+}
+
+if (isUpgradeToPhaseProjectSelected()) {
+    assertUpgradeToRequiresPriorFromRun();
+    logUpgradeToServerImage();
+}
+
+const chromeUse = {
+    browserName: 'chromium' as const,
+    permissions: ['notifications', 'clipboard-read', 'clipboard-write'] as string[],
+    viewport: {width: 1280, height: 1024},
+};
 
 export default defineConfig({
     globalSetup: './global_setup.ts',
     forbidOnly: testConfig.isCI,
     outputDir: './results/output',
-    retries: testConfig.isCI ? 2 : 0,
+    retries: testConfig.isCI ? 1 : 0,
     testDir: 'specs',
     timeout: duration.one_min,
     workers: testConfig.workers,
@@ -39,8 +64,8 @@ export default defineConfig({
             slowMo: testConfig.slowMo,
         },
         screenshot: 'only-on-failure',
-        timezoneId: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        trace: 'off',
+        timezoneId: new Intl.DateTimeFormat().resolvedOptions().timeZone,
+        trace: 'retain-on-failure',
         video: 'retain-on-failure',
         actionTimeout: duration.half_min,
     },
@@ -57,11 +82,7 @@ export default defineConfig({
         },
         {
             name: 'chrome',
-            use: {
-                browserName: 'chromium',
-                permissions: ['notifications', 'clipboard-read', 'clipboard-write'],
-                viewport: {width: 1280, height: 1024},
-            },
+            use: chromeUse,
             dependencies: ['setup'],
         },
         {
@@ -73,8 +94,26 @@ export default defineConfig({
             },
             dependencies: ['setup'],
         },
+        // Upgrade-path specs live under upgrade-specs/ (outside testDir) so Test System IO
+        // dispatch-begin does not register them in the full Playwright queue.
+        {
+            name: 'upgrade-from',
+            testDir: 'upgrade-specs/from',
+            dependencies: ['setup'],
+            fullyParallel: false,
+            workers: 1,
+        },
+        {name: 'upgrade-swap-to', testDir: 'upgrade-specs', testMatch: /upgrade_swap_to\.ts/},
+        {
+            name: 'upgrade-to',
+            testDir: 'upgrade-specs/to',
+            dependencies: ['upgrade-swap-to'],
+            fullyParallel: false,
+            workers: 1,
+        },
     ],
     reporter: [
+        ...(testConfig.isCI ? [['blob', {outputDir: './results/blob-report'}] as const] : []),
         ['html', {open: 'never', outputFolder: './results/reporter'}],
         ['json', {outputFile: './results/reporter/results.json'}],
         ['junit', {outputFile: './results/reporter/results.xml'}],

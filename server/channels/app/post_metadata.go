@@ -43,9 +43,7 @@ func (s *Server) initPostMetadata() {
 	// Dump any cached links if the proxy settings have changed so image URLs can be updated
 	s.platform.AddConfigListener(func(before, after *model.Config) {
 		if (before.ImageProxySettings.Enable != after.ImageProxySettings.Enable) ||
-			(before.ImageProxySettings.ImageProxyType != after.ImageProxySettings.ImageProxyType) ||
-			(before.ImageProxySettings.RemoteImageProxyURL != after.ImageProxySettings.RemoteImageProxyURL) ||
-			(before.ImageProxySettings.RemoteImageProxyOptions != after.ImageProxySettings.RemoteImageProxyOptions) {
+			(before.ImageProxySettings.ImageProxyType != after.ImageProxySettings.ImageProxyType) {
 			if err := platform.PurgeLinkCache(); err != nil {
 				mlog.Warn("Failed to remove cached links when the proxy settings changed", mlog.Err(err))
 			}
@@ -83,7 +81,81 @@ func (a *App) PreparePostListForClient(rctx request.CTX, originalList *model.Pos
 		}
 	}
 
+	a.populatePostListTranslations(rctx, list)
+
 	return list
+}
+
+// populatePostListTranslations fetches and populates translation metadata for posts that don't already have it.
+// Posts from WebSocket broadcasts (post_created) already have translations populated.
+// This function handles API requests (GetPostsForChannel, etc.) by fetching only the user's language.
+func (a *App) populatePostListTranslations(rctx request.CTX, list *model.PostList) {
+	// Check if auto-translation is available before making database calls
+	if a.AutoTranslation() == nil || !a.AutoTranslation().IsFeatureAvailable() {
+		return
+	}
+
+	userID := rctx.Session().UserId
+
+	// Check which posts need translation data populated
+	postsNeedingTranslations := make(map[string][]string) // channelID -> postIDs
+
+	for _, post := range list.Posts {
+		// Skip if translations already populated (e.g., from CreatePost)
+		if post.Metadata != nil && len(post.Metadata.Translations) > 0 {
+			continue
+		}
+
+		postsNeedingTranslations[post.ChannelId] = append(postsNeedingTranslations[post.ChannelId], post.Id)
+	}
+
+	if len(postsNeedingTranslations) == 0 {
+		return // All posts already have translations
+	}
+
+	// For API requests, fetch only the user's language translation
+	for channelID, postIDs := range postsNeedingTranslations {
+		userLang, err := a.AutoTranslation().GetUserLanguage(userID, channelID)
+		if err != nil {
+			var notAvailErr *model.ErrAutoTranslationNotAvailable
+			if !errors.As(err, &notAvailErr) {
+				// Log non-availability errors
+				rctx.Logger().Warn("Failed to get user language for auto-translation", mlog.String("channel_id", channelID), mlog.Err(err))
+			}
+			continue
+		}
+		if userLang == "" {
+			continue
+		}
+
+		translationsMap, err := a.AutoTranslation().GetBatch(model.TranslationObjectTypePost, postIDs, userLang)
+		if err != nil {
+			var notAvailErr *model.ErrAutoTranslationNotAvailable
+			if errors.As(err, &notAvailErr) {
+				rctx.Logger().Debug("Auto-translation feature not available during GetBatch", mlog.Err(err))
+			} else {
+				// Real error - log it
+				rctx.Logger().Warn("Failed to fetch translations batch", mlog.Err(err))
+			}
+			continue
+		}
+
+		// Populate each post's metadata
+		for postID, t := range translationsMap {
+			post := list.Posts[postID]
+			if post.Metadata == nil {
+				post.Metadata = &model.PostMetadata{}
+			}
+			if post.Metadata.Translations == nil {
+				post.Metadata.Translations = make(map[string]*model.PostTranslation)
+			}
+
+			post.Metadata.Translations[t.Lang] = t.ToPostTranslation()
+			if t.UpdateAt > post.UpdateAt {
+				post.UpdateAt = t.UpdateAt
+			}
+		}
+	}
 }
 
 // OverrideIconURLIfEmoji changes the post icon override URL prop, if it has an emoji icon,
@@ -108,7 +180,7 @@ func (a *App) OverrideIconURLIfEmoji(rctx request.CTX, post *model.Post) {
 	if emojiURL, err := a.GetEmojiStaticURL(rctx, emojiName); err == nil {
 		post.AddProp(model.PostPropsOverrideIconURL, emojiURL)
 	} else {
-		rctx.Logger().Warn("Failed to retrieve URL for overridden profile icon (emoji)", mlog.String("emojiName", emojiName), mlog.Err(err))
+		rctx.Logger().Warn("Failed to retrieve URL for overridden profile icon (emoji)", mlog.String("emoji_name", emojiName), mlog.Err(err))
 	}
 }
 
@@ -142,6 +214,17 @@ func (a *App) PreparePostForClient(rctx request.CTX, originalPost *model.Post, o
 	a.preparePostFilesForClient(rctx, post, opts)
 
 	if post.Type == model.PostTypeBurnOnRead {
+		// For the sender, populate ExpireAt from TemporaryPost when all recipients have revealed.
+		// This ensures the countdown timer persists after page reload.
+		if post.UserId == rctx.Session().UserId && post.Metadata.ExpireAt == 0 {
+			if unreadCount, err := a.Srv().Store().ReadReceipt().GetUnreadCountForPost(rctx, post); err == nil && unreadCount == 0 {
+				// Bypass cache to ensure fresh data from DB in clustered environments
+				if tmpPost, err := a.Srv().Store().TemporaryPost().Get(rctx, post.Id, false); err == nil {
+					post.Metadata.ExpireAt = tmpPost.ExpireAt
+				}
+			}
+		}
+
 		// if metadata expire is not set, it means the post is not revealed yet
 		// so we need to reset the metadata. Or, if the user is the author, we don't reset the metadata.
 		if post.Metadata.ExpireAt == 0 && post.UserId != rctx.Session().UserId {
@@ -154,8 +237,8 @@ func (a *App) PreparePostForClient(rctx request.CTX, originalPost *model.Post, o
 	}
 
 	if opts.IncludePriority && a.IsPostPriorityEnabled() && post.RootId == "" {
-		// Post's Priority if any
-		if priority, err := a.GetPriorityForPost(post.Id); err != nil {
+		// Use context-aware method to respect master/replica flag
+		if priority, err := a.GetPriorityForPostWithContext(rctx, post.Id); err != nil {
 			rctx.Logger().Warn("Failed to get post priority for a post", mlog.String("post_id", post.Id), mlog.Err(err))
 		} else {
 			post.Metadata.Priority = priority
@@ -198,15 +281,12 @@ func (a *App) getEmbedsAndImages(rctx request.CTX, post *model.Post, isNewPost b
 		post.Metadata.Embeds = []*model.PostEmbed{}
 	}
 
-	// Embeds and image dimensions
-	firstLink, images := a.getFirstLinkAndImages(rctx, post.Message)
+	// Embeds use the first autolink from the post message only (not from attachments or blocks).
+	firstLink := a.getFirstLink(rctx, post.Message)
 
-	if unsafeLinksProp := post.GetProp(model.PostPropsUnsafeLinks); unsafeLinksProp != nil {
-		if prop, ok := unsafeLinksProp.(string); ok && prop == "true" {
-			images = []string{}
-			if !looksLikeAPermalink(firstLink, *a.Config().ServiceSettings.SiteURL) {
-				return post
-			}
+	if post.HasUnsafeLinks() {
+		if !looksLikeAPermalink(firstLink, *a.Config().ServiceSettings.SiteURL) {
+			return post
 		}
 	}
 
@@ -220,7 +300,7 @@ func (a *App) getEmbedsAndImages(rctx request.CTX, post *model.Post, isNewPost b
 	} else if embed != nil {
 		post.Metadata.Embeds = append(post.Metadata.Embeds, embed)
 	}
-	post.Metadata.Images = a.getImagesForPost(rctx, post, images, isNewPost)
+	post.Metadata.Images = a.getImagesForPost(rctx, post, isNewPost)
 	return post
 }
 
@@ -247,50 +327,260 @@ func removeEmbeddedPostsFromMetadata(post *model.Post) {
 	post.Metadata.Embeds = newEmbeds
 }
 
-func (a *App) sanitizePostMetadataForUserAndChannel(rctx request.CTX, post *model.Post, previewedPost *model.PreviewPost, previewedChannel *model.Channel, userID string) *model.Post {
-	if post.Metadata == nil || len(post.Metadata.Embeds) == 0 || previewedPost == nil {
+func (a *App) SanitizePostMetadataForUser(rctx request.CTX, post *model.Post, userID string) (*model.Post, bool, *model.AppError) {
+	isMemberForPreviews := true
+
+	// Sanitize permalink embeds based on permissions (only if present)
+	if post.Metadata != nil && len(post.Metadata.Embeds) > 0 {
+		previewPost := post.GetPreviewPost()
+		if previewPost != nil {
+			previewedChannel, err := a.GetChannel(rctx, previewPost.Post.ChannelId)
+			if err != nil {
+				return nil, false, err
+			}
+
+			if previewedChannel != nil {
+				var hasPermission bool
+				hasPermission, isMemberForPreviews = a.HasPermissionToReadChannel(rctx, userID, previewedChannel)
+				if !hasPermission {
+					removePermalinkMetadataFromPost(post)
+					// Since we remove the permalink metadata, we return true for isMember
+					isMemberForPreviews = true
+				} else {
+					a.RecordPermalinkPreviewDelivery(rctx, userID, previewPost.Post, post)
+				}
+			}
+		}
+	}
+
+	// Sanitize channel mentions based on permissions
+	// sanitizeChannelMentionsForUser returns immediately if no channel mentions exist
+	post = a.sanitizeChannelMentionsForUser(rctx, post, userID)
+
+	// Permalink previews embed the referenced post verbatim, so its channel mentions
+	// need the same treatment as the parent post's.
+	a.sanitizeEmbeddedChannelMentionsForUser(rctx, post, userID)
+
+	// Strip file attachments denied by ABAC — covers both the post and permalink embeds.
+	if post.Metadata != nil {
+		a.sanitizeFileAttachmentsForUser(rctx, post, userID)
+	}
+
+	return post, isMemberForPreviews, nil
+}
+
+// sanitizeChannelMentionsForUser filters channel mentions in post props based on the viewer's
+// permissions. Only channels the user has permission to read will be included in the returned post.
+// This prevents information disclosure of private channel names/metadata.
+func (a *App) sanitizeChannelMentionsForUser(rctx request.CTX, post *model.Post, userID string) *model.Post {
+	channelMentionsProp := post.GetProp(model.PostPropsChannelMentions)
+	if channelMentionsProp == nil {
 		return post
 	}
 
-	if previewedChannel != nil && !a.HasPermissionToReadChannel(rctx, userID, previewedChannel) {
-		removePermalinkMetadataFromPost(post)
+	mentionsMap, ok := channelMentionsProp.(map[string]any)
+	if !ok {
+		return post
+	}
+
+	sanitized := make(map[string]any)
+
+	for channelName, data := range mentionsMap {
+		dataMap, ok := data.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		// Get team_name from the mention data
+		teamName, _ := dataMap["team_name"].(string)
+
+		if teamName == "" {
+			// No team information, skip this mention
+			continue
+		}
+
+		// Fetch the channel from database (gets fresh data)
+		channel, err := a.GetChannelByNameForTeamName(rctx, channelName, teamName, true)
+
+		if err != nil {
+			// Channel not found or error fetching, skip
+			continue
+		}
+
+		// Resolve the channel mention if the viewer may see the channel's name/link.
+		if a.HasPermissionToResolveChannelMention(rctx, userID, channel) {
+			// User has permission - include in sanitized props with fresh display_name
+			// Reuse team_name from original props to avoid additional DB query
+			// (team renames are extremely rare and don't warrant the performance cost)
+			sanitized[channelName] = map[string]any{
+				"display_name": channel.DisplayName, // Fresh from database (handles channel renames)
+				"team_name":    teamName,            // Reused from props (avoids team lookup)
+			}
+		}
+		// Otherwise, omit from props (no information disclosure)
+	}
+
+	// Update post props with sanitized mentions
+	if len(sanitized) > 0 {
+		post.AddProp(model.PostPropsChannelMentions, sanitized)
+	} else {
+		post.DelProp(model.PostPropsChannelMentions)
 	}
 
 	return post
 }
 
-func (a *App) SanitizePostMetadataForUser(rctx request.CTX, post *model.Post, userID string) (*model.Post, *model.AppError) {
-	if post.Metadata == nil || len(post.Metadata.Embeds) == 0 {
-		return post, nil
+// sanitizeEmbeddedChannelMentionsForUser filters the channel mentions of posts embedded as
+// permalink previews, so that a preview cannot disclose channels the viewer may not resolve.
+func (a *App) sanitizeEmbeddedChannelMentionsForUser(rctx request.CTX, post *model.Post, userID string) {
+	if post.Metadata == nil {
+		return
 	}
 
-	previewPost := post.GetPreviewPost()
-	if previewPost == nil {
-		return post, nil
-	}
+	for _, embed := range post.Metadata.Embeds {
+		if embed == nil || embed.Type != model.PostEmbedPermalink {
+			continue
+		}
 
-	previewedChannel, err := a.GetChannel(rctx, previewPost.Post.ChannelId)
-	if err != nil {
-		return nil, err
-	}
+		previewPost, ok := embed.Data.(*model.PreviewPost)
+		if !ok || previewPost == nil || previewPost.Post == nil {
+			continue
+		}
 
-	if previewedChannel != nil && !a.HasPermissionToReadChannel(rctx, userID, previewedChannel) {
-		removePermalinkMetadataFromPost(post)
-	}
+		if previewPost.Post.GetProp(model.PostPropsChannelMentions) == nil {
+			continue
+		}
 
-	return post, nil
+		// Clone both the inner Post and the outer PreviewPost before mutating.
+		// embed.Data points into the global link-metadata cache; writing through the
+		// shared *PreviewPost pointer would corrupt it for concurrent requests.
+		previewPostCopy := *previewPost
+		previewPostCopy.Post = a.sanitizeChannelMentionsForUser(rctx, previewPost.Post.Clone(), userID)
+		embed.Data = &previewPostCopy
+	}
 }
 
-func (a *App) SanitizePostListMetadataForUser(rctx request.CTX, postList *model.PostList, userID string) (*model.PostList, *model.AppError) {
+// fileAttachmentPoliciesActive reports whether ABAC file-download policies are in effect.
+func (a *App) fileAttachmentPoliciesActive() bool {
+	if a.Srv().Channels().AccessControl == nil {
+		return false
+	}
+
+	cfg := a.Config().AccessControlSettings.EnableAttributeBasedAccessControl
+	if cfg == nil || !*cfg {
+		return false
+	}
+
+	return a.Config().FeatureFlags.PermissionPolicies
+}
+
+// hasFileAttachmentAccess reports whether the user may be served file metadata for a
+// channel, applying the same download_file_attachment check as
+// sanitizeFileAttachmentsForUser. Callers that build PostMetadata.Files themselves must
+// gate on this so every path serving file metadata enforces the policy.
+func (a *App) hasFileAttachmentAccess(rctx request.CTX, userID, channelID string) bool {
+	if !a.fileAttachmentPoliciesActive() {
+		return true
+	}
+
+	// No requesting user (e.g. a background job with no session). There is nobody to
+	// authorize, so skip; a genuine reader is checked with their own session id.
+	if userID == "" {
+		return true
+	}
+
+	user, err := a.GetUser(rctx, userID)
+	if err != nil {
+		rctx.Logger().Warn("Failed to get user for file attachment authorization, denying access",
+			mlog.String("user_id", userID),
+			mlog.Err(err),
+		)
+		return false
+	}
+
+	return a.HasPermissionToFileAction(rctx, userID, user.Roles, channelID, model.AccessControlPolicyActionDownloadFileAttachment)
+}
+
+// sanitizeFileAttachmentsForUser strips file metadata from the post and from any embedded
+// permalink preview posts if the user is denied the download_file_attachment action.
+func (a *App) sanitizeFileAttachmentsForUser(rctx request.CTX, post *model.Post, userID string) {
+	if !a.fileAttachmentPoliciesActive() {
+		return
+	}
+
+	// No requesting user (e.g. a system post created by a background job with no
+	// session, such as the ABAC membership sync's channel-join messages). There
+	// is nobody to sanitize attachments for, so skip. A genuine reader re-runs
+	// this with their own session id when the post is served.
+	if userID == "" {
+		return
+	}
+
+	user, err := a.GetUser(rctx, userID)
+	if err != nil {
+		rctx.Logger().Warn("Failed to get user for file attachment sanitization, stripping attachments",
+			mlog.String("user_id", userID),
+			mlog.Err(err),
+		)
+		post.Metadata.Files = nil
+		post.FileIds = model.StringArray{}
+		return
+	}
+
+	if len(post.Metadata.Files) > 0 {
+		if !a.HasPermissionToFileAction(rctx, userID, user.Roles, post.ChannelId, model.AccessControlPolicyActionDownloadFileAttachment) {
+			rctx.Logger().Debug("Stripping file attachments from post due to ABAC permission policy",
+				mlog.String("user_id", userID),
+				mlog.String("post_id", post.Id),
+				mlog.String("channel_id", post.ChannelId),
+				mlog.Int("files_removed", len(post.Metadata.Files)),
+			)
+			post.Metadata.RedactedFileCount = len(post.Metadata.Files)
+			post.Metadata.Files = nil
+			post.FileIds = model.StringArray{}
+		}
+	}
+
+	// Also strip files from permalink-embedded posts. embed.Data is *model.PreviewPost;
+	// each referenced post is checked against its own channel.
+	for _, embed := range post.Metadata.Embeds {
+		if embed.Type != model.PostEmbedPermalink {
+			continue
+		}
+		previewPost, ok := embed.Data.(*model.PreviewPost)
+		if !ok || previewPost == nil || previewPost.Post == nil {
+			continue
+		}
+		if previewPost.Post.Metadata == nil || len(previewPost.Post.Metadata.Files) == 0 {
+			continue
+		}
+		if !a.HasPermissionToFileAction(rctx, userID, user.Roles, previewPost.Post.ChannelId, model.AccessControlPolicyActionDownloadFileAttachment) {
+			// Clone both the inner Post and the outer PreviewPost before mutating.
+			// embed.Data points into the global link-metadata cache; writing through the
+			// shared *PreviewPost pointer would corrupt it for concurrent requests.
+			referencedPost := previewPost.Post.Clone()
+			referencedPost.Metadata.RedactedFileCount = len(referencedPost.Metadata.Files)
+			referencedPost.Metadata.Files = nil
+			referencedPost.FileIds = model.StringArray{}
+			previewPostCopy := *previewPost
+			previewPostCopy.Post = referencedPost
+			embed.Data = &previewPostCopy
+		}
+	}
+}
+
+func (a *App) SanitizePostListMetadataForUser(rctx request.CTX, postList *model.PostList, userID string) (*model.PostList, bool, *model.AppError) {
 	clonedPostList := postList.Clone()
+	allPreviewsHaveMembership := true
 	for postID, post := range clonedPostList.Posts {
-		sanitizedPost, err := a.SanitizePostMetadataForUser(rctx, post, userID)
+		sanitizedPost, isMember, err := a.SanitizePostMetadataForUser(rctx, post, userID)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		clonedPostList.Posts[postID] = sanitizedPost
+		allPreviewsHaveMembership = allPreviewsHaveMembership && isMember
 	}
-	return clonedPostList, nil
+	return clonedPostList, allPreviewsHaveMembership, nil
 }
 
 func (a *App) getFileMetadataForPost(rctx request.CTX, post *model.Post, fromMaster, includeDeleted bool) ([]*model.FileInfo, int64, *model.AppError) {
@@ -298,28 +588,7 @@ func (a *App) getFileMetadataForPost(rctx request.CTX, post *model.Post, fromMas
 		return nil, 0, nil
 	}
 
-	var fileInfos []*model.FileInfo
-	var err error
-
-	if fromMaster {
-		fileInfos, err = a.Srv().Store().FileInfo().GetForPost(post.Id, true, includeDeleted, true)
-	}
-
-	if len(fileInfos) == 0 {
-		fileInfos, err = a.Srv().Store().FileInfo().GetByIds(post.FileIds, includeDeleted, true)
-	}
-	if err != nil {
-		return nil, 0, model.NewAppError("getFileMetadataForPost", "app.file_info.get_for_post.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
-	}
-
-	firstInaccessibleFileTime, appErr := a.removeInaccessibleContentFromFilesSlice(fileInfos)
-	if appErr != nil {
-		return nil, 0, appErr
-	}
-
-	a.generateMiniPreviewForInfos(rctx, fileInfos)
-
-	return fileInfos, firstInaccessibleFileTime, nil
+	return a.GetFileInfosForPost(rctx, post, fromMaster, includeDeleted)
 }
 
 func (a *App) getEmojisAndReactionsForPost(rctx request.CTX, post *model.Post) ([]*model.Emoji, []*model.Reaction, *model.AppError) {
@@ -381,6 +650,18 @@ func (a *App) getEmbedForPost(rctx request.CTX, post *model.Post, firstLink stri
 	}
 
 	if image != nil {
+		// See MM-67372
+		if image.Format == "svg" || model.IsSVGImageURL(firstLink) {
+			rctx.Logger().Debug("Skipping SVG image embed",
+				mlog.String("post_id", post.Id),
+				mlog.String("url", firstLink))
+			// Return a link embed instead of an image embed
+			return &model.PostEmbed{
+				Type: model.PostEmbedLink,
+				URL:  firstLink,
+			}, nil
+		}
+
 		// Note that we're not passing the image info here since it'll be part of the PostMetadata.Images field
 		return &model.PostEmbed{
 			Type: model.PostEmbedImage,
@@ -398,24 +679,27 @@ func (a *App) getEmbedForPost(rctx request.CTX, post *model.Post, firstLink stri
 	}, nil
 }
 
-func (a *App) getImagesForPost(rctx request.CTX, post *model.Post, imageURLs []string, isNewPost bool) map[string]*model.PostImage {
-	images := map[string]*model.PostImage{}
+func (a *App) getImagesForPost(rctx request.CTX, post *model.Post, isNewPost bool) map[string]*model.PostImage {
+	if post.HasUnsafeLinks() {
+		return map[string]*model.PostImage{}
+	}
+
+	imageURLs := a.markdownImageURLsFromStrings(rctx, post.AllStrings(model.AllStringsOptions{OmitInteractiveBlocks: !a.Config().FeatureFlags.MmBlocksEnabled}))
+	imageURLs = append(imageURLs, post.InteractiveBlocksImageURLs(a.Config().FeatureFlags.MmBlocksEnabled)...)
+
+	postImages := map[string]*model.PostImage{}
 
 	for _, embed := range post.Metadata.Embeds {
 		switch embed.Type {
 		case model.PostEmbedImage:
 			// These dimensions will generally be cached by a previous call to getEmbedForPost
 			imageURLs = append(imageURLs, embed.URL)
-
-		case model.PostEmbedMessageAttachment:
-			imageURLs = append(imageURLs, a.getImagesInMessageAttachments(rctx, post)...)
-
 		case model.PostEmbedOpengraph:
 			openGraph, ok := embed.Data.(*opengraph.OpenGraph)
 			if !ok {
 				rctx.Logger().Warn("Could not read the image data: the data could not be casted to OpenGraph",
 					mlog.String("post_id", post.Id),
-					mlog.String("data type", fmt.Sprintf("%t", embed.Data)),
+					mlog.String("data_type", fmt.Sprintf("%t", embed.Data)),
 				)
 				continue
 			}
@@ -436,7 +720,7 @@ func (a *App) getImagesForPost(rctx request.CTX, post *model.Post, imageURLs []s
 		}
 	}
 
-	// Removing duplicates isn't strictly since images is a map, but it feels safer to do it beforehand
+	// Removing duplicates isn't strictly required since postImages is a map, but it feels safer to do it beforehand
 	if len(imageURLs) > 1 {
 		imageURLs = model.RemoveDuplicateStrings(imageURLs)
 	}
@@ -460,11 +744,11 @@ func (a *App) getImagesForPost(rctx request.CTX, post *model.Post, imageURLs []s
 				)
 			}
 		} else if image != nil {
-			images[imageURL] = image
+			postImages[imageURL] = image
 		}
 	}
 
-	return images
+	return postImages
 }
 
 func getEmojiNamesForString(s string) []string {
@@ -477,43 +761,16 @@ func getEmojiNamesForString(s string) []string {
 	return names
 }
 
-func getEmojiNamesForPost(post *model.Post, reactions []*model.Reaction) []string {
-	// Post message
-	names := getEmojiNamesForString(post.Message)
-
-	// Reactions
+func getEmojiNamesForPost(post *model.Post, reactions []*model.Reaction, mmBlocksEnabled bool) []string {
+	allStrings := post.AllStrings(model.AllStringsOptions{OmitInteractiveBlocks: !mmBlocksEnabled})
+	var names []string
+	for _, s := range allStrings {
+		names = append(names, getEmojiNamesForString(s)...)
+	}
 	for _, reaction := range reactions {
 		names = append(names, reaction.EmojiName)
 	}
-
-	// Post attachments
-	for _, attachment := range post.Attachments() {
-		if attachment.Title != "" {
-			names = append(names, getEmojiNamesForString(attachment.Title)...)
-		}
-
-		if attachment.Text != "" {
-			names = append(names, getEmojiNamesForString(attachment.Text)...)
-		}
-
-		if attachment.Pretext != "" {
-			names = append(names, getEmojiNamesForString(attachment.Pretext)...)
-		}
-
-		for _, field := range attachment.Fields {
-			if field == nil {
-				continue
-			}
-			if value, ok := field.Value.(string); ok {
-				names = append(names, getEmojiNamesForString(value)...)
-			}
-		}
-	}
-
-	// Remove duplicates
-	names = model.RemoveDuplicateStrings(names)
-
-	return names
+	return model.RemoveDuplicateStrings(names)
 }
 
 func (a *App) getCustomEmojisForPost(rctx request.CTX, post *model.Post, reactions []*model.Reaction) ([]*model.Emoji, *model.AppError) {
@@ -522,7 +779,7 @@ func (a *App) getCustomEmojisForPost(rctx request.CTX, post *model.Post, reactio
 		return []*model.Emoji{}, nil
 	}
 
-	names := getEmojiNamesForPost(post, reactions)
+	names := getEmojiNamesForPost(post, reactions, a.Config().FeatureFlags.MmBlocksEnabled)
 	if len(names) == 0 {
 		return []*model.Emoji{}, nil
 	}
@@ -569,19 +826,37 @@ func normalizeDomains(domains string) []string {
 	)
 }
 
-// Given a string, returns the first autolinked URL in the string as well as an array of all Markdown
-// images of the form ![alt text](image url). Note that this does not return Markdown links of the
-// form [text](url).
-func (a *App) getFirstLinkAndImages(rctx request.CTX, str string) (string, []string) {
-	firstLink := ""
-	images := []string{}
+// markdownImageURLsFromStrings collects ![alt](url) and reference-style image URLs from the given
+// strings (typically model.Post.AllStrings).
+func (a *App) markdownImageURLsFromStrings(rctx request.CTX, allStrings []string) []string {
+	var images []string
+	for _, s := range allStrings {
+		images = append(images, a.getImages(rctx, s)...)
+	}
+	return images
+}
 
+// getFirstLink returns the first autolinked URL in the string. It does not return Markdown links of
+// the form [text](url) or image URLs from ![alt](url).
+func (a *App) getFirstLink(rctx request.CTX, str string) string {
+	firstLink := ""
 	markdown.Inspect(str, func(blockOrInline any) bool {
-		switch v := blockOrInline.(type) {
-		case *markdown.Autolink:
+		if v, ok := blockOrInline.(*markdown.Autolink); ok {
 			if link := v.Destination(); firstLink == "" && a.isLinkAllowedForPreview(rctx, link) {
 				firstLink = link
 			}
+		}
+		return true
+	})
+	return firstLink
+}
+
+// getImages returns all Markdown image URLs of the form ![alt text](image url) and reference-style
+// images. It does not return plain autolinks or Markdown links of the form [text](url).
+func (a *App) getImages(rctx request.CTX, str string) []string {
+	images := []string{}
+	markdown.Inspect(str, func(blockOrInline any) bool {
+		switch v := blockOrInline.(type) {
 		case *markdown.InlineImage:
 			if link := v.Destination(); a.isLinkAllowedForPreview(rctx, link) {
 				images = append(images, link)
@@ -591,50 +866,8 @@ func (a *App) getFirstLinkAndImages(rctx request.CTX, str string) (string, []str
 				images = append(images, link)
 			}
 		}
-
 		return true
 	})
-
-	return firstLink, images
-}
-
-func (a *App) getImagesInMessageAttachments(rctx request.CTX, post *model.Post) []string {
-	var images []string
-
-	for _, attachment := range post.Attachments() {
-		_, imagesInText := a.getFirstLinkAndImages(rctx, attachment.Text)
-		images = append(images, imagesInText...)
-
-		_, imagesInPretext := a.getFirstLinkAndImages(rctx, attachment.Pretext)
-		images = append(images, imagesInPretext...)
-
-		for _, field := range attachment.Fields {
-			if field == nil {
-				continue
-			}
-			if value, ok := field.Value.(string); ok {
-				_, imagesInFieldValue := a.getFirstLinkAndImages(rctx, value)
-				images = append(images, imagesInFieldValue...)
-			}
-		}
-
-		if attachment.AuthorIcon != "" {
-			images = append(images, attachment.AuthorIcon)
-		}
-
-		if attachment.ImageURL != "" {
-			images = append(images, attachment.ImageURL)
-		}
-
-		if attachment.ThumbURL != "" {
-			images = append(images, attachment.ThumbURL)
-		}
-
-		if attachment.FooterIcon != "" {
-			images = append(images, attachment.FooterIcon)
-		}
-	}
-
 	return images
 }
 
@@ -652,11 +885,29 @@ func looksLikeAPermalink(url, siteURL string) bool {
 }
 
 func (a *App) containsPermalink(rctx request.CTX, post *model.Post) bool {
-	link, _ := a.getFirstLinkAndImages(rctx, post.Message)
+	link := a.getFirstLink(rctx, post.Message)
 	if link == "" {
 		return false
 	}
 	return looksLikeAPermalink(link, a.GetSiteURL())
+}
+
+// filterSVGImage filters out SVG images (MM-67372).
+// Returns nil if the image is an SVG, otherwise returns the image unchanged.
+func filterSVGImage(image *model.PostImage, imageURL string) *model.PostImage {
+	if image == nil {
+		return nil
+	}
+
+	if image.Format == "svg" {
+		return nil
+	}
+
+	if model.IsSVGImageURL(imageURL) {
+		return nil
+	}
+
+	return image
 }
 
 func (a *App) getLinkMetadata(rctx request.CTX, requestURL string, timestamp int64, isNewPost bool, previewedPostPropVal string, asyncFetch bool) (*opengraph.OpenGraph, *model.PostImage, *model.Permalink, error) {
@@ -676,6 +927,8 @@ func (a *App) getLinkMetadata(rctx request.CTX, requestURL string, timestamp int
 	}
 
 	if ok && previewedPostPropVal == "" {
+		og = model.TruncateOpenGraph(og)
+		image = filterSVGImage(image, requestURL)
 		return og, image, permalink, nil
 	}
 
@@ -683,6 +936,8 @@ func (a *App) getLinkMetadata(rctx request.CTX, requestURL string, timestamp int
 	if !isNewPost {
 		og, image, ok = a.getLinkMetadataFromDatabase(requestURL, timestamp)
 		if ok && previewedPostPropVal == "" {
+			og = model.TruncateOpenGraph(og)
+			image = filterSVGImage(image, requestURL)
 			cacheLinkMetadata(rctx, requestURL, timestamp, og, image, nil)
 			return og, image, nil, nil
 		}
@@ -766,9 +1021,13 @@ func (a *App) getLinkMetadataForPermalink(rctx request.CTX, requestURL string) (
 		permalink = &model.Permalink{PreviewPost: model.NewPreviewPost(referencedPost, referencedTeam, referencedChannel)}
 	} else {
 		// referencedPost does not contain a permalink: we get its metadata
-		referencedPostWithMetadata := a.PreparePostForClientWithEmbedsAndImages(rctx, referencedPost, &model.PreparePostForClientOpts{})
+		referencedPostWithMetadata := a.PreparePostForClientWithEmbedsAndImages(rctx, referencedPost, &model.PreparePostForClientOpts{
+			IncludePriority: true,
+		})
 		permalink = &model.Permalink{PreviewPost: model.NewPreviewPost(referencedPostWithMetadata, referencedTeam, referencedChannel)}
 	}
+
+	a.populatePostListTranslations(rctx, &model.PostList{Posts: map[string]*model.Post{permalink.PreviewPost.Post.Id: permalink.PreviewPost.Post}})
 
 	return permalink, nil
 }
@@ -782,8 +1041,7 @@ func (a *App) getLinkMetadataFromOEmbed(rctx request.CTX, requestURL string, pro
 	request.Header.Add("Accept", "application/json")
 	request.Header.Add("Accept-Language", *a.Config().LocalizationSettings.DefaultServerLocale)
 
-	client := a.HTTPService().MakeClient(false)
-	client.Timeout = time.Duration(*a.Config().ExperimentalSettings.LinkMetadataTimeoutMilliseconds) * time.Millisecond
+	client := a.makeLinkMetadataClient(rctx)
 
 	res, err := client.Do(request)
 	if err != nil {
@@ -820,16 +1078,13 @@ func (a *App) getLinkMetadataForURL(rctx request.CTX, requestURL string) (*openg
 		request.Header.Add("Accept", "text/html;q=0.8")
 		request.Header.Add("Accept-Language", *a.Config().LocalizationSettings.DefaultServerLocale)
 
-		client := a.HTTPService().MakeClient(false)
-		client.Timeout = time.Duration(*a.Config().ExperimentalSettings.LinkMetadataTimeoutMilliseconds) * time.Millisecond
+		client := a.makeLinkMetadataClient(rctx)
 
 		var res *http.Response
 		res, err = client.Do(request)
 		if err != nil {
 			rctx.Logger().Warn("error fetching OG image data", mlog.Err(err))
-		}
-
-		if res != nil {
+		} else if res != nil {
 			body = res.Body
 			contentType = res.Header.Get("Content-Type")
 		}
@@ -854,6 +1109,24 @@ func (a *App) getLinkMetadataForURL(rctx request.CTX, requestURL string) (*openg
 	og = model.TruncateOpenGraph(og) // remove unwanted length of texts
 
 	return og, image, err
+}
+
+func (a *App) makeLinkMetadataClient(rctx request.CTX) *http.Client {
+	client := a.HTTPService().MakeClient(false)
+	client.Timeout = time.Duration(*a.Config().ExperimentalSettings.LinkMetadataTimeoutMilliseconds) * time.Millisecond
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 10 {
+			return fmt.Errorf("stopped after %d redirects", len(via))
+		}
+
+		if !a.isLinkAllowedForPreview(rctx, req.URL.String()) {
+			return fmt.Errorf("redirect target %q is disabled for link previews", req.URL.Redacted())
+		}
+
+		return nil
+	}
+
+	return client
 }
 
 // resolveMetadataURL resolves a given URL relative to the server's site URL.
@@ -957,12 +1230,11 @@ func (a *App) parseLinkMetadata(rctx request.CTX, requestURL string, body io.Rea
 		body = bufRd
 	}
 
-	if contentType == "image/svg+xml" {
-		image := &model.PostImage{
-			Format: "svg",
-		}
-
-		return nil, image, nil
+	if strings.HasPrefix(contentType, "image/svg+xml") {
+		// See MM-67372
+		rctx.Logger().Debug("Filtering SVG image from link metadata",
+			mlog.String("url", requestURL))
+		return nil, nil, nil
 	} else if strings.HasPrefix(contentType, "image") {
 		image, err := parseImages(rctx, requestURL, io.LimitReader(body, MaxMetadataImageSize))
 		return nil, image, err

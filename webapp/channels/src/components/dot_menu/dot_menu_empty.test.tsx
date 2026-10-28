@@ -16,6 +16,7 @@ import type { GlobalState } from 'types/store';
 jest.mock('utils/utils', () => {
 	return {
 		localizeMessage: jest.fn().mockReturnValue(''),
+        makeIsEligibleForClick: jest.fn(),
 	};
 });
 
@@ -115,6 +116,7 @@ describe('components/dot_menu/DotMenu returning empty ("")', () => {
 			userId: 'user_id_1',
 			isMilitaryTime: false,
 			canMove: true,
+            isChannelAutotranslated: false,
 			canReply: true,
 			canForward: true,
 			canFollowThread: true,

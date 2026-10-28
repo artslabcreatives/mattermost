@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, { useRef } from 'react';
+import React, {useRef, type JSX} from 'react';
 import { FormattedMessage } from 'react-intl';
 import { useSelector } from 'react-redux';
 
@@ -57,7 +57,7 @@ export default function MessagesOrFilesSelector(props: Props): JSX.Element {
 	const filesTabRef = useRef<HTMLButtonElement>(null);
 	const peopleTabRef = useRef<HTMLButtonElement>(null);
 
-	const tabRefs: Record<string, React.RefObject<HTMLButtonElement>> = {
+	const tabRefs: Record<string, React.RefObject<HTMLButtonElement | null>> = {
 		[DataSearchTypes.ALL_SEARCH_TYPE]: allTabRef,
 		[DataSearchTypes.MESSAGES_SEARCH_TYPE]: messagesTabRef,
 		[DataSearchTypes.FILES_SEARCH_TYPE]: filesTabRef,
@@ -202,7 +202,10 @@ export default function MessagesOrFilesSelector(props: Props): JSX.Element {
 				</button>
 			</div>
 			{props.crossTeamSearchEnabled && hasMoreThanOneTeam && (
-				<div className='team-selector-container'>
+                <div
+                    className='team-selector-container'
+                    data-testid='searchResultsTeamSelector'
+                >
 					<SelectTeam
 						selectedTeamId={searchTeam}
 						onTeamSelected={props.onTeamChange}

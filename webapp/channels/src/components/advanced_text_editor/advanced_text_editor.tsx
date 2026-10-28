@@ -1,6 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import type {Editor} from '@tiptap/react';
 import classNames from 'classnames';
 import React, { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -17,13 +18,12 @@ import { savePreferences } from 'mattermost-redux/actions/preferences';
 import { Permissions } from 'mattermost-redux/constants';
 import { getChannel, makeGetChannel, getDirectChannel } from 'mattermost-redux/selectors/entities/channels';
 import { getConfig, getFeatureFlagValue } from 'mattermost-redux/selectors/entities/general';
-import { get, getBool, getInt, isCollapsedThreadsEnabled } from 'mattermost-redux/selectors/entities/preferences';
+import {get, getBool, getInt, getWysiwygEditorPreference, isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/preferences';
 import { haveIChannelPermission } from 'mattermost-redux/selectors/entities/roles';
 import { getCurrentUserId, isCurrentUserGuestUser, getStatusForUserId, makeGetDisplayName } from 'mattermost-redux/selectors/entities/users';
 
 import * as GlobalActions from 'actions/global_actions';
 import type { CreatePostOptions } from 'actions/post_actions';
-import { actionOnGlobalItemsWithPrefix } from 'actions/storage';
 import type { SubmitPostReturnType } from 'actions/views/create_comment';
 import { removeDraft, updateDraft } from 'actions/views/drafts';
 import { openModal } from 'actions/views/modals';
@@ -33,6 +33,8 @@ import { connectionErrorCount } from 'selectors/views/system';
 import LocalStorageStore from 'stores/local_storage_store';
 
 import PostBoxIndicator from 'components/advanced_text_editor/post_box_indicator/post_box_indicator';
+import WysiwygEditor from 'components/advanced_text_editor/wysiwyg_editor/wysiwyg_editor';
+import type {WysiwygEditorHandle} from 'components/advanced_text_editor/wysiwyg_editor/wysiwyg_editor';
 import { makeAsyncComponent } from 'components/async_load';
 import AutoHeightSwitcher from 'components/common/auto_height_switcher';
 import useDidUpdate from 'components/common/hooks/useDidUpdate';
@@ -50,7 +52,7 @@ import type { TextboxElement } from 'components/textbox';
 import type TextboxClass from 'components/textbox/textbox';
 import { OnboardingTourSteps, OnboardingTourStepsForGuestUsers, TutorialTourName } from 'components/tours/constant';
 import { SendMessageTour } from 'components/tours/onboarding_tour';
-import WithTooltip from 'components/with_tooltip';
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
 
 import Constants, {
 	Locations,
@@ -62,8 +64,7 @@ import Constants, {
 	AdvancedTextEditorTextboxIds,
 } from 'utils/constants';
 import { canUploadFiles as canUploadFilesAccordingToConfig } from 'utils/file_utils';
-
-import type { ApplyMarkdownOptions } from 'utils/markdown/apply_markdown';
+import type {MarkdownMode} from 'utils/markdown/apply_markdown';
 import { applyMarkdown as applyMarkdownUtil } from 'utils/markdown/apply_markdown';
 import { isErrorInvalidSlashCommand } from 'utils/post_utils';
 import { allAtMentions } from 'utils/text_formatting';
@@ -72,14 +73,16 @@ import { focusAndInsertText } from 'utils/exec_commands';
 
 import type { GlobalState } from 'types/store';
 import type { PostDraft } from 'types/store/draft';
-import { isPostDraftEmpty } from 'types/store/draft';
+import {draftHasAttachments, isPostDraftEmpty} from 'types/store/draft';
 
+import AIActionsMenu from './ai_actions_menu';
 import DoNotDisturbWarning from './do_not_disturb_warning';
 import EditPostFooter from './edit_post_footer';
 import Footer from './footer';
 import FormattingBar from './formatting_bar';
 import { FormattingBarSpacer, Separator } from './formatting_bar/formatting_bar';
 import { IconContainer } from './formatting_bar/formatting_icon';
+import type {FormattingBarHandle} from './formatting_bar/formatting_bar';
 import MessageWithMentionsFooter from './message_with_mentions_footer';
 import SendButton from './send_button';
 import ShowFormat from './show_formatting';
@@ -89,9 +92,9 @@ import UnifiedLabelsWrapper from './unified_labels_wrapper';
 import VoiceNoteButton from './voice_note_button';
 import VideoNoteButton from './video_note_button';
 import useBurnOnRead from './use_burn_on_read';
+import {useComposerPlaceholder} from './use_composer_placeholder';
 import useEditorEmojiPicker from './use_editor_emoji_picker';
 import useKeyHandler from './use_key_handler';
-import useOrientationHandler from './use_orientation_handler';
 import usePluginItems from './use_plugin_items';
 import usePriority from './use_priority';
 import useRewrite from './use_rewrite';
@@ -126,12 +129,12 @@ export type Props = {
 	 * Used by plugins to act after the post is made
 	 */
 	afterSubmit?: (response: SubmitPostReturnType) => void;
-}
+};
 
 const AdvancedTextEditor = ({
 	location,
 	channelId,
-	rootId,
+    rootId: rootIdProp,
 	postId,
 	isThreadView = false,
 	placeholder,
@@ -139,13 +142,18 @@ const AdvancedTextEditor = ({
 	afterSubmit,
 	storageKey,
 }: Props) => {
+    // rootId is typed as required, but plugins reach this component through the untyped
+    // window.Components bridge and may omit it. Every draft carries '' rather than undefined
+    // for a non-thread composer, so an undefined prop desyncs the id comparisons below.
+    const rootId = rootIdProp ?? '';
+
 	const { formatMessage } = useIntl();
 
 	const dispatch = useDispatch();
 
-	const getChannelSelector = useMemo(makeGetChannel, []);
-	const getDraftSelector = useMemo(makeGetDraft, []);
-	const getDisplayName = useMemo(makeGetDisplayName, []);
+    const getChannelSelector = useMemo(() => makeGetChannel(), []);
+    const getDraftSelector = useMemo(() => makeGetDraft(), []);
+    const getDisplayName = useMemo(() => makeGetDisplayName(), []);
 
 	let textboxId: string;
 	if (isInEditMode) {
@@ -191,7 +199,8 @@ const AdvancedTextEditor = ({
 	const teammateDisplayName = useSelector((state: GlobalState) => (teammateId ? getDisplayName(state, teammateId) : ''));
 	const showDndWarning = useSelector((state: GlobalState) => (teammateId ? getStatusForUserId(state, teammateId) === UserStatuses.DND : false));
 	const selectedPostFocussedAt = useSelector((state: GlobalState) => getSelectedPostFocussedAt(state));
-	const aiRewriteEnabled = useGetAgentsBridgeEnabled();
+    const aiActionMenuItems = useSelector((state: GlobalState) => state.plugins.components.AIActionMenuItem);
+    const {available: aiRewriteEnabled} = useGetAgentsBridgeEnabled();
 	const collapsedThreadsEnabled = useSelector(isCollapsedThreadsEnabled);
 
 	const canPost = useSelector((state: GlobalState) => {
@@ -222,8 +231,10 @@ const AdvancedTextEditor = ({
 	const editorActionsRef = useRef<HTMLDivElement>(null);
 	const editorBodyRef = useRef<HTMLDivElement>(null);
 	const textboxRef = useRef<TextboxClass>(null);
-	const loggedInAriaLabelTimeout = useRef<NodeJS.Timeout>();
-	const saveDraftFrame = useRef<NodeJS.Timeout>();
+    const wysiwygRef = useRef<WysiwygEditorHandle>(null);
+    const formattingBarRef = useRef<FormattingBarHandle>(null);
+    const loggedInAriaLabelTimeout = useRef<NodeJS.Timeout>(undefined);
+    const saveDraftFrame = useRef<NodeJS.Timeout>(undefined);
 	const draftRef = useRef(draftFromStore);
 	const storedDrafts = useRef<Record<string, PostDraft | undefined>>({});
 	const lastBlurAt = useRef(0);
@@ -242,7 +253,14 @@ const AdvancedTextEditor = ({
 	const hasDraftMessage = Boolean(draft.message);
 	const showFormattingBar = !isFormattingBarHidden && !readOnlyChannel;
 	const enableSharedChannelsDMs = useSelector((state: GlobalState) => getFeatureFlagValue(state, 'EnableSharedChannelsDMs') === 'true');
+    const wysiwygEnabled = useSelector(getWysiwygEditorPreference);
+    const ctrlSend = useSelector((state: GlobalState) => getBool(state, Preferences.CATEGORY_ADVANCED_SETTINGS, 'send_on_ctrl_enter'));
+    const codeBlockOnCtrlEnter = useSelector((state: GlobalState) => getBool(state, Preferences.CATEGORY_ADVANCED_SETTINGS, 'code_block_ctrl_enter', true));
 	const isDMOrGMRemote = isChannelShared && (channelType === Constants.DM_CHANNEL || channelType === Constants.GM_CHANNEL);
+
+    if (draft.channelId !== channelId || draft.rootId !== rootId) {
+        setDraft(draftFromStore);
+    }
 
 	const handleShowPreview = useCallback(() => {
 		setShowPreview((prev) => !prev);
@@ -257,7 +275,17 @@ const AdvancedTextEditor = ({
 			clearTimeout(saveDraftFrame.current);
 		}
 
-		setDraft(draftToChange);
+        // A late async callback (slow submit, finished file upload) may call handleDraftChange
+        // with the channelId/rootId captured when it started. If the user has since moved to
+        // another channel or thread, do not overwrite the text they have typed here.
+        setDraft((currentDraft) => {
+            if (currentDraft.channelId !== draftToChange.channelId || currentDraft.rootId !== draftToChange.rootId) {
+                // The current channel/thread has changed, so don't update the draft displayed to the user
+                return currentDraft;
+            }
+
+            return draftToChange;
+        });
 
 		const saveDraft = () => {
 			let prefix = StoragePrefixes.DRAFT;
@@ -272,6 +300,14 @@ const AdvancedTextEditor = ({
 				dispatch(removeDraft(key, draftToChange.channelId, draftToChange.rootId));
 				return;
 			}
+
+            // Editing an existing post must never create a synced/visible draft. Edit
+            // content is only persisted locally under the edit_draft_* key, so skip the
+            // show + server-upsert paths that would surface it in the drafts UI.
+            if (isInEditMode) {
+                dispatch(updateDraft(key, draftToChange, draftToChange.rootId));
+                return;
+            }
 
 			if (options.show) {
 				dispatch(updateDraft(key, { ...draftToChange, show: true }, draftToChange.rootId, true));
@@ -290,25 +326,101 @@ const AdvancedTextEditor = ({
 		}
 
 		storedDrafts.current[draftToChange.rootId || draftToChange.channelId] = draftToChange;
-	}, [dispatch]);
+    }, [dispatch, isInEditMode, storageKey]);
 
-	const applyMarkdown = useCallback((params: ApplyMarkdownOptions) => {
+    const applyWysiwygFormatting = useCallback((editor: Editor, mode: MarkdownMode) => {
+        const isInlineMark = mode === 'bold' || mode === 'italic' || mode === 'strike';
+        if (isInlineMark && editor.state.selection.empty) {
+            const $from = editor.state.selection.$from;
+            const text = $from.parent.textContent;
+            const offset = $from.parentOffset;
+            if (text && offset >= 0) {
+                const isWordChar = (/\S/);
+                let start = offset;
+                while (start > 0 && isWordChar.test(text[start - 1])) {
+                    start--;
+                }
+                let end = offset;
+                while (end < text.length && isWordChar.test(text[end])) {
+                    end++;
+                }
+                if (start < end) {
+                    const parentStart = $from.pos - offset;
+                    editor.chain().focus().setTextSelection({from: parentStart + start, to: parentStart + end}).run();
+                }
+            }
+        }
+
+        const chain = editor.chain().focus();
+        switch (mode) {
+        case 'bold':
+            chain.toggleBold().run();
+            break;
+        case 'italic':
+            chain.toggleItalic().run();
+            break;
+        case 'strike':
+            chain.toggleStrike().run();
+            break;
+        case 'heading':
+            chain.toggleHeading({level: 3}).run();
+            break;
+        case 'code':
+            chain.toggleCodeBlock().run();
+            break;
+        case 'quote':
+            chain.toggleBlockquote().run();
+            break;
+        case 'ul':
+            chain.toggleBulletList().run();
+            break;
+        case 'ol':
+            chain.toggleOrderedList().run();
+            break;
+        }
+    }, []);
+
+    const applyFormatting = useCallback((mode: MarkdownMode) => {
 		if (showPreview) {
 			return;
 		}
 
-		const res = applyMarkdownUtil(params);
+        if (wysiwygEnabled) {
+            const editor = wysiwygRef.current?.getEditor();
+            if (!editor || editor.isDestroyed) {
+                return;
+            }
+            if (mode === 'link') {
+                formattingBarRef.current?.openLinkPopover();
+                return;
+            }
+            applyWysiwygFormatting(editor, mode);
+            return;
+        }
+
+        const input = textboxRef.current?.getInputBox();
+        if (!input) {
+            return;
+        }
+        const res = applyMarkdownUtil({
+            markdownMode: mode,
+            selectionStart: input.selectionStart ?? 0,
+            selectionEnd: input.selectionEnd ?? 0,
+            message: input.value ?? '',
+        });
 
 		handleDraftChange({
-			...draft,
+            ...draftRef.current,
 			message: res.message,
 		});
 
 		setTimeout(() => {
 			const textbox = textboxRef.current?.getInputBox();
+            if (textbox) {
 			Utils.setSelectionRange(textbox, res.selectionStart, res.selectionEnd);
+            }
 		});
-	}, [showPreview, handleDraftChange, draft]);
+    }, [showPreview, wysiwygEnabled, handleDraftChange, applyWysiwygFormatting]);
 
 	const toggleAdvanceTextEditor = useCallback(() => {
 		dispatch(savePreferences(currentUserId, [{
@@ -321,13 +433,13 @@ const AdvancedTextEditor = ({
 		}]));
 	}, [dispatch, currentUserId, getFormattingBarPreferenceName, isFormattingBarHidden]);
 
-	useOrientationHandler(textboxRef, rootId);
-	const pluginItems = usePluginItems(draft, textboxRef, handleDraftChange, channelId);
-	const focusTextbox = useTextboxFocus(textboxRef, channelId, isRHS, canPost);
+    const pluginItems = usePluginItems(draft, textboxRef, handleDraftChange);
+    const focusTextbox = useTextboxFocus(textboxRef, channelId, isRHS, canPost, wysiwygRef);
 	const {
-		additionalControl: aiRewriteAdditionalControl,
+        rewriteMenuProps,
 		isProcessing: rewriteIsProcessing,
 	} = useRewrite(draft, handleDraftChange, textboxRef, focusTextbox, setServerError);
+    const hasAIActionsMenu = (aiActionMenuItems?.length ?? 0) > 0 || (aiRewriteEnabled && Boolean(rewriteMenuProps));
 	const isDisabled = Boolean(readOnlyChannel || (!enableSharedChannelsDMs && isDMOrGMRemote) || rewriteIsProcessing);
 
 	const [attachmentPreview, fileUploadJSX, fileUploadRef, isFilesPreviewLoading] = useUploadFiles(
@@ -337,12 +449,16 @@ const AdvancedTextEditor = ({
 		isThreadView,
 		storedDrafts,
 		isDisabled,
-		textboxRef,
+        editorBodyRef,
 		handleDraftChange,
 		focusTextbox,
 		setServerError,
 		isInEditMode,
 	);
+
+    const insertWysiwygText = useCallback((text: string) => {
+        wysiwygRef.current?.insertText(text);
+    }, []);
 
 	const {
 		emojiPicker,
@@ -352,6 +468,7 @@ const AdvancedTextEditor = ({
 		textboxId,
 		isDisabled,
 		showPreview,
+        wysiwygEnabled ? insertWysiwygText : undefined,
 	);
 	const {
 		labels: priorityLabels,
@@ -473,7 +590,7 @@ const AdvancedTextEditor = ({
 		textboxRef,
 		showFormattingBar,
 		focusTextbox,
-		applyMarkdown,
+        applyFormatting,
 		handleDraftChange,
 		handleSubmitWrapper,
 		emitTypingEvent,
@@ -519,22 +636,31 @@ const AdvancedTextEditor = ({
 		});
 	}, [draft, handleDraftChange, serverError]);
 
-	/**
-	 * by getting the value directly from the textbox we eliminate all unnecessary
-	 * re-renders for the FormattingBar component. The previous method of always passing
-	 * down the current message value that came from the parents state was not optimal,
-	 * although still working as expected
-	 */
-	const getCurrentValue = useCallback(() => textboxRef.current?.getInputBox().value, [textboxRef]);
+    const handleWysiwygChange = useCallback((markdown: string) => {
+        emitTypingEvent();
+        if (!isErrorInvalidSlashCommand(serverError)) {
+            setServerError(null);
+        }
+        handleDraftChange({
+            ...draft,
+            message: markdown,
+        });
+    }, [draft, handleDraftChange, serverError, emitTypingEvent]);
 
-	const getCurrentSelection = useCallback(() => {
+    const getSelectedText = useCallback(() => {
 		const input = textboxRef.current?.getInputBox();
-
 		return {
-			start: input.selectionStart,
-			end: input.selectionEnd,
+            start: input?.selectionStart ?? 0,
+            end: input?.selectionEnd ?? 0,
 		};
 	}, [textboxRef]);
+
+    const updateText = useCallback((message: string) => {
+        handleDraftChange({
+            ...draftRef.current,
+            message,
+        });
+    }, [handleDraftChange]);
 
 	const handleWidthChange = useCallback((width: number) => {
 		const input = textboxRef.current?.getInputBox();
@@ -601,17 +727,6 @@ const AdvancedTextEditor = ({
 		setServerError(null);
 	}, [channelId, rootId]);
 
-	// Remove uploads in progress on mount
-	useEffect(() => {
-		dispatch(actionOnGlobalItemsWithPrefix(rootId ? StoragePrefixes.COMMENT_DRAFT : StoragePrefixes.DRAFT, (_key: string, draft: PostDraft) => {
-			if (!draft || !draft.uploadsInProgress || draft.uploadsInProgress.length === 0) {
-				return draft;
-			}
-
-			return { ...draft, uploadsInProgress: [] };
-		}));
-	}, []);
-
 	// Register listener to store the draft when the page unloads
 	useEffect(() => {
 		const callback = () => handleDraftChange(draft, { instant: true, show: true });
@@ -632,12 +747,10 @@ const AdvancedTextEditor = ({
 		handleSubmitWithErrorHandling(undefined, schedulingInfo);
 	}, [handleSubmitWithErrorHandling]);
 
-	// Set the draft from store when changing post or channels, and store the previous one
+    // Store the previous draft when changing post or channels
 	useEffect(() => {
 		// Store the draft that existed when we opened the channel to know if it should be saved
 		const draftOnOpen = draftFromStore;
-
-		setDraft(draftOnOpen);
 
 		// A pending auto-send only applies to the channel/thread it was armed in
 		setAutoSendOnUploadComplete(false);
@@ -697,10 +810,11 @@ const AdvancedTextEditor = ({
 			disabled={disableSendButton}
 			handleSubmit={handleSubmitPostAndScheduledMessage}
 			channelId={channelId}
+            allowRecurring={!draftHasAttachments(draft)}
 		/>
 	);
 
-	const showFormatJSX = disableSendButton ? null : (
+    const showFormatJSX = (disableSendButton || wysiwygEnabled) ? null : (
 		<ShowFormat
 			onClick={handleShowPreview}
 			active={showPreview}
@@ -736,6 +850,10 @@ const AdvancedTextEditor = ({
 		createMessage = formatMessage({ id: 'create_comment.addComment', defaultMessage: 'Reply to this thread...' });
 	}
 
+    // Let plugins append to or replace the composer placeholder for this channel (e.g. an encryption
+    // marker). Called here, after every branch has set the base placeholder.
+    createMessage = useComposerPlaceholder(channelId, createMessage);
+
 	const messageValue = isDisabled && !rewriteIsProcessing ? '' : draft.message_source || draft.message;
 
 	const wasNotifiedOfLogIn = LocalStorageStore.getWasNotifiedOfLogIn();
@@ -765,22 +883,40 @@ const AdvancedTextEditor = ({
 
 	const additionalControls = useMemo(() => [
 		!isInEditMode && priorityAdditionalControl,
-		aiRewriteEnabled && aiRewriteAdditionalControl,
 		!isInEditMode && burnOnReadAdditionalControl,
 		...(pluginItems || []),
-	].filter(Boolean), [pluginItems, priorityAdditionalControl, aiRewriteAdditionalControl, isInEditMode, aiRewriteEnabled, burnOnReadAdditionalControl]);
+    ].filter(Boolean), [pluginItems, priorityAdditionalControl, isInEditMode, burnOnReadAdditionalControl]);
+
+    const aiActionsMenu = useMemo(() => {
+        if (!hasAIActionsMenu) {
+            return null;
+        }
+
+        return (
+            <AIActionsMenu
+                draft={draft}
+                getSelectedText={getSelectedText}
+                updateText={updateText}
+                channelId={channelId}
+                isRHS={location === Locations.RHS_COMMENT}
+                rewriteMenuProps={rewriteMenuProps}
+                aiRewriteEnabled={aiRewriteEnabled}
+            />
+        );
+    }, [draft, getSelectedText, updateText, channelId, location, rewriteMenuProps, aiRewriteEnabled, hasAIActionsMenu]);
 
 	const formattingBar = (
 		<AutoHeightSwitcher
 			showSlot={showFormattingBar ? 1 : 2}
 			slot1={(
 				<FormattingBar
-					applyMarkdown={applyMarkdown}
-					getCurrentMessage={getCurrentValue}
-					getCurrentSelection={getCurrentSelection}
+                    ref={formattingBarRef}
+                    applyFormatting={applyFormatting}
 					disableControls={showPreview}
 					additionalControls={additionalControls}
 					location={location}
+                    aiActionsMenu={aiActionsMenu}
+                    getEditor={wysiwygEnabled ? () => wysiwygRef.current?.getEditor() ?? null : undefined}
 				/>
 			)}
 			slot2={null}
@@ -889,13 +1025,31 @@ const AdvancedTextEditor = ({
 								/>
 							</label>
 						)}
+                        {wysiwygEnabled ? (
+                            <WysiwygEditor
+                                ref={wysiwygRef}
+                                value={messageValue}
+                                onChange={handleWysiwygChange}
+                                onSubmit={handleSubmitWrapper}
+                                onFocus={handleFocus}
+                                onBlur={handleBlur}
+                                placeholder={createMessage}
+                                channelId={channelId}
+                                rootId={rootId}
+                                id={textboxId}
+                                disabled={isDisabled && !rewriteIsProcessing}
+                                useCtrlSend={ctrlSend}
+                                sendCodeBlockOnCtrlEnter={codeBlockOnCtrlEnter}
+                                onKeyDown={handleKeyDown as unknown as (e: React.KeyboardEvent<HTMLDivElement>) => void}
+                            />
+                        ) : (
 						<Textbox
 							hasLabels={isInEditMode ? false : Boolean(priorityLabels || burnOnReadLabels)}
 							suggestionList={location === Locations.RHS_COMMENT ? RhsSuggestionList : SuggestionList}
 							onChange={handleChange}
 							onKeyPress={postMsgKeyPress}
 							onKeyDown={handleKeyDown}
-							onComposition={emitTypingEvent}
+                                onCompositionUpdate={emitTypingEvent}
 							onHeightChange={handleHeightChange}
 							handlePostError={handlePostError}
 							value={messageValue}
@@ -913,8 +1067,8 @@ const AdvancedTextEditor = ({
 							useChannelMentions={useChannelMentions}
 							rootId={rootId}
 							onWidthChange={handleWidthChange}
-							isInEditMode={isInEditMode}
 						/>
+                        )}
 						{attachmentPreview}
 						{!isInEditMode && isUploading && (
 							<label className='AdvancedTextEditor__send-to-channel AdvancedTextEditor__auto-send'>

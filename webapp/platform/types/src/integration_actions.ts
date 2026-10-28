@@ -6,7 +6,8 @@ import {isArrayOf} from './utilities';
 export type PostAction = {
     id?: string;
     type?: string;
-    name?: string;
+    name: string;
+    tooltip?: string;
     disabled?: boolean;
     style?: string;
     data_source?: string;
@@ -33,6 +34,10 @@ export function isPostAction(v: unknown): v is PostAction {
     }
 
     if ('disabled' in v && typeof v.disabled !== 'boolean') {
+        return false;
+    }
+
+    if ('tooltip' in v && typeof v.tooltip !== 'string') {
         return false;
     }
 
@@ -80,7 +85,16 @@ function isPostActionOption(v: unknown): v is PostActionOption {
     return true;
 }
 
+/** `integration_format` on the do-post-action API body — identifies which format originally had the action. */
+export type PostActionIntegrationFormat =
+    | 'attachment' |
+    'apps_binding' |
+    'block' |
+    'card' |
+    'mm_block';
+
 export type PostActionResponse = {
     status: string;
     trigger_id: string;
+    goto_location?: string;
 };

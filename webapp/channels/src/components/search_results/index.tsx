@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import { connect } from 'react-redux';
+import type {ConnectedProps} from 'react-redux';
 
 import type { FileSearchResultItem } from '@mattermost/types/files';
 import type { Post } from '@mattermost/types/posts';
@@ -25,7 +26,11 @@ import {
 import type { GlobalState } from 'types/store';
 
 import SearchResults from './search_results';
-import type { StateProps, OwnProps } from './types';
+
+export type OwnProps = {
+    isPinnedPosts: boolean;
+    isPinnedFiles?: boolean;
+};
 
 function makeMapStateToProps() {
 	let results: Post[];
@@ -110,5 +115,8 @@ function makeMapStateToProps() {
 	};
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-types
-export default connect<StateProps, {}, OwnProps, GlobalState>(makeMapStateToProps)(SearchResults);
+const connector = connect(makeMapStateToProps);
+
+export type PropsFromRedux = ConnectedProps<typeof connector>;
+
+export default connector(SearchResults);

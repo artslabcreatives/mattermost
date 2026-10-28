@@ -11,7 +11,7 @@ import {Client4} from 'mattermost-redux/client';
 
 import useCopyText from 'components/common/hooks/useCopyText';
 import Avatar from 'components/widgets/users/avatar';
-import WithTooltip from 'components/with_tooltip';
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
 
 import Constants from 'utils/constants';
 

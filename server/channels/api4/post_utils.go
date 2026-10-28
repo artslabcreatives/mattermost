@@ -6,11 +6,12 @@ package api4
 import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/v8/channels/app"
+	"github.com/mattermost/mattermost/server/v8/channels/utils"
 )
 
 func userCreatePostPermissionCheckWithContext(c *Context, channelId string) {
 	hasPermission := false
-	if c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), channelId, model.PermissionCreatePost) {
+	if ok, _ := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), channelId, model.PermissionCreatePost); ok {
 		hasPermission = true
 	} else if channel, err := c.App.GetChannel(c.AppContext, channelId); err == nil {
 		// Temporary permission check method until advanced permissions, please do not copy
@@ -26,16 +27,29 @@ func userCreatePostPermissionCheckWithContext(c *Context, channelId string) {
 }
 
 func postHardenedModeCheckWithContext(where string, c *Context, props model.StringInterface) {
-	isIntegration := c.AppContext.Session().IsIntegration()
-
-	if appErr := app.PostHardenedModeCheckWithApp(c.App, isIntegration, props); appErr != nil {
+	if appErr := app.PostHardenedModeCheckWithApp(c.App, c.AppContext.Session().IsIntegration(), props); appErr != nil {
 		appErr.Where = where
 		c.Err = appErr
 	}
 }
 
 func postPriorityCheckWithContext(where string, c *Context, priority *model.PostPriority, rootId string) {
-	appErr := app.PostPriorityCheckWithApp(where, c.App, c.AppContext.Session().UserId, priority, rootId)
+	appErr := app.PostPriorityCheckWithApp(where, c.App, c.AppContext, c.AppContext.Session().UserId, priority, rootId)
+	if appErr != nil {
+		appErr.Where = where
+		c.Err = appErr
+	}
+}
+
+func postCardTypeCheckWithContext(where string, c *Context, postType string) {
+	if appErr := app.PostCardTypeCheckWithApp(where, c.App, postType); appErr != nil {
+		appErr.Where = where
+		c.Err = appErr
+	}
+}
+
+func postBurnOnReadCheckWithContext(where string, c *Context, post *model.Post, channel *model.Channel) {
+	appErr := app.PostBurnOnReadCheckWithApp(where, c.App, c.AppContext, post.UserId, post.ChannelId, post.Type, channel)
 	if appErr != nil {
 		appErr.Where = where
 		c.Err = appErr
@@ -63,9 +77,20 @@ func checkUploadFilePermissionForNewFiles(c *Context, newFileIds []string, origi
 	}
 
 	if hasNewFiles {
-		if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), originalPost.ChannelId, model.PermissionUploadFile) {
+		if ok, _ := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), originalPost.ChannelId, model.PermissionUploadFile); !ok {
 			c.SetPermissionError(model.PermissionUploadFile)
 			return
 		}
+	}
+}
+
+// checkEditFileAttachmentPermission checks edit_file_attachment permission
+// when file IDs are being changed (files added or removed) during post edit.
+func checkEditFileAttachmentPermission(c *Context, newFileIds []string, originalPost *model.Post) {
+	if utils.SliceEqualUnordered(newFileIds, originalPost.FileIds) {
+		return
+	}
+	if ok, _ := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), originalPost.ChannelId, model.PermissionEditFileAttachment); !ok {
+		c.SetPermissionError(model.PermissionEditFileAttachment)
 	}
 }

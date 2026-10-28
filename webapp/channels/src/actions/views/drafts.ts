@@ -26,7 +26,7 @@ type Draft = {
 	key: keyof GlobalState['storage']['storage'];
 	value: PostDraft;
 	timestamp: Date;
-}
+};
 
 /**
  * Gets drafts stored on the server and reconciles them with any locally stored drafts.

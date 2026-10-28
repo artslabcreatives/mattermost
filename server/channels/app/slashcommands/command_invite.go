@@ -266,7 +266,7 @@ func (i *InviteProvider) checkPermissions(a *app.App, rctx request.CTX, args *mo
 	for _, targetChannel := range targetChannels {
 		switch targetChannel.Type {
 		case model.ChannelTypeOpen:
-			if !a.HasPermissionToChannel(rctx, args.UserId, targetChannel.Id, model.PermissionManagePublicChannelMembers) {
+			if ok, _ := a.HasPermissionToChannel(rctx, args.UserId, targetChannel.Id, model.PermissionManagePublicChannelMembers); !ok {
 				*resps = append(*resps, args.T("api.command_invite.permission.app_error", map[string]any{
 					"User":    targetUser.Username,
 					"Channel": targetChannel.Name,
@@ -274,7 +274,7 @@ func (i *InviteProvider) checkPermissions(a *app.App, rctx request.CTX, args *mo
 				continue
 			}
 		case model.ChannelTypePrivate:
-			if !a.HasPermissionToChannel(rctx, args.UserId, targetChannel.Id, model.PermissionManagePrivateChannelMembers) {
+			if ok, _ := a.HasPermissionToChannel(rctx, args.UserId, targetChannel.Id, model.PermissionManagePrivateChannelMembers); !ok {
 				if _, err = a.GetChannelMember(rctx, targetChannel.Id, args.UserId); err == nil {
 					// User doing the inviting is a member of the channel.
 					*resps = append(*resps, args.T("api.command_invite.permission.app_error", map[string]any{
@@ -312,7 +312,7 @@ func (i *InviteProvider) addUserToChannel(a *app.App, rctx request.CTX, args *mo
 			err.Id == "api.channel.add_user.to.channel.failed.deleted.app_error" {
 			return UserNotInTeam
 		}
-		rctx.Logger().Warn("addUserToChannel had unexpected error.", mlog.String("UserId", userProfile.Id), mlog.Err(err))
+		rctx.Logger().Warn("addUserToChannel had unexpected error.", mlog.String("user_id", userProfile.Id), mlog.Err(err))
 		return Unknown
 	}
 

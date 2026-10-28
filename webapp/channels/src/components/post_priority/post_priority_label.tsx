@@ -13,7 +13,7 @@ type Props = {
 	priority?: PostPriority | '';
 	size?: TagSize;
 	uppercase?: boolean;
-}
+};
 
 export default function PriorityLabel({
 	priority,

@@ -7,7 +7,7 @@ import { FormattedMessage } from 'react-intl';
 
 import CodeBlock from 'components/code_block/code_block';
 
-type Katex = typeof import('katex');
+type Katex = typeof import('katex').default;
 
 type Props = {
 	content: string;
@@ -35,7 +35,6 @@ const LatexBlock = ({
 		);
 	}
 
-	try {
 		const katexOptions: KatexOptions = {
 			throwOnError: false,
 			displayMode: true,
@@ -44,16 +43,10 @@ const LatexBlock = ({
 			fleqn: true,
 		};
 
-		const html = katex.renderToString(content, katexOptions);
-
-		return (
-			<div
-				className='post-body--code tex'
-				dangerouslySetInnerHTML={{ __html: html }}
-				data-testid='latex-enabled'
-			/>
-		);
-	} catch (e) {
+    let html;
+    try {
+        html = katex.renderToString(content, katexOptions);
+    } catch {
 		// This is never run because throwOnError is false
 		return (
 			<div
@@ -67,6 +60,14 @@ const LatexBlock = ({
 			</div>
 		);
 	}
+
+    return (
+        <div
+            className='post-body--code tex'
+            dangerouslySetInnerHTML={{__html: html}}
+            data-testid='latex-enabled'
+        />
+    );
 };
 
 export default React.memo(LatexBlock);

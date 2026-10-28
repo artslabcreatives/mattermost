@@ -47,7 +47,7 @@ type State = {
 };
 
 export default class ThemeSetting extends React.PureComponent<Props, State> {
-	minRef: RefObject<SettingItemMinComponent>;
+    minRef: RefObject<SettingItemMinComponent | null>;
 	originalTheme: Theme;
 	constructor(props: Props) {
 		super(props);
@@ -238,6 +238,8 @@ export default class ThemeSetting extends React.PureComponent<Props, State> {
 						</ExternalLink>
 					</div>,
 				);
+            } else {
+                inputs.push(premade);
 			}
 
 			let allTeamsCheckbox = null;

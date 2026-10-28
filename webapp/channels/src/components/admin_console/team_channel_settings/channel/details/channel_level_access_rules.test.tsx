@@ -5,7 +5,8 @@ import React from 'react';
 
 import type { AccessControlPolicy } from '@mattermost/types/access_control';
 import type { Channel } from '@mattermost/types/channels';
-import type { UserPropertyField, FieldVisibility, FieldValueType } from '@mattermost/types/properties';
+import type {FieldVisibility, FieldValueType} from '@mattermost/types/properties';
+import type {UserPropertyField} from '@mattermost/types/properties_user';
 
 import { renderWithContext, screen, userEvent } from 'tests/react_testing_utils';
 import { TestHelper } from 'utils/test_helper';
@@ -37,8 +38,8 @@ jest.mock('../../../../channel_settings_modal/channel_access_rules_confirm_modal
 // Mock Redux selectors with stable references
 const mockAccessControlSettings = {
 	EnableAttributeBasedAccessControl: true,
-	EnableChannelScopeAccessControl: true,
 	EnableUserManagedAttributes: true,
+    EnableChannelPolicyIndicators: true,
 };
 
 jest.mock('mattermost-redux/selectors/entities/access_control', () => ({
@@ -80,30 +81,40 @@ describe('ChannelLevelAccessRules', () => {
 			group_id: 'custom_profile_attributes' as const,
 			name: 'department',
 			type: 'text' as const,
+            create_at: 1000,
+            update_at: 1000,
+            delete_at: 0,
+            created_by: '',
+            updated_by: '',
+            target_id: '',
+            target_type: '',
+            object_type: '',
 			attrs: {
 				sort_order: 1,
 				visibility: 'always' as FieldVisibility,
 				value_type: '' as FieldValueType,
 				ldap: 'department',
 			},
-			create_at: 1000,
-			update_at: 1000,
-			delete_at: 0,
 		},
 		{
 			id: 'attr-2',
 			group_id: 'custom_profile_attributes' as const,
 			name: 'role',
 			type: 'text' as const,
+            create_at: 1000,
+            update_at: 1000,
+            delete_at: 0,
+            created_by: '',
+            updated_by: '',
+            target_id: '',
+            target_type: '',
+            object_type: '',
 			attrs: {
 				sort_order: 2,
 				visibility: 'always' as FieldVisibility,
 				value_type: '' as FieldValueType,
 				managed: 'admin',
 			},
-			create_at: 1000,
-			update_at: 1000,
-			delete_at: 0,
 		},
 	];
 
@@ -116,10 +127,6 @@ describe('ChannelLevelAccessRules', () => {
 		initialAutoSync: false,
 		isDisabled: false,
 	};
-
-	beforeEach(() => {
-		jest.clearAllMocks();
-	});
 
 	it('should render the component with correct title and subtitle', () => {
 		renderWithContext(<ChannelLevelAccessRules {...defaultProps} />);

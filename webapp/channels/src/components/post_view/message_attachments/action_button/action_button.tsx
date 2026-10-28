@@ -4,6 +4,7 @@
 import React, { memo, useCallback } from 'react';
 import styled, { css } from 'styled-components';
 
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
 import type { PostAction, PostActionOption } from '@mattermost/types/integration_actions';
 
 import type { Theme } from 'mattermost-redux/selectors/entities/preferences';
@@ -35,7 +36,7 @@ type Props = {
 	theme: Theme;
 	actionExecuting?: boolean;
 	actionExecutingMessage?: string;
-}
+};
 
 const ActionButton = ({
 	action,
@@ -59,6 +60,10 @@ const ActionButton = ({
 	const name = action.name || action.id || '';
 
 	return (
+        <WithTooltip
+            title={action.tooltip}
+            disabled={!action.tooltip}
+        >
 		<ActionBtn
 			data-action-id={action.id}
 			data-action-cookie={action.cookie}
@@ -78,6 +83,7 @@ const ActionButton = ({
 				/>
 			</LoadingWrapper>
 		</ActionBtn>
+        </WithTooltip>
 	);
 };
 

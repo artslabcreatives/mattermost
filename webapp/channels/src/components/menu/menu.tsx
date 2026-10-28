@@ -18,6 +18,7 @@ import type {
 import { useDispatch, useSelector } from 'react-redux';
 
 import { GenericModal } from '@mattermost/components';
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
 
 import { getTheme } from 'mattermost-redux/selectors/entities/preferences';
 
@@ -25,7 +26,6 @@ import { openModal, closeModal } from 'actions/views/modals';
 import { getIsMobileView } from 'selectors/views/browser';
 
 import CompassDesignProvider from 'components/compass_design_provider';
-import WithTooltip from 'components/with_tooltip';
 
 import Constants, { A11yClassNames } from 'utils/constants';
 import { isKeyPressed } from 'utils/keyboard';
@@ -46,16 +46,23 @@ type MenuButtonProps = {
 	'aria-describedby'?: string;
 	disabled?: boolean;
 	class?: string;
-	as?: keyof JSX.IntrinsicElements;
+    as?: 'button' | 'div';
 	children: ReactNode;
-}
+
+    /**
+     * Opt-in passthrough for callers that need to inspect or adjust the
+     * trigger before the click opens the menu. The menu itself does not
+     * depend on it.
+     */
+    onMouseDown?: (event: MouseEvent<HTMLElement>) => void;
+};
 
 type MenuButtonTooltipProps = {
 	isVertical?: boolean;
 	class?: string;
 	text: string;
 	disabled?: boolean;
-}
+};
 
 type MenuProps = {
 
@@ -73,8 +80,37 @@ type MenuProps = {
 	onToggle?: (isOpen: boolean) => void;
 	onKeyDown?: (event: KeyboardEvent<HTMLDivElement>, forceCloseMenu?: () => void) => void;
 	width?: string;
+    minWidth?: string;
+    maxWidth?: string;
 	isMenuOpen?: boolean;
-}
+
+    /**
+     * When true, hides the MUI Popover backdrop so elements behind the
+     * menu remain interactive (e.g. during drag-and-drop).
+     */
+    hideBackdrop?: boolean;
+
+    /**
+     * When true, the modal root does not capture pointer events, so the
+     * trigger stays clickable while the menu is open (e.g. chip remove).
+     * The trigger toggles open/close. Escape still closes.
+     */
+    allowTriggerInteraction?: boolean;
+
+    /**
+     * When true, MUI will not restore focus to the previously focused
+     * element when the menu closes. Useful when the caller manages
+     * focus itself (e.g. keyboard reordering).
+     */
+    disableRestoreFocus?: boolean;
+
+    /**
+     * When false, the menu will not auto-focus the first item on open.
+     * Focus stays on the trigger button; ArrowDown moves focus into the list.
+     * Defaults to true (standard MUI behavior).
+     */
+    autoFocusItem?: boolean;
+};
 
 const defaultAnchorOrigin = { vertical: 'bottom', horizontal: 'left' } as PopoverOrigin;
 const defaultTransformOrigin = { vertical: 'top', horizontal: 'left' } as PopoverOrigin;
@@ -112,23 +148,46 @@ export function Menu(props: Props) {
 
 	const dispatch = useDispatch();
 
-	const [anchorElement, setAnchorElement] = useState<null | HTMLElement>(null);
-	const isMenuOpen = Boolean(anchorElement);
+    // Initialize from prop so initial mount with isMenuOpen={true} opens.
+    const [isMenuOpen, setIsMenuOpen] = useState(props.menu.isMenuOpen === true);
+
+    // State (not ref) so MUI's anchorEl reacts when the button mounts.
+    const [menuButton, setMenuButton] = useState<HTMLElement | null>(null);
+
+    // Mirror the controlled prop into internal state on transition.
+    // undefined → no sync; release of control keeps the current state.
+    // Pattern: https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+    const [prevControlled, setPrevControlled] = useState(props.menu.isMenuOpen);
+    if (prevControlled !== props.menu.isMenuOpen) {
+        setPrevControlled(props.menu.isMenuOpen);
+        if (props.menu.isMenuOpen === true) {
+            setIsMenuOpen(true);
+        } else if (props.menu.isMenuOpen === false) {
+            setIsMenuOpen(false);
+        }
+    }
 
 	// Callback function handler called when menu is closed by escapeKeyDown, backdropClick or tabKeyDown
 	function handleMenuClose(event: MouseEvent<HTMLDivElement>) {
+        // When hideBackdrop is active (during DnD), block all MUI-initiated close.
+        // The menu is controlled exclusively via isMenuOpen in this mode.
+        if (props.menu.hideBackdrop) {
 		event.preventDefault();
-		setAnchorElement(null);
+            return;
+        }
+
+        event.preventDefault();
+        setIsMenuOpen(false);
 	}
 
 	// Handle function injected into menu items to close the menu
 	const closeMenu = useCallback(() => {
-		setAnchorElement(null);
+        setIsMenuOpen(false);
 	}, []);
 
 	function handleMenuModalClose(modalId: MenuProps['id']) {
 		dispatch(closeModal(modalId));
-		setAnchorElement(null);
+        setIsMenuOpen(false);
 	}
 
 	// Stop synthetic events from bubbling up to the parent
@@ -136,6 +195,22 @@ export function Menu(props: Props) {
 	function handleMenuClick(e: MouseEvent<HTMLDivElement> | KeyboardEvent<HTMLDivElement>) {
 		e.stopPropagation();
 	}
+
+    // MUI MenuList handles arrow keys internally. This handler runs AFTER
+    // MenuList's own onKeyDown (MUI calls our onKeyDown prop at the end).
+    // Stop propagation so the arrow event doesn't also reach the Popover's
+    // onKeyDown, which could cause double-movement.
+    function handleMenuListKeyDown(event: KeyboardEvent<HTMLUListElement>) {
+        if (isKeyPressed(event, Constants.KeyCodes.UP) || isKeyPressed(event, Constants.KeyCodes.DOWN)) {
+            event.stopPropagation();
+        }
+
+        // If a menu item already handled Space/Enter (e.g. keyboard reorder),
+        // stop it from reaching the Popover which would close the menu.
+        if (event.defaultPrevented && (isKeyPressed(event, Constants.KeyCodes.SPACE) || isKeyPressed(event, Constants.KeyCodes.ENTER))) {
+            event.stopPropagation();
+        }
+    }
 
 	function handleMenuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
 		if (isKeyPressed(event, Constants.KeyCodes.ENTER) || isKeyPressed(event, Constants.KeyCodes.SPACE)) {
@@ -146,7 +221,7 @@ export function Menu(props: Props) {
 			if (ariaHasPopupAttribute && ariaHasExpandedAttribute) {
 				// Avoid closing the sub menu item on enter
 			} else {
-				setAnchorElement(null);
+                setIsMenuOpen(false);
 			}
 		}
 
@@ -165,7 +240,13 @@ export function Menu(props: Props) {
 		}
 	}
 
-	function handleMenuButtonClick(event: MouseEvent) {
+    function handleMenuButtonClick(event: MouseEvent | KeyboardEvent) {
+        // Check before preventDefault so Enter/Space on a descendant remove
+        // button can still fire the native button activation.
+        if ((event.target as HTMLElement).closest?.('[data-menu-prevent-open]')) {
+            return;
+        }
+
 		event.preventDefault();
 		event.stopPropagation();
 
@@ -187,27 +268,57 @@ export function Menu(props: Props) {
 					},
 				}),
 			);
+        } else if (props.menu.allowTriggerInteraction) {
+            setIsMenuOpen((open) => !open);
 		} else {
-			setAnchorElement(event.currentTarget as HTMLElement);
+            setIsMenuOpen(true);
 		}
 	}
+
+    function handleMenuButtonKeyDown(event: KeyboardEvent) {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+            return;
+        }
+
+        // Only the trigger itself should open/toggle — not a focused chip remove.
+        if (event.target !== event.currentTarget) {
+            return;
+        }
+
+        handleMenuButtonClick(event);
+    }
 
 	// We construct the menu button so we can set onClick correctly here to support both web and mobile view
 	function renderMenuButton() {
 		const MenuButtonComponent = props.menuButton?.as ?? 'button';
+        const isDivTrigger = MenuButtonComponent === 'div';
+        const isDisabled = props.menuButton?.disabled ?? false;
+        let divTabIndex: number | undefined;
+        if (isDivTrigger) {
+            divTabIndex = isDisabled ? -1 : 0;
+        }
 
 		const triggerElement = (
 			<MenuButtonComponent
+                ref={setMenuButton}
 				id={props.menuButton.id}
 				data-testid={props.menuButton.dataTestId}
 				aria-controls={props.menu.id}
 				aria-haspopup={true}
 				aria-expanded={isMenuOpen}
-				disabled={props.menuButton?.disabled ?? false}
+
+                // Native <button> uses disabled. Div triggers are not form
+                // controls, so they expose aria-disabled for AT instead.
+                disabled={isDivTrigger ? undefined : isDisabled}
+                aria-disabled={isDivTrigger ? isDisabled : undefined}
+                role={isDivTrigger ? 'button' : undefined}
+                tabIndex={divTabIndex}
 				aria-label={props.menuButton?.['aria-label']}
 				aria-describedby={props.menuButton?.['aria-describedby']}
 				className={props.menuButton?.class ?? ''}
-				onClick={handleMenuButtonClick}
+                onMouseDown={props.menuButton?.onMouseDown}
+                onClick={isDisabled ? undefined : handleMenuButtonClick}
+                onKeyDown={isDivTrigger && !isDisabled ? handleMenuButtonKeyDown : undefined}
 			>
 				{props.menuButton.children}
 			</MenuButtonComponent>
@@ -235,13 +346,8 @@ export function Menu(props: Props) {
 		}
 	}, [isMenuOpen]);
 
-	useEffect(() => {
-		if (props.menu.isMenuOpen === false) {
-			setAnchorElement(null);
-		}
-	}, [props.menu.isMenuOpen]);
-
-	const providerValue = useMenuContextValue(closeMenu, Boolean(anchorElement));
+    const providerValue = useMenuContextValue(closeMenu, isMenuOpen);
+    const pointerEventsPassThrough = Boolean(props.menu.hideBackdrop || props.menu.allowTriggerInteraction);
 
 	if (isMobileView) {
 		// In mobile view, the menu is rendered as a modal
@@ -252,8 +358,11 @@ export function Menu(props: Props) {
 		<CompassDesignProvider theme={theme}>
 			{renderMenuButton()}
 			<MenuContext.Provider value={providerValue}>
+                {/* Wait for the anchor; gate on menuButton only so MUI's
+                    open/close transitions still run. */}
+                {menuButton && (
 				<MuiPopover
-					anchorEl={anchorElement}
+                        anchorEl={menuButton}
 					open={isMenuOpen}
 					onClose={handleMenuClose}
 					onClick={handleMenuClick}
@@ -262,6 +371,15 @@ export function Menu(props: Props) {
 					marginThreshold={0}
 					anchorOrigin={props.anchorOrigin || defaultAnchorOrigin}
 					transformOrigin={props.transformOrigin || defaultTransformOrigin}
+                        hideBackdrop={props.menu.hideBackdrop}
+                        disableRestoreFocus={props.menu.disableRestoreFocus}
+
+                        // hideBackdrop (DnD) and allowTriggerInteraction (chip
+                        // remove) both need the modal root to stop eating clicks
+                        // so the trigger behind it stays usable. Paper stays
+                        // interactive so the list itself still receives them.
+                        style={pointerEventsPassThrough ? {pointerEvents: 'none'} : undefined}
+                        PaperProps={pointerEventsPassThrough ? {style: {pointerEvents: 'auto'}} : undefined}
 					TransitionProps={{
 						mountOnEnter: true,
 						unmountOnExit: true,
@@ -271,12 +389,18 @@ export function Menu(props: Props) {
 						},
 					}}
 					slotProps={{
+                            root: {
+                                slotProps: {
 						backdrop: {
 							id: ELEMENT_ID_FOR_MENU_BACKDROP,
+
+                                        // Popover normally sets this itself, but passing our own
+                                        // backdrop props replaces its defaults.
+                                        invisible: true,
+                                    },
+                                },
 						},
 					}}
-					// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-					// @ts-expect-error This exists in source code of mui, but its types are missing
 					onTransitionExited={providerValue.handleClosed}
 				>
 					{props.menuHeader}
@@ -287,13 +411,17 @@ export function Menu(props: Props) {
 						className={props.menu.className}
 						style={{
 							width: props.menu.width,
+                                minWidth: props.menu.minWidth,
+                                maxWidth: props.menu.maxWidth,
 						}}
-						autoFocusItem={isMenuOpen}
+                            autoFocusItem={(props.menu.autoFocusItem ?? true) && isMenuOpen}
+                            onKeyDown={handleMenuListKeyDown}
 					>
 						{props.children}
 					</MuiMenuList>
 					{props.menuFooter}
 				</MuiPopover>
+                )}
 			</MenuContext.Provider>
 		</CompassDesignProvider>
 	);

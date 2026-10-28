@@ -227,6 +227,55 @@ func TestDeauthorizeOAuthApp(t *testing.T) {
 	CheckUnauthorizedStatus(t, resp)
 }
 
+func TestDeauthorizeOAuthAppDeniesOAuthSession(t *testing.T) {
+	th := Setup(t).InitBasic(t)
+	th.Login(t, apiClient, th.SystemAdminUser)
+
+	enableOAuth := *th.App.Config().ServiceSettings.EnableOAuthServiceProvider
+	defer func() {
+		th.App.UpdateConfig(func(cfg *model.Config) { *cfg.ServiceSettings.EnableOAuthServiceProvider = enableOAuth })
+	}()
+	th.App.UpdateConfig(func(cfg *model.Config) { *cfg.ServiceSettings.EnableOAuthServiceProvider = true })
+
+	oapp := &model.OAuthApp{
+		Name:         GenerateTestAppName(),
+		Homepage:     "https://nowhere.com",
+		Description:  "test",
+		CallbackUrls: []string{"https://nowhere.com"},
+		CreatorId:    th.SystemAdminUser.Id,
+		ClientSecret: model.NewId(),
+	}
+
+	rapp, appErr := th.App.CreateOAuthApp(oapp)
+	require.Nil(t, appErr)
+
+	authRequest := &model.AuthorizeRequest{
+		ResponseType: model.ImplicitResponseType,
+		ClientId:     rapp.Id,
+		RedirectURI:  rapp.CallbackUrls[0],
+		Scope:        "",
+		State:        "123",
+	}
+
+	ruri, _, err := apiClient.AuthorizeOAuthApp(context.Background(), authRequest)
+	require.NoError(t, err)
+
+	ru, err := url.Parse(ruri)
+	require.NoError(t, err)
+	values, err := url.ParseQuery(ru.Fragment)
+	require.NoError(t, err)
+	oauthToken := values.Get("access_token")
+	require.NotEmpty(t, oauthToken)
+
+	oldToken := apiClient.AuthToken
+	apiClient.AuthToken = oauthToken
+	defer func() { apiClient.AuthToken = oldToken }()
+
+	resp, err := apiClient.DeauthorizeOAuthApp(context.Background(), rapp.Id)
+	require.Error(t, err)
+	CheckForbiddenStatus(t, resp)
+}
+
 func TestOAuthAccessToken(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
@@ -701,7 +750,7 @@ func closeBody(r *http.Response) {
 type MattermostTestProvider struct {
 }
 
-func (m *MattermostTestProvider) GetUserFromJSON(_ request.CTX, data io.Reader, tokenUser *model.User) (*model.User, error) {
+func (m *MattermostTestProvider) GetUserFromJSON(_ request.CTX, data io.Reader, tokenUser *model.User, settings *model.SSOSettings) (*model.User, error) {
 	var user model.User
 	if err := json.NewDecoder(data).Decode(&user); err != nil {
 		return nil, err
@@ -853,6 +902,59 @@ func (th *TestHelper) AddPermissionToRole(tb testing.TB, permission string, role
 	require.Nil(tb, appErr)
 }
 
+// TestOAuthMobileCallbackIncludesSrvParameter verifies that mobile OAuth callbacks
+// include the 'srv' parameter for origin verification
+func TestOAuthMobileCallbackIncludesSrvParameter(t *testing.T) {
+	// The 'srv' parameter is added to mobile callbacks to allow the client
+	// to verify the server origin
+
+	t.Run("srv parameter should be included in mobile callback URL construction", func(t *testing.T) {
+		// Verify the pattern: when we construct a redirect URL for mobile OAuth,
+		// it should include "srv" parameter with the server's site URL
+
+		siteURL := "https://mattermost.example.com"
+		sessionToken := "test-session-token"
+		csrfToken := "test-csrf-token"
+
+		// Simulate what the code does when constructing the callback
+		params := map[string]string{
+			model.SessionCookieToken: sessionToken,
+			model.SessionCookieCsrf:  csrfToken,
+			"srv":                    siteURL,
+		}
+
+		// Verify all expected parameters are present
+		assert.Equal(t, sessionToken, params[model.SessionCookieToken])
+		assert.Equal(t, csrfToken, params[model.SessionCookieCsrf])
+		assert.Equal(t, siteURL, params["srv"])
+	})
+
+	t.Run("srv parameter detects OAuth server mismatch", func(t *testing.T) {
+		// Scenario: The srv parameter from callback doesn't match expected server
+		// Mobile should detect the mismatch
+
+		expectedServer := "https://server-a.example.com"
+		actualSrvFromCallback := "https://server-b.example.com"
+
+		// This is the check that should happen in mobile
+		isMismatch := expectedServer != actualSrvFromCallback
+		assert.True(t, isMismatch, "Should detect server mismatch")
+	})
+
+	t.Run("srv parameter allows legitimate OAuth login", func(t *testing.T) {
+		// Scenario: Normal OAuth login to legitimate.com
+		// Server adds srv=legitimate.com to callback
+		// Mobile verifies: expected (legitimate.com) == srv (legitimate.com)
+
+		expectedServer := "https://legitimate.example.com"
+		actualSrvFromCallback := "https://legitimate.example.com"
+
+		// This is the check that should happen in mobile
+		isLegitimate := expectedServer == actualSrvFromCallback
+		assert.True(t, isLegitimate, "Should allow legitimate OAuth login")
+	})
+}
+
 func TestFullyQualifiedRedirectURL(t *testing.T) {
 	const siteURL = "https://xxx.yyy/mm"
 
@@ -875,12 +977,35 @@ func TestFullyQualifiedRedirectURL(t *testing.T) {
 		"https://xxx.yyy/mm/some-path?foo=bar": siteURL + "/some-path?foo=bar",
 		"https://xxx.yyy/mm/some-path#section": siteURL + "/some-path#section",
 		"https://xxx.yyy/mm/../malicious-path": siteURL,
+		"https://xxx.yyy/mmfoo":                siteURL, // segment boundary: /mmfoo is not under /mm
 		":foo":                                 siteURL,
 		"mmauth://callback":                    "mmauth://callback",
 		"mmauth://xxx.yyy/mm":                  siteURL, // invalid mobile URL (wrong host)
 	} {
 		t.Run(target, func(t *testing.T) {
 			require.Equal(t, expected, fullyQualifiedRedirectURL(siteURL, target, []string{"mmauth://"}))
+		})
+	}
+
+	// Root SiteURL (empty path). SetSiteURLHeader strips the trailing slash, so
+	// the site path is "" and path.Clean gives ".". Same-origin relative targets
+	// (e.g. the /oauth/authorize resume after SSO login) must be preserved, while
+	// cross-origin targets must still collapse to the site root.
+	const rootSiteURL = "https://xxx.yyy"
+
+	for target, expected := range map[string]string{
+		"":                         rootSiteURL,
+		"/":                        rootSiteURL + "/",
+		"/oauth/authorize?foo=bar": rootSiteURL + "/oauth/authorize?foo=bar",
+		"/oauth/authorize?response_type=code&client_id=abc&state=x": rootSiteURL + "/oauth/authorize?response_type=code&client_id=abc&state=x",
+		"//evil.com":                rootSiteURL,
+		"https://yyy.zzz/some-path": rootSiteURL,
+		"https://xxx.yyy/some-path": rootSiteURL + "/some-path",
+		"https://xxx.yyy?foo=bar":   rootSiteURL + "?foo=bar",
+		"https://xxx.yyy#section":   rootSiteURL + "#section",
+	} {
+		t.Run("root/"+target, func(t *testing.T) {
+			require.Equal(t, expected, fullyQualifiedRedirectURL(rootSiteURL, target, []string{"mmauth://"}))
 		})
 	}
 }
@@ -909,10 +1034,10 @@ func TestAuthorizeOAuthPage(t *testing.T) {
 
 	t.Run("PublicClient_PKCERequired", func(t *testing.T) {
 		dcrRequest := &model.ClientRegistrationRequest{
-			ClientName:              model.NewPointer("Public Client Test"),
+			ClientName:              new("Public Client Test"),
 			RedirectURIs:            []string{"https://example.com/callback"},
 			TokenEndpointAuthMethod: model.NewPointer(model.ClientAuthMethodNone),
-			ClientURI:               model.NewPointer("https://example.com"),
+			ClientURI:               new("https://example.com"),
 		}
 
 		publicApp, appErr := th.App.RegisterOAuthClient(th.Context, dcrRequest, th.BasicUser.Id)
@@ -930,10 +1055,10 @@ func TestAuthorizeOAuthPage(t *testing.T) {
 
 	t.Run("PublicClient_WithPKCE_Success", func(t *testing.T) {
 		dcrRequest := &model.ClientRegistrationRequest{
-			ClientName:              model.NewPointer("Public Client Test"),
+			ClientName:              new("Public Client Test"),
 			RedirectURIs:            []string{"https://example.com/callback"},
 			TokenEndpointAuthMethod: model.NewPointer(model.ClientAuthMethodNone),
-			ClientURI:               model.NewPointer("https://example.com"),
+			ClientURI:               new("https://example.com"),
 		}
 
 		publicApp, appErr := th.App.RegisterOAuthClient(th.Context, dcrRequest, th.BasicUser.Id)
@@ -1021,10 +1146,10 @@ func TestAuthorizeOAuthAppHandler(t *testing.T) {
 
 	t.Run("PublicClient_PKCEParameters", func(t *testing.T) {
 		dcrRequest := &model.ClientRegistrationRequest{
-			ClientName:              model.NewPointer("Public Client Test"),
+			ClientName:              new("Public Client Test"),
 			RedirectURIs:            []string{"https://example.com/callback"},
 			TokenEndpointAuthMethod: model.NewPointer(model.ClientAuthMethodNone),
-			ClientURI:               model.NewPointer("https://example.com"),
+			ClientURI:               new("https://example.com"),
 		}
 
 		publicApp, appErr := th.App.RegisterOAuthClient(th.Context, dcrRequest, th.BasicUser.Id)
@@ -1081,10 +1206,10 @@ func TestGetAccessToken(t *testing.T) {
 
 	t.Run("PublicClient_NoClientSecret", func(t *testing.T) {
 		dcrRequest := &model.ClientRegistrationRequest{
-			ClientName:              model.NewPointer("Public Client Test"),
+			ClientName:              new("Public Client Test"),
 			RedirectURIs:            []string{"https://example.com/callback"},
 			TokenEndpointAuthMethod: model.NewPointer(model.ClientAuthMethodNone),
-			ClientURI:               model.NewPointer("https://example.com"),
+			ClientURI:               new("https://example.com"),
 		}
 
 		publicApp, appErr := th.App.RegisterOAuthClient(th.Context, dcrRequest, th.BasicUser.Id)

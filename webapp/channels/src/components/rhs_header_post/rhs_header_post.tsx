@@ -4,16 +4,18 @@
 import React from 'react';
 import { FormattedMessage, injectIntl, type WrappedComponentProps } from 'react-intl';
 
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
 import type { Channel } from '@mattermost/types/channels';
 import type { Team } from '@mattermost/types/teams';
 
+import ChannelAttributeLabels from 'components/channel_attributes/channel_attribute_labels';
+import {ChannelLabelSurface} from 'components/common/hooks/useChannelLabels';
 import KeyboardShortcutSequence, {
 	KEYBOARD_SHORTCUTS,
 } from 'components/keyboard_shortcuts/keyboard_shortcuts_sequence';
 import PopoutButton from 'components/popout_button';
 import { getThreadPopoutTitle } from 'components/thread_popout/thread_popout';
 import FollowButton from 'components/threading/common/follow_button';
-import WithTooltip from 'components/with_tooltip';
 
 import { getHistory } from 'utils/browser_history';
 import { RHSStates } from 'utils/constants';
@@ -33,10 +35,6 @@ type Props = WrappedComponentProps & {
 	currentTeam?: Team;
 	currentUserId: string;
 	setRhsExpanded: (b: boolean) => void;
-	showMentions: () => void;
-	showSearchResults: () => void;
-	showFlaggedPosts: () => void;
-	showPinnedPosts: () => void;
 	goBack: () => void;
 	closeRightHandSide: (e?: React.MouseEvent) => void;
 	toggleRhsExpanded: (e: React.MouseEvent) => void;
@@ -188,15 +186,17 @@ class RhsHeaderPost extends React.PureComponent<Props> {
 
 		return (
 			<div className='sidebar--right__header'>
-				<span
+                <div
 					className='sidebar--right__title'
 					id='rhsPanelTitle'
 				>
 					{back}
+                    <span className='sidebar--right__title__heading'>
 					<FormattedMessage
 						id='rhs_header.details'
 						defaultMessage='Thread'
 					/>
+                    </span>
 					{channelName &&
 						<button
 							onClick={this.handleJumpClick}
@@ -205,12 +205,18 @@ class RhsHeaderPost extends React.PureComponent<Props> {
 							{channelName}
 						</button>
 					}
-				</span>
+                    <ChannelAttributeLabels
+                        channelId={this.props.channel.id}
+                        surface={[ChannelLabelSurface.INFO, ChannelLabelSurface.HEADER]}
+                        allowEmptyVisible={true}
+                    />
+                </div>
 				<div className='controls'>
 					{this.props.isCollapsedThreadsEnabled ? (
 						<FollowButton
 							className='sidebar--right__follow__thread'
 							isFollowing={isFollowingThread}
+                            iconOnly={true}
 							onClick={this.handleFollowChange}
 						/>
 					) : null}

@@ -4,7 +4,7 @@
 package platform
 
 import (
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"strconv"
@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/shared/markdown"
 	"github.com/mattermost/mattermost/server/v8/channels/store/storetest"
 	"github.com/mattermost/mattermost/server/v8/config"
 	"github.com/mattermost/mattermost/server/v8/einterfaces/mocks"
@@ -147,7 +148,7 @@ func TestMetrics(t *testing.T) {
 		// there is no config listener for the metrics
 		// we handle it on config save step
 		cfg := th.Service.Config().Clone()
-		cfg.MetricsSettings.Enable = model.NewPointer(true)
+		cfg.MetricsSettings.Enable = new(true)
 		_, _, appErr := th.Service.SaveConfig(cfg, false)
 		require.Nil(t, appErr)
 
@@ -159,7 +160,7 @@ func TestMetrics(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		cfg.MetricsSettings.Enable = model.NewPointer(false)
+		cfg.MetricsSettings.Enable = new(false)
 		_, _, appErr = th.Service.SaveConfig(cfg, false)
 		require.Nil(t, appErr)
 
@@ -195,6 +196,7 @@ func TestMetrics(t *testing.T) {
 
 		_ = th.CreateUserOrGuest(t, false)
 
+		th.Shutdown(t)
 		mockMetricsImpl.AssertExpectations(t)
 	})
 }
@@ -203,13 +205,12 @@ func TestShutdown(t *testing.T) {
 	mainHelper.Parallel(t)
 	t.Run("should shutdown gracefully", func(t *testing.T) {
 		th := Setup(t)
-		rand.Seed(time.Now().UnixNano())
 
 		// we create plenty of go routines to make sure we wait for all of them
 		// to finish before shutting down
 		for range 1000 {
 			th.Service.Go(func() {
-				time.Sleep(time.Millisecond * time.Duration(rand.Intn(20)))
+				time.Sleep(time.Millisecond * time.Duration(rand.IntN(20)))
 			})
 		}
 
@@ -242,13 +243,21 @@ func TestDatabaseTypeAndMattermostVersion(t *testing.T) {
 
 	databaseType, schemaVersion, err := th.Service.DatabaseTypeAndSchemaVersion()
 	require.NoError(t, err)
-	if *th.Service.Config().SqlSettings.DriverName == model.DatabaseDriverPostgres {
-		assert.Equal(t, "postgres", databaseType)
-	} else {
-		assert.Equal(t, "mysql", databaseType)
-	}
+	assert.Equal(t, "postgres", databaseType)
 
-	// It's hard to check wheather the schema version is correct or not.
+	// It's hard to check whether the schema version is correct or not.
 	// So, we just check if it's greater than 1.
 	assert.GreaterOrEqual(t, schemaVersion, strconv.Itoa(1))
+}
+
+func TestNewSyncsMarkdownMaxLenWithMaxPostSize(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t)
+
+	// markdown.SetMaxPostRunes is package-global; parallel tests (including
+	// markdown's own tests) can overwrite it between Setup and this check.
+	require.Eventually(t, func() bool {
+		maxPostSize := th.Service.MaxPostSize()
+		return markdown.MaxLen() == 4*maxPostSize
+	}, 5*time.Second, 10*time.Millisecond)
 }

@@ -16,7 +16,7 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {closeRightHandSide} from 'actions/views/rhs';
 
 import LoadingSpinner from 'components/widgets/loading/loading_spinner';
-import WithTooltip from 'components/with_tooltip';
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
 
 import {getSiteURL} from 'utils/url';
 

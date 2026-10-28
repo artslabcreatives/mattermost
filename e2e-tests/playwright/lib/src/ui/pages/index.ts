@@ -2,8 +2,10 @@
 // See LICENSE.txt for license information.
 
 import ChannelsPage from './channels';
+import KeycloakLoginPage from './keycloak_login';
 import LandingLoginPage from './landing_login';
 import LoginPage from './login';
+import RecapsPage from './recaps';
 import ResetPasswordPage from './reset_password';
 import SignupPage from './signup';
 import SystemConsolePage from './system_console';
@@ -14,8 +16,10 @@ import ContentReviewPage from './content_review_dm';
 
 const pages = {
     ChannelsPage,
+    KeycloakLoginPage,
     LandingLoginPage,
     LoginPage,
+    RecapsPage,
     ResetPasswordPage,
     SignupPage,
     ScheduledPostsPage,
@@ -30,8 +34,10 @@ export {
     ChannelsPage,
     ContentReviewPage,
     DraftsPage,
+    KeycloakLoginPage,
     LandingLoginPage,
     LoginPage,
+    RecapsPage,
     ResetPasswordPage,
     SignupPage,
     ScheduledPostsPage,

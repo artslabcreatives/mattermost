@@ -4,7 +4,6 @@
 import classNames from 'classnames';
 import isEmpty from 'lodash/isEmpty';
 import React, { memo, useCallback, useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
 import { useIntl } from 'react-intl';
 import { useSelector, useDispatch, shallowEqual } from 'react-redux';
 import { Link, useRouteMatch } from 'react-router-dom';
@@ -68,7 +67,8 @@ const GlobalThreads = () => {
 		if (!(
 			rhsState === RHSStates.MENTION ||
 			rhsState === RHSStates.SEARCH ||
-			rhsState === RHSStates.FLAG)
+            rhsState === RHSStates.FLAG ||
+            rhsState === RHSStates.PLUGIN)
 		) {
 			dispatch(suppressRHS);
 		}
@@ -119,10 +119,17 @@ const GlobalThreads = () => {
 			promises.push(dispatch(getThreadsForCurrentTeam({ unread: true })));
 		}
 
+        let isStale = false;
 		Promise.all(promises).then(() => {
+            if (!isStale) {
 			setLoading(false);
+            }
 		});
-	}, [filter, threadIds, unreadThreadIds]);
+
+        return () => {
+            isStale = true;
+        };
+    }, [filter, threadIds, unreadThreadIds, numUnread]);
 
 	useEffect(() => {
 		if (!isLoading) {
@@ -204,7 +211,7 @@ const GlobalThreads = () => {
 								id: 'globalThreads.threadPane.unselectedTitle',
 								defaultMessage: '{numUnread, plural, =0 {Looks like you’re all caught up} other {Catch up on your threads}}',
 							}, { numUnread })}
-							subtitle={formatMessage<ReactNode>({
+                            subtitle={formatMessage({
 								id: 'globalThreads.threadPane.unreadMessageLink',
 								defaultMessage: 'You have {numUnread, plural, =0 {no unread threads} =1 {<link>{numUnread} thread</link>} other {<link>{numUnread} threads</link>}} {numUnread, plural, =0 {} other {with unread messages}}',
 							}, {
@@ -212,7 +219,7 @@ const GlobalThreads = () => {
 								link: (chunks) => (
 									<Link
 										key='single'
-										to={`${url}/${unreadThreadIds[0]}`}
+                                        to={unreadThreadIds.length ? `${url}/${unreadThreadIds[0]}` : url}
 										onClick={handleSelectUnread}
 									>
 										{chunks}

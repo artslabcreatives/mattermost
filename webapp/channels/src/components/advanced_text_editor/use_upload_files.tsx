@@ -1,29 +1,32 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, { useCallback, useRef, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useIntl } from 'react-intl';
+import React, {useCallback, useMemo, useRef, useState} from 'react';
+import {useIntl} from 'react-intl';
+import {useDispatch, useSelector} from 'react-redux';
 
-import { openModal } from 'actions/views/modals';
+import {openModal} from 'actions/views/modals';
 import ConfirmModalRedux from 'components/confirm_modal_redux';
-import Constants, { ModalIdentifiers } from 'utils/constants';
+import Constants, {ModalIdentifiers} from 'utils/constants';
 
 import type { ServerError } from '@mattermost/types/errors';
 import type { FileInfo } from '@mattermost/types/files';
 
+import Permissions from 'mattermost-redux/constants/permissions';
+import {getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {haveIChannelPermission} from 'mattermost-redux/selectors/entities/roles';
 import { sortFileInfos } from 'mattermost-redux/utils/file_utils';
 import { getConfig } from 'mattermost-redux/selectors/entities/general';
 
 import { getCurrentLocale } from 'selectors/i18n';
 
+import {useRenderPermission} from 'components/common/hooks/useRenderPermission';
 import FilePreview from 'components/file_preview';
 import type { FilePreviewInfo } from 'components/file_preview/file_preview';
 import FileUpload from 'components/file_upload';
 import type { FileUpload as FileUploadClass, TextEditorLocationType } from 'components/file_upload/file_upload';
 import UppyFileUpload from 'components/uppy_file_upload';
-import type { UppyFileUploadHandle, RestoredFileInfo } from 'components/uppy_file_upload';
-import type TextboxClass from 'components/textbox/textbox';
+import type {UppyFileUploadHandle, RestoredFileInfo} from 'components/uppy_file_upload';
 
 import type { GlobalState } from 'types/store';
 import type { PostDraft } from 'types/store/draft';
@@ -39,16 +42,25 @@ const useUploadFiles = (
 	isThreadView: boolean,
 	storedDrafts: React.MutableRefObject<Record<string, PostDraft | undefined>>,
 	isDisabled: boolean,
-	textboxRef: React.RefObject<TextboxClass>,
+    editorBodyRef: React.RefObject<HTMLDivElement | null>,
 	handleDraftChange: (draft: PostDraft, options?: { instant?: boolean; show?: boolean }) => void,
 	focusTextbox: (forceFocust?: boolean) => void,
 	setServerError: (err: (ServerError & { submittedMessage?: string }) | null) => void,
 	isPostBeingEdited?: boolean,
-): [React.ReactNode, React.ReactNode, React.RefObject<FileUploadClass>, boolean] => {
+): [React.ReactNode, React.ReactNode, React.RefObject<FileUploadClass | null>, boolean] => {
 	const dispatch = useDispatch();
 	const intl = useIntl();
 	const locale = useSelector(getCurrentLocale);
 	const enableDirectUploads = useSelector((state: GlobalState) => getConfig(state).EnableDirectUploads === 'true');
+    const canEditAttachments = useSelector((state: GlobalState) => {
+        const channel = getChannel(state, channelId);
+        return channel ? haveIChannelPermission(state, channel.team_id, channel.id, Permissions.EDIT_FILE_ATTACHMENT) : true;
+    });
+    const editAttachmentsDisabled = isPostBeingEdited && !canEditAttachments;
+
+    // Fail open while in flight: the endpoint enforces regardless, and failing closed flickers the
+    // button disabled on every first visit to a channel.
+    const uploadAllowedByPolicy = useRenderPermission({resourceType: 'channel', resourceId: channelId, action: 'upload_file_attachment'}, true);
 
 	const [uploadsProgressPercent, setUploadsProgressPercent] = useState<{ [clientID: string]: FilePreviewInfo }>({});
 	const [isFilesPreviewLoading, setIsFilesPreviewLoading] = useState(false);
@@ -88,13 +100,20 @@ const useUploadFiles = (
 	// These are distinct from legacy clientIds — they're managed by Uppy.
 	const uppyPendingIds = useRef<Set<string>>(new Set());
 
+    const removeTooltip = useMemo(() => {
+        return editAttachmentsDisabled ? intl.formatMessage({
+            id: 'file_preview.no_edit_permission',
+            defaultMessage: 'Post attachments cannot be edited',
+        }) : undefined;
+    }, [editAttachmentsDisabled, intl]);
+
 	const handleFileUploadChange = useCallback(() => {
 		focusTextbox();
 	}, [focusTextbox]);
 
 	const getFileUploadTarget = useCallback(() => {
-		return textboxRef.current?.getInputBox();
-	}, [textboxRef]);
+        return (editorBodyRef.current as unknown as HTMLInputElement | null) ?? null;
+    }, [editorBodyRef]);
 
 	const handleUploadProgress = useCallback((filePreviewInfo: FilePreviewInfo) => {
 		setUploadsProgressPercent((prev) => ({
@@ -115,7 +134,7 @@ const useUploadFiles = (
 		// leave clientIds stuck in uploadsInProgress and block the send button.
 		const draftToUpdate = storedDrafts.current[key] ?? draft;
 
-		const newFileInfos = sortFileInfos([...draftToUpdate.fileInfos || [], ...fileInfos], locale);
+        const newFileInfos = sortFileInfos([...(draftToUpdate.fileInfos || []), ...fileInfos], locale);
 
 		const clientIdsSet = new Set(clientIds);
 		const uploadsInProgress = (draftToUpdate.uploadsInProgress || []).filter((v) => !clientIdsSet.has(v));
@@ -345,11 +364,12 @@ const useUploadFiles = (
 		attachmentPreview = (
 			<FilePreview
 				fileInfos={draft.fileInfos}
-				onRemove={removePreview}
+				onRemove={editAttachmentsDisabled ? undefined : removePreview}
 				onRetry={handleRetry}
 				uploadsInProgress={draft.uploadsInProgress}
 				uploadsProgressPercent={uploadsProgressPercent}
 				onPreviewsLoadingChange={setIsFilesPreviewLoading}
+				disabledRemoveTooltip={removeTooltip}
 			/>
 		);
 	}
@@ -362,7 +382,7 @@ const useUploadFiles = (
 	}
 
 	let fileUploadJSX: React.ReactNode = null;
-	if (!isDisabled) {
+	if (!isDisabled && !editAttachmentsDisabled) {
 		if (enableDirectUploads) {
 			fileUploadJSX = (
 				<>
@@ -384,7 +404,10 @@ const useUploadFiles = (
 							rootId={postId}
 							channelId={channelId}
 							postType={postType}
-							skipDragEvents={true} skipPasteEvents={true} />
+							disabledByPolicy={!uploadAllowedByPolicy}
+							skipDragEvents={true}
+							skipPasteEvents={true}
+						/>
 					</span>
 					{/* Paperclip attachment button: uploads direct to S3, no popup. */}
 					<UppyFileUpload
@@ -416,6 +439,7 @@ const useUploadFiles = (
 					rootId={postId}
 					channelId={channelId}
 					postType={postType}
+            disabledByPolicy={!uploadAllowedByPolicy}
 				/>
 			);
 		}

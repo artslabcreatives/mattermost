@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, {useState, useEffect, useRef, type JSX} from 'react';
 import { useDispatch } from 'react-redux';
 
 import type { Channel, ChannelMembership } from '@mattermost/types/channels';
@@ -20,7 +20,7 @@ type Props = {
 	userId: string;
 	customButton?: JSX.Element;
 	dmChannel?: Channel | null;
-}
+};
 
 export default function ProfilePopoverCallButton({ pluginCallComponents, channelMember, sidebarOpen, customButton, dmChannel, currentUserId, userId }: Props) {
 	const [clickEnabled, setClickEnabled] = useState(true);

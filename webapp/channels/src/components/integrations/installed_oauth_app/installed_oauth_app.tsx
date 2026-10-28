@@ -56,12 +56,12 @@ export type InstalledOAuthAppProps = {
 	 * Set to filter OAuthApp
 	 */
 	filter?: string | null;
-}
+};
 
 export type InstalleOAuthAppState = {
 	clientSecret: string;
 	error?: string | null;
-}
+};
 
 export default class InstalledOAuthApp extends React.PureComponent<InstalledOAuthAppProps, InstalleOAuthAppState> {
 	constructor(props: InstalledOAuthAppProps) {

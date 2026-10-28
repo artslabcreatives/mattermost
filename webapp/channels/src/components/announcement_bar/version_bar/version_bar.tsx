@@ -10,7 +10,7 @@ import AnnouncementBar from '../default_announcement_bar';
 
 type Props = {
     buildHash?: string;
-}
+};
 
 const reloadPage = () => {
     window.location.reload();

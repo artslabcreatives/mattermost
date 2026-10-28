@@ -28,7 +28,7 @@ import { PaperclipIcon } from '@mattermost/compass-icons/components';
 import type Uppy from '@uppy/core';
 import DropTarget from '@uppy/drop-target';
 
-import WithTooltip from 'components/with_tooltip';
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
 import KeyboardShortcutSequence, { KEYBOARD_SHORTCUTS } from 'components/keyboard_shortcuts/keyboard_shortcuts_sequence';
 
 import { useUppyDirectUpload } from 'hooks/useUppyDirectUpload';

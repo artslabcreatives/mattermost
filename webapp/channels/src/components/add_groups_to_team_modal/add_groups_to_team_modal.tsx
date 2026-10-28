@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import type { RefObject } from 'react';
+import type {JSX, RefObject} from 'react';
 import { Modal } from 'react-bootstrap';
 import type { IntlShape } from 'react-intl';
 import { injectIntl, FormattedMessage, defineMessage } from 'react-intl';
@@ -40,7 +40,7 @@ type Props = {
 	skipCommit?: boolean;
 	onAddCallback?: (groupIDs: string[]) => void;
 	actions: Actions;
-}
+};
 
 export type Actions = {
 	getGroupsNotAssociatedToTeam: (teamID: string, q?: string, page?: number, perPage?: number, source?: GroupSource | string, onlySyncableSources?: boolean) => Promise<ActionResult>;
@@ -56,11 +56,11 @@ type State = {
 	saving: boolean;
 	addError: null | string;
 	loadingGroups: boolean;
-}
+};
 
 export class AddGroupsToTeamModal extends React.PureComponent<Props, State> {
 	private searchTimeoutId: number;
-	private readonly selectedItemRef: RefObject<HTMLDivElement>;
+    private readonly selectedItemRef: RefObject<HTMLDivElement | null>;
 
 	constructor(props: Props) {
 		super(props);
@@ -200,7 +200,7 @@ export class AddGroupsToTeamModal extends React.PureComponent<Props, State> {
 		return (
 			<div
 				key={option.id}
-				ref={isSelected ? this.selectedItemRef : option.id}
+                ref={isSelected ? this.selectedItemRef : undefined}
 				className={'more-modal__row clickable ' + rowSelected}
 				onClick={() => onAdd(option)}
 				onMouseMove={() => onMouseMove(option)}

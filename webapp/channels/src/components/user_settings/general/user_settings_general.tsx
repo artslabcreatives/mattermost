@@ -3,13 +3,16 @@
 
 /* eslint-disable max-lines */
 
-import React, { PureComponent } from 'react';
+import React, {PureComponent, type JSX} from 'react';
 import { defineMessage, defineMessages, FormattedDate, FormattedMessage, FormattedList, injectIntl } from 'react-intl';
 import type { IntlShape } from 'react-intl';
-import ReactSelect from 'react-select';
+import {useSelector} from 'react-redux';
 import type { OnChangeValue, ActionMeta, StylesConfig } from 'react-select';
+import ReactSelect from 'react-select';
 
-import type { UserPropertyField, PropertyFieldOption } from '@mattermost/types/properties';
+import type {LockProfileFieldsSetting} from '@mattermost/types/config';
+import {valueRefersToOptions, type PropertyFieldOption} from '@mattermost/types/properties';
+import type {UserPropertyField} from '@mattermost/types/properties_user';
 import type { UserProfile } from '@mattermost/types/users';
 
 import type { LogErrorOptions } from 'mattermost-redux/actions/errors';
@@ -17,6 +20,10 @@ import { LogErrorBarMode } from 'mattermost-redux/actions/errors';
 import type { ActionResult } from 'mattermost-redux/types/actions';
 import { isEmail } from 'mattermost-redux/utils/helpers';
 
+import {getPluginDisplayName} from 'selectors/plugins';
+
+import {asGraphValueIds} from 'components/property_fields/graph';
+import GraphProfileAttribute from 'components/property_fields/graph/graph_profile_attribute';
 import SettingItem from 'components/setting_item';
 import SettingItemMax from 'components/setting_item_max';
 import SettingPicture from 'components/setting_picture';
@@ -24,8 +31,11 @@ import Input from 'components/widgets/inputs/input/input';
 import LoadingWrapper from 'components/widgets/loading/loading_wrapper';
 
 import { AnnouncementBarMessages, AnnouncementBarTypes, AcceptedProfileImageTypes, Constants, ValidationErrors } from 'utils/constants';
+import {getUserPropertyFieldLabel} from 'utils/properties';
 import { validHttpUrl } from 'utils/url';
 import * as Utils from 'utils/utils';
+
+import type {GlobalState} from 'types/store';
 
 import SettingDesktopHeader from '../headers/setting_desktop_header';
 import SettingMobileHeader from '../headers/setting_mobile_header';
@@ -180,8 +190,10 @@ export type Props = {
 	ldapPositionAttributeSet?: boolean;
 	samlPositionAttributeSet?: boolean;
 	ldapPictureAttributeSet?: boolean;
+    lockProfileFieldsForEmailUsers: LockProfileFieldsSetting;
+    canEditOtherUsers: boolean;
 	enableCustomProfileAttributes: boolean;
-}
+};
 
 type State = {
 	username: string;
@@ -203,13 +215,24 @@ type State = {
 	emailError?: string;
 	phoneNumber: string;
 	customAttributeValues: Record<string, string | string[]>;
-}
+};
+
+// Private component to get plugin display name
+type PluginDisplayNameProps = {
+    pluginId?: string;
+};
+
+const PluginDisplayName: React.FC<PluginDisplayNameProps> = ({pluginId}) => {
+    const displayName = useSelector((state: GlobalState) => getPluginDisplayName(state, pluginId));
+    return <>{displayName}</>;
+};
 
 export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 	public submitActive = false;
 
 	constructor(props: Props) {
 		super(props);
+
 		this.state = this.setupInitialState(props);
 	}
 
@@ -466,7 +489,8 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 				}
 			}
 		}
-		if (attributeField.type === 'multiselect' && !attributeValue) {
+
+        if ((attributeField.type === 'multiselect' || attributeField.type === 'graph') && !attributeValue) {
 			attributeValue = [];
 		}
 
@@ -658,6 +682,29 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 		);
 	}
 
+    isFieldLockedByAdmin = (field: 'name' | 'username' | 'nickname' | 'position' | 'picture'): boolean => {
+        if (this.props.user.auth_service !== '' || this.props.canEditOtherUsers) {
+            return false;
+        }
+
+        const setting = this.props.lockProfileFieldsForEmailUsers;
+        if (setting === Constants.LOCK_PROFILE_FIELDS.NAME_AND_USERNAME) {
+            return field === 'name' || field === 'username';
+        }
+        return setting === Constants.LOCK_PROFILE_FIELDS.ALL;
+    };
+
+    createFieldManagedByAdminMessage = () => {
+        return (
+            <span>
+                <FormattedMessage
+                    id='user.settings.general.field_locked_by_admin'
+                    defaultMessage='This field is managed by your System Admin. Contact them to request a change.'
+                />
+            </span>
+        );
+    };
+
 	createNameSection = () => {
 		const user = this.props.user;
 		const { formatMessage } = this.props.intl;
@@ -669,6 +716,9 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 
 			let extraInfo;
 			let submit = null;
+            const lockNameFields = this.isFieldLockedByAdmin('name');
+            const firstNameLocked = lockNameFields && user.first_name !== '';
+            const lastNameLocked = lockNameFields && user.last_name !== '';
 			if (
 				(this.props.user.auth_service === Constants.LDAP_SERVICE &&
 					(this.props.ldapFirstNameAttributeSet || this.props.ldapLastNameAttributeSet)) ||
@@ -684,6 +734,8 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 						/>
 					</span>
 				);
+            } else if (firstNameLocked && lastNameLocked) {
+                extraInfo = this.createFieldManagedByAdminMessage();
 			} else {
 				inputs.push(
 					<div
@@ -706,6 +758,7 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 								autoFocus={true}
 								type='text'
 								onChange={this.updateFirstName}
+                                disabled={firstNameLocked}
 								maxLength={Constants.MAX_FIRSTNAME_LENGTH}
 								value={this.state.firstName}
 								onFocus={Utils.moveCursorToEnd}
@@ -735,6 +788,7 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 								name='lastName'
 								type='text'
 								onChange={this.updateLastName}
+                                disabled={lastNameLocked}
 								maxLength={Constants.MAX_LASTNAME_LENGTH}
 								value={this.state.lastName}
 								aria-label={formatMessage({ id: 'user.settings.general.lastName', defaultMessage: 'Last Name' })}
@@ -761,7 +815,8 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 					</a>
 				);
 
-				extraInfo = (
+                // Each empty name may be filled once even when the other name is already locked.
+                extraInfo = firstNameLocked || lastNameLocked ? this.createFieldManagedByAdminMessage() : (
 					<span>
 						<FormattedMessage
 							id='user.settings.general.notificationsExtra'
@@ -847,6 +902,8 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 						/>
 					</span>
 				);
+            } else if (this.isFieldLockedByAdmin('nickname')) {
+                extraInfo = this.createFieldManagedByAdminMessage();
 			} else {
 				let nicknameLabel: JSX.Element | string = (
 					<FormattedMessage
@@ -948,7 +1005,9 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 
 			let extraInfo;
 			let submit = null;
-			if (this.props.user.auth_service === '') {
+            if (this.isFieldLockedByAdmin('username')) {
+                extraInfo = this.createFieldManagedByAdminMessage();
+            } else if (this.props.user.auth_service === '') {
 				let usernameLabel: JSX.Element | string = (
 					<FormattedMessage
 						id='user.settings.general.username'
@@ -1065,6 +1124,8 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 						/>
 					</span>
 				);
+            } else if (this.isFieldLockedByAdmin('position')) {
+                extraInfo = this.createFieldManagedByAdminMessage();
 			} else {
 				let positionLabel: JSX.Element | string = (
 					<FormattedMessage
@@ -1284,7 +1345,39 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 			return <></>;
 		}
 
-		const attributeSections = this.props.customProfileAttributeFields.map((attribute) => {
+        const attributeSections = this.props.customProfileAttributeFields.filter((attribute) => {
+            // Hide source_only fields from user profiles
+            return attribute.attrs?.access_mode !== 'source_only';
+        }).map((attribute) => {
+            if (attribute.type === 'graph') {
+                const sectionName = 'customAttribute_' + attribute.id;
+                const stored = this.props.user.custom_profile_attributes?.[attribute.id];
+                const draft = this.state.customAttributeValues[attribute.id];
+                return (
+                    <GraphProfileAttribute
+                        key={sectionName}
+                        attribute={attribute}
+                        sectionName={sectionName}
+                        active={this.props.activeSection === sectionName}
+                        areAllSectionsInactive={this.props.activeSection === ''}
+                        storedValue={stored}
+                        draftIds={asGraphValueIds(draft)}
+                        onDraftIdsChange={(nextIds) => this.setState({
+                            customAttributeValues: {
+                                ...this.state.customAttributeValues,
+                                [attribute.id]: nextIds,
+                            },
+                        })}
+                        onSubmit={() => this.submitAttribute([attribute.id])}
+                        updateSection={this.updateSection}
+                        sectionIsSaving={this.state.sectionIsSaving}
+                        serverError={this.state.serverError}
+                        isMobileView={this.props.isMobileView}
+                        user={this.props.user}
+                    />
+                );
+            }
+
 			const sectionName = 'customAttribute_' + attribute.id;
 			const active = this.props.activeSection === sectionName;
 			let max = null;
@@ -1294,19 +1387,24 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 					return '';
 				}
 
-				if (attribute.type === 'select' || attribute.type === 'multiselect') {
+                if (valueRefersToOptions(attribute)) {
 					const attribOptions = attribute.attrs.options;
+                    const optionsOmitted = Boolean(attribute.attrs?.options_omitted);
 					if (!attribOptions) {
+                        if (optionsOmitted) {
+                            if (Array.isArray(attributeValue)) {
+                                return attributeValue.map((value) => ({label: value, value}));
+                            }
+                            return {label: attributeValue, value: attributeValue};
+                        }
 						return '';
 					}
 					if (Array.isArray(attributeValue)) {
 						return attributeValue.map((value) => {
 							const option = attribOptions.find((o) => o.id === value);
-							if (option) {
-								return { label: option?.name, value: option?.id };
-							}
-							return null;
-						}).filter((value) => value != null);
+
+                            return {label: option?.name ?? value, value};
+                        });
 					}
 
 					// Handle single select
@@ -1314,6 +1412,9 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 					if (option) {
 						return { label: option?.name, value: option?.id };
 					}
+                    if (optionsOmitted) {
+                        return {label: attributeValue, value: attributeValue};
+                    }
 					return '';
 				}
 
@@ -1322,7 +1423,7 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 
 			if (active) {
 				const inputs = [];
-				let extraInfo: JSX.Element | string;
+                let extraInfo: JSX.Element | string = '';
 				let submit = null;
 
 				const validate = () => {
@@ -1350,8 +1451,21 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 					return undefined;
 				};
 
-				if ((this.props.user.auth_service === Constants.LDAP_SERVICE && attribute.attrs?.ldap) ||
-					(this.props.user.auth_service === Constants.SAML_SERVICE && attribute.attrs?.saml)) {
+                const isProtected = Boolean(attribute.attrs?.protected);
+                const isSynced = Boolean((this.props.user.auth_service === Constants.LDAP_SERVICE && attribute.attrs?.ldap) ||
+                    (this.props.user.auth_service === Constants.SAML_SERVICE && attribute.attrs?.saml));
+                const isAdminManaged = attribute.attrs?.managed === 'admin';
+
+                // Owner-managed fields (e.g. SCIM-provisioned) are written only
+                // by the owning integration; the server rejects human value
+                // writes, so render them read-only just like synced fields.
+                const isOwnerManaged = Boolean(attribute.attrs?.owners?.length);
+                const optionsOmitted = Boolean(attribute.attrs?.options_omitted);
+
+                const omitLocksField = optionsOmitted;
+                const isReadOnly = isSynced || isOwnerManaged || isAdminManaged || isProtected || omitLocksField;
+
+                if (isSynced) {
 					extraInfo = (
 						<span>
 							<FormattedMessage
@@ -1360,7 +1474,27 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 							/>
 						</span>
 					);
-				} else if (attribute.attrs?.managed === 'admin') {
+                } else if (isOwnerManaged) {
+                    extraInfo = (
+                        <span>
+                            <FormattedMessage
+                                id='user.settings.general.field_managed_externally'
+                                defaultMessage='This field is managed by an external integration and cannot be edited here.'
+                            />
+                        </span>
+                    );
+                } else if (isProtected) {
+                    extraInfo = (
+                        <span>
+                            <FormattedMessage
+                                id='user.settings.general.field_managed_by_plugin'
+                                defaultMessage='This field is managed by a plugin and cannot be edited.'
+                            />
+                            {' ('}<PluginDisplayName pluginId={attribute.attrs?.source_plugin_id}/>{')'}
+
+                        </span>
+                    );
+                } else if (isAdminManaged) {
 					extraInfo = (
 						<span>
 							<FormattedMessage
@@ -1369,19 +1503,32 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 							/>
 						</span>
 					);
-				} else {
+                } else if (omitLocksField) {
+                    extraInfo = (
+                        <span>
+                            <FormattedMessage
+                                id='user.settings.general.field_options_omitted'
+                                defaultMessage='This field has too many options to be edited here.'
+                            />
+                        </span>
+                    );
+                }
+
+                // Only render inputs if the field is editable by the user
+                if (!isReadOnly) {
 					let attributeLabel: JSX.Element | string = (
-						attribute.name
+                        getUserPropertyFieldLabel(attribute)
 					);
 					if (this.props.isMobileView) {
 						attributeLabel = '';
 					}
 
-					if (attribute.type === 'select' || attribute.type === 'multiselect') {
-						const attribOptions: PropertyFieldOption[] = attribute.attrs!.options as PropertyFieldOption[];
+                    if (valueRefersToOptions(attribute)) {
+                        const attribOptions: PropertyFieldOption[] = (attribute.attrs!.options as PropertyFieldOption[]) ?? [];
 						const opts = attribOptions.map((o) => {
 							return { label: o.name, value: o.id } as SelectOption;
 						});
+
 						inputs.push(
 							<ReactSelect
 								isMulti={attribute.type === 'multiselect' ? true : undefined}
@@ -1393,7 +1540,6 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 								options={opts}
 								isClearable={true}
 								isSearchable={false}
-								isDisabled={false}
 								placeholder={formatMessage({
 									id: 'user.settings.general.select',
 									defaultMessage: 'Select',
@@ -1423,13 +1569,17 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 										maxLength={Constants.MAX_CUSTOM_ATTRIBUTE_LENGTH}
 										autoCapitalize='off'
 										onFocus={Utils.moveCursorToEnd}
-										aria-label={attribute.name}
+                                        aria-label={getUserPropertyFieldLabel(attribute)}
 										validate={validate}
 									/>
 								</div>
 							</div>,
 						);
 					}
+                }
+
+                // Only enable submit and show default extra info if field is editable
+                if (!isReadOnly) {
 					extraInfo = (
 						<span>
 							<FormattedMessage
@@ -1438,14 +1588,13 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 							/>
 						</span>
 					);
-
 					submit = this.submitAttribute.bind(this, [attribute.id]);
 				}
 
 				max = (
 					<SettingItemMax
 						key={'settingItemMax_' + attribute.id}
-						title={attribute.name}
+                        title={getUserPropertyFieldLabel(attribute)}
 						inputs={inputs}
 						submit={submit}
 						saving={this.state.sectionIsSaving}
@@ -1457,8 +1606,10 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 				);
 			}
 			let describe: JSX.Element | string = '';
-			if (this.props.user.custom_profile_attributes?.[attribute.id]) {
-				const attributeValue = getDisplayValue(this.props.user.custom_profile_attributes?.[attribute.id]);
+            const storedValue = this.props.user.custom_profile_attributes?.[attribute.id];
+
+            if (storedValue) {
+                const attributeValue = getDisplayValue(storedValue);
 				if (attributeValue) {
 					if (typeof attributeValue === 'string') {
 						describe = attributeValue;
@@ -1492,7 +1643,7 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 						key={'settingItem_' + attribute.id}
 						active={active}
 						areAllSectionsInactive={this.props.activeSection === ''}
-						title={attribute.name}
+                        title={getUserPropertyFieldLabel(attribute)}
 						describe={describe}
 						section={sectionName}
 						updateSection={this.updateSection}
@@ -1516,7 +1667,7 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 			let submit = null;
 			let setDefault = null;
 			let helpText = null;
-			let imgSrc = null;
+            const imgSrc = Utils.imageURLForUser(user.id, user.last_picture_update);
 
 			if ((this.props.user.auth_service === Constants.LDAP_SERVICE || this.props.user.auth_service === Constants.SAML_SERVICE) && this.props.ldapPictureAttributeSet) {
 				helpText = (
@@ -1527,10 +1678,11 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 						/>
 					</span>
 				);
+            } else if (this.isFieldLockedByAdmin('picture')) {
+                helpText = this.createFieldManagedByAdminMessage();
 			} else {
 				submit = this.submitPicture;
 				setDefault = user.last_picture_update > 0 ? this.setDefaultProfilePicture : null;
-				imgSrc = Utils.imageURLForUser(user.id, user.last_picture_update);
 				helpText = (
 					<FormattedMessage
 						id='setting_picture.help.profile'
@@ -1557,7 +1709,6 @@ export class UserSettingsGeneralTab extends PureComponent<Props, State> {
 					onFileChange={this.updatePicture}
 					submitActive={this.submitActive}
 					loadingPicture={this.state.loadingPicture}
-					maxFileSize={this.props.maxFileSize}
 					helpText={helpText}
 				/>
 			);

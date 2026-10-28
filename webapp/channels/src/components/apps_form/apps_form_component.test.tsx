@@ -1,13 +1,11 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import { screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import React from 'react';
 
 import { AppCallResponseTypes } from 'mattermost-redux/constants/apps';
 
-import { renderWithContext } from 'tests/react_testing_utils';
+import {renderWithContext, screen, waitFor, userEvent} from 'tests/react_testing_utils';
 
 import { AppsForm } from './apps_form_component';
 import type { Props } from './apps_form_component';
@@ -70,10 +68,6 @@ describe('AppsFormComponent', () => {
 			],
 		},
 	};
-
-	afterEach(() => {
-		jest.clearAllMocks();
-	});
 
 	test('should render form with title, header, fields and initial values', () => {
 		renderWithContext(
@@ -1354,10 +1348,12 @@ describe('AppsFormComponent', () => {
 						type: 'datetime',
 						is_required: true,
 						label: 'Meeting Time',
+                        datetime_config: {
 						time_interval: 30,
 						min_date: 'today',
 						max_date: '+30d',
 					},
+                    },
 				],
 			};
 
@@ -1380,8 +1376,10 @@ describe('AppsFormComponent', () => {
 					{
 						name: 'invalid_field',
 						type: 'datetime',
+                        datetime_config: {
 						time_interval: -1, // Invalid interval
 						min_date: 'invalid-date', // Invalid date format
+                        },
 						label: 'Invalid Field',
 					},
 				],
@@ -1435,7 +1433,7 @@ describe('AppsFormComponent', () => {
 						{
 							name: 'valid_datetime',
 							type: 'datetime',
-							time_interval: interval,
+                            datetime_config: {time_interval: interval},
 							label: `DateTime with ${interval}min interval`,
 						},
 					],
@@ -1462,7 +1460,7 @@ describe('AppsFormComponent', () => {
 						{
 							name: 'invalid_datetime',
 							type: 'datetime',
-							time_interval: interval,
+                            datetime_config: {time_interval: interval},
 							label: `DateTime with ${interval}min interval`,
 						},
 					],
@@ -1500,7 +1498,7 @@ describe('AppsFormComponent', () => {
 						{
 							name: 'out_of_range_datetime',
 							type: 'datetime',
-							time_interval: interval,
+                            datetime_config: {time_interval: interval},
 							label: `DateTime with ${interval}min interval`,
 						},
 					],
@@ -1538,7 +1536,7 @@ describe('AppsFormComponent', () => {
 						{
 							name: 'non_numeric_datetime',
 							type: 'datetime',
-							time_interval: interval as any,
+                            datetime_config: {time_interval: interval as any},
 							label: `DateTime with ${interval} interval`,
 						},
 					],
@@ -1576,13 +1574,13 @@ describe('AppsFormComponent', () => {
 					{
 						name: 'text_with_interval',
 						type: 'text',
-						time_interval: 729, // Invalid but should be ignored for text fields
+                        datetime_config: {time_interval: 729}, // Invalid but should be ignored for text fields
 						label: 'Text Field',
 					},
 					{
 						name: 'date_with_interval',
 						type: 'date',
-						time_interval: 729, // Invalid but should be ignored for date fields
+                        datetime_config: {time_interval: 729}, // Invalid but should be ignored for date fields
 						label: 'Date Field',
 					},
 				],
@@ -1600,31 +1598,56 @@ describe('AppsFormComponent', () => {
 
 			consoleSpy.mockRestore();
 		});
+    });
 
-		it('should validate min_date and max_date formats for date and datetime fields', () => {
+    describe('DateTime Field Validation - datetime_config', () => {
+        it('should validate invalid datetime_config.time_interval', () => {
 			const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
 
-			const formWithInvalidDates = {
+            const form = {
 				...baseProps.form,
 				fields: [
 					{
-						name: 'invalid_dates',
+                        name: 'config_interval',
 						type: 'datetime',
-						min_date: 'invalid-date-format',
-						max_date: '2025/01/01', // Wrong format
-						label: 'DateTime with Invalid Dates',
+                        datetime_config: {time_interval: 729}, // Not a divisor of 1440
+                        label: 'DateTime with datetime_config interval',
 					},
 				],
 			};
 
-			const props = {
-				...baseProps,
-				form: formWithInvalidDates,
+            renderWithContext(<AppsForm {...{...baseProps, form}}/>);
+
+            expect(consoleSpy).toHaveBeenCalledWith(
+                'AppForm field validation errors:',
+                expect.arrayContaining([
+                    expect.stringContaining('time_interval must be a divisor of 1440 (24 hours * 60 minutes) to create valid time intervals, got 729'),
+                ]),
+            );
+
+            consoleSpy.mockRestore();
+        });
+
+        it('should validate invalid datetime_config.min_date and max_date formats', () => {
+            const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+            const form = {
+                ...baseProps.form,
+                fields: [
+                    {
+                        name: 'config_dates',
+                        type: 'datetime',
+                        datetime_config: {
+                            min_date: 'invalid-date-format',
+                            max_date: '2025/01/01',
+                        },
+                        label: 'DateTime with Invalid datetime_config Dates',
+                    },
+                ],
 			};
 
-			renderWithContext(<AppsForm {...props} />);
+            renderWithContext(<AppsForm {...{...baseProps, form}}/>);
 
-			// Should log warnings for invalid date formats
 			expect(consoleSpy).toHaveBeenCalledWith(
 				'AppForm field validation errors:',
 				expect.arrayContaining([
@@ -1636,30 +1659,26 @@ describe('AppsFormComponent', () => {
 			consoleSpy.mockRestore();
 		});
 
-		it('should validate date range when min_date is after max_date', () => {
+        it('should validate datetime_config range when min_date is after max_date', () => {
 			const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
 
-			const formWithInvalidDateRange = {
+            const form = {
 				...baseProps.form,
 				fields: [
 					{
-						name: 'invalid_range',
+                        name: 'config_range',
 						type: 'date',
+                        datetime_config: {
 						min_date: '2025-12-31',
-						max_date: '2025-01-01', // Before min_date
-						label: 'Date with Invalid Range',
+                            max_date: '2025-01-01',
+                        },
+                        label: 'Date with Invalid datetime_config Range',
 					},
 				],
 			};
 
-			const props = {
-				...baseProps,
-				form: formWithInvalidDateRange,
-			};
+            renderWithContext(<AppsForm {...{...baseProps, form}}/>);
 
-			renderWithContext(<AppsForm {...props} />);
-
-			// Should log warning for invalid date range
 			expect(consoleSpy).toHaveBeenCalledWith(
 				'AppForm field validation errors:',
 				expect.arrayContaining([
@@ -1670,4 +1689,177 @@ describe('AppsFormComponent', () => {
 			consoleSpy.mockRestore();
 		});
 	});
+
+    describe('collapsible fields', () => {
+        // Build props whose form contains a collapsible wrapping leaf fields
+
+        const makeForm = (expanded: boolean): Props['form'] => ({
+            ...baseProps.form,
+            fields: [
+                {name: 'top', type: 'text'},
+                {
+                    name: 'sec',
+                    type: 'collapsible',
+                    label: 'Section',
+                    collapsible_config: {
+                        expanded,
+                        fields: [
+                            {name: 'inner', type: 'text', label: 'inner'},
+                            {name: 'innerRequired', type: 'text', label: 'innerRequired', is_required: true},
+                        ],
+                    },
+                },
+            ],
+        });
+
+        it('renders leaf fields inside a collapsible section', () => {
+            const formExpanded = makeForm(true);
+
+            renderWithContext(
+                <AppsForm
+                    {...baseProps}
+                    form={formExpanded}
+                />,
+            );
+
+            expect(screen.getByText('Section')).toBeInTheDocument();
+            expect(screen.getByText('inner')).toBeInTheDocument();
+            expect(screen.getByText('innerRequired')).toBeInTheDocument();
+        });
+
+        it('renders the collapsible toggle and child fields are hidden when collapsed', () => {
+            // TODO: expanded=false; section header present, inner inputs not in DOM.
+            const formCollapsed = makeForm(false);
+
+            renderWithContext(
+                <AppsForm
+                    {...baseProps}
+                    form={formCollapsed}
+                />,
+            );
+
+            expect(screen.queryByText('Section')).toBeInTheDocument();
+            expect(screen.queryByText('inner')).not.toBeInTheDocument();
+            expect(screen.queryByText('innerRequired')).not.toBeInTheDocument();
+        });
+
+        it('validates required fields inside a collapsed section on submit', async () => {
+            const submit = jest.fn().mockResolvedValue({data: {type: 'ok'}});
+
+            const props: Props = {
+                ...baseProps,
+                actions: {
+                    ...baseProps.actions,
+                    submit,
+                },
+            };
+
+            const formCollapsed = makeForm(false);
+
+            renderWithContext(
+                <AppsForm
+                    {...props}
+                    form={formCollapsed}
+                />,
+            );
+
+            const submitButton = screen.getByRole('button', {name: /submit/i});
+
+            await userEvent.click(submitButton);
+
+            expect(submit).not.toHaveBeenCalled();
+        });
+
+        it('seeds initial values from leaf fields only (no value for the container)', async () => {
+            const submit = jest.fn().mockResolvedValue({data: {type: 'ok'}});
+
+            const formExpanded = makeForm(true);
+
+            // Pre-fill the required child so validation doesn't block submit.
+            formExpanded.fields![1].collapsible_config!.fields![1].value = 'filled';
+
+            renderWithContext(
+                <AppsForm
+                    {...baseProps}
+                    actions={{...baseProps.actions, submit}}
+                    form={formExpanded}
+                />,
+            );
+
+            const submitButton = screen.getByRole('button', {name: /submit/i});
+
+            await userEvent.click(submitButton);
+
+            expect(submit).toHaveBeenCalledTimes(1);
+            const {values} = submit.mock.calls[0][0];
+
+            // Leaf fields are hoisted to the top level...
+            expect(values).toHaveProperty('inner');
+            expect(values).toHaveProperty('innerRequired');
+
+            // ...but the collapsible container itself carries no value.
+            expect(values).not.toHaveProperty('sec');
+        });
+
+        it('routes onChange for a field nested inside a collapsible', async () => {
+            const formExpanded = makeForm(true);
+
+            renderWithContext(
+                <AppsForm
+                    {...baseProps}
+                    form={formExpanded}
+                />,
+            );
+
+            // grab the nested text field to put input
+            const formFieldInput = screen.getByTestId('innerinput');
+
+            await userEvent.type(formFieldInput, 'test text');
+
+            // assert that the value we put in really made it in
+            expect(formFieldInput).toHaveValue('test text');
+        });
+
+        it('keeps autoFocus on the first top-level field when a collapsible is present', () => {
+            const formExpanded = makeForm(true);
+
+            renderWithContext(
+                <AppsForm
+                    {...baseProps}
+                    form={formExpanded}
+                />,
+            );
+
+            expect(screen.getByTestId('topinput')).toHaveFocus();
+        });
+
+        it('forwards autoFocus to the first child when the first top-level field is a collapsible', () => {
+            const form: Props['form'] = {
+                ...baseProps.form,
+                fields: [
+                    {
+                        name: 'sec',
+                        type: 'collapsible',
+                        label: 'Section',
+                        collapsible_config: {
+                            expanded: true,
+                            fields: [
+                                {name: 'inner', type: 'text', label: 'inner'},
+                                {name: 'innerSecond', type: 'text', label: 'innerSecond'},
+                            ],
+                        },
+                    },
+                ],
+            };
+
+            renderWithContext(
+                <AppsForm
+                    {...baseProps}
+                    form={form}
+                />,
+            );
+
+            expect(screen.getByTestId('innerinput')).toHaveFocus();
+        });
+    });
 });

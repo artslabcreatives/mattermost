@@ -4,23 +4,24 @@
 package sqlstore
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"io"
 	"log"
 	"path"
-	"sort"
+	"slices"
 	"strconv"
 	"sync"
+
+	"github.com/mattermost/morph"
+	ps "github.com/mattermost/morph/drivers/postgres"
+	"github.com/mattermost/morph/models"
+	mbindata "github.com/mattermost/morph/sources/embedded"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 	"github.com/mattermost/mattermost/server/v8/channels/db"
-	"github.com/mattermost/morph"
-	"github.com/mattermost/morph/drivers"
-	ps "github.com/mattermost/morph/drivers/postgres"
-	"github.com/mattermost/morph/models"
-	mbindata "github.com/mattermost/morph/sources/embedded"
 )
 
 type Migrator struct {
@@ -48,8 +49,7 @@ func NewMigrator(settings model.SqlSettings, logger mlog.LoggerIFace, dryRun boo
 		return nil, fmt.Errorf("error while getting DB version: %w", err)
 	}
 
-	ok, err := ss.ensureMinimumDBVersion(ver)
-	if !ok {
+	if err = ss.checkVersion(ver); err != nil {
 		return nil, fmt.Errorf("error while checking DB version: %w", err)
 	}
 
@@ -88,7 +88,44 @@ func (m *Migrator) GetFileName(plan *models.Plan) (string, error) {
 	return fmt.Sprintf("migration_plan_%d_%d", from, to), nil
 }
 
+// customMigrationRenumbers maps fork-specific migrations that were first shipped
+// with versions colliding with upstream (000150/000151 in v12) to their reserved
+// 900+ versions. db_migrations uses Version as its primary key, so the old rows
+// must be moved before upstream migrations with those versions can be recorded.
+var customMigrationRenumbers = []struct {
+	name       string
+	oldVersion int
+	newVersion int
+}{
+	{name: "fileinfo_ispinned", oldVersion: 150, newVersion: 900},
+	{name: "channel_group_icons", oldVersion: 151, newVersion: 901},
+}
+
+func (ss *SqlStore) renumberCustomMigrations() error {
+	var exists bool
+	if err := ss.GetMaster().Get(&exists, "SELECT to_regclass('db_migrations') IS NOT NULL"); err != nil {
+		return fmt.Errorf("failed to check for db_migrations table: %w", err)
+	}
+	if !exists {
+		return nil
+	}
+
+	for _, m := range customMigrationRenumbers {
+		if _, err := ss.GetMaster().Exec("UPDATE db_migrations SET Version = $1 WHERE Version = $2 AND Name = $3", m.newVersion, m.oldVersion, m.name); err != nil {
+			return fmt.Errorf("failed to renumber custom migration %s: %w", m.name, err)
+		}
+	}
+
+	return nil
+}
+
 func (ss *SqlStore) initMorph(dryRun, enableLogging bool) (*morph.Morph, error) {
+	if !dryRun {
+		if err := ss.renumberCustomMigrations(); err != nil {
+			return nil, err
+		}
+	}
+
 	assets := db.Assets()
 
 	assetsList, err := assets.ReadDir(path.Join("migrations", ss.DriverName()))
@@ -111,13 +148,7 @@ func (ss *SqlStore) initMorph(dryRun, enableLogging bool) (*morph.Morph, error) 
 		return nil, err
 	}
 
-	var driver drivers.Driver
-	switch ss.DriverName() {
-	case model.DatabaseDriverPostgres:
-		driver, err = ps.WithInstance(ss.GetMaster().DB.DB)
-	default:
-		err = fmt.Errorf("unsupported database type %s for migration", ss.DriverName())
-	}
+	driver, err := ps.WithInstance(ss.GetMaster().DB().DB)
 	if err != nil {
 		return nil, err
 	}
@@ -179,6 +210,18 @@ func (m *Migrator) MigrateWithPlan(plan *models.Plan, dryRun bool) error {
 	return m.engine.ApplyPlan(plan)
 }
 
+// PreMigrate runs the pre-migration handlers that normally execute during
+// server startup. Callers on the CLI up-migration path (e.g. `mattermost db
+// migrate`, used by cloud upgrades) must invoke this before MigrateWithPlan so
+// the same fixes apply outside of server startup. Skipped under dryRun because
+// preMigration writes directly via GetMaster().Exec and does not participate
+// in Morph's dry-run.
+// This is intentionally only called for forward migrations and skipped for
+// downgrades.
+func (m *Migrator) PreMigrate() error {
+	return m.store.preMigration()
+}
+
 func (m *Migrator) DowngradeMigrations(dryRun bool, versions ...string) error {
 	migrations, err := m.engine.Diff(models.Down)
 	if err != nil {
@@ -198,8 +241,8 @@ func (m *Migrator) DowngradeMigrations(dryRun bool, versions ...string) error {
 		}
 	}
 
-	sort.Slice(migrationsToDowngrade, func(i, j int) bool {
-		return migrationsToDowngrade[i].Version > migrationsToDowngrade[j].Version
+	slices.SortFunc(migrationsToDowngrade, func(a, b *models.Migration) int {
+		return cmp.Compare(b.Version, a.Version)
 	})
 
 	if len(migrationsToDowngrade) != len(versions) {

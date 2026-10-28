@@ -16,9 +16,12 @@ jest.mock('mattermost-redux/selectors/entities/timezone', () => ({
 
 jest.mock('components/datetime_input/datetime_input', () => ({
 	__esModule: true,
-	default: function MockDateTimeInput({ time, handleChange }: { time: any; handleChange: any }) {
+    default: function MockDateTimeInput({time, handleChange, manualTimeEntry}: {time: any; handleChange: any; manualTimeEntry?: boolean}) {
 		return (
-			<div data-testid='datetime-input'>
+            <div
+                data-testid='datetime-input'
+                data-manual-time-entry={String(Boolean(manualTimeEntry))}
+            >
 				<button onClick={() => handleChange(time)}>
 					{time ? time.format('MMM D, YYYY h:mm A') : 'Select datetime'}
 				</button>
@@ -44,8 +47,6 @@ describe('AppsFormDateTimeField', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-
 		// Mock current time to avoid timezone-dependent tests
 		jest.useFakeTimers();
 		jest.setSystemTime(new Date('2025-01-15T10:00:00.000Z'));
@@ -118,7 +119,7 @@ describe('AppsFormDateTimeField', () => {
 	});
 
 	it('should use custom time_interval', () => {
-		const fieldWithInterval = { ...defaultField, time_interval: 30 };
+        const fieldWithInterval = {...defaultField, datetime_config: {time_interval: 30}};
 		renderComponent({ field: fieldWithInterval, value: '2025-01-15T14:30:00Z' });
 
 		// The time_interval is passed to DateTimeInput component
@@ -137,8 +138,10 @@ describe('AppsFormDateTimeField', () => {
 	it('should render without errors even when datetime is outside range (validation is centralized)', () => {
 		const fieldWithRange = {
 			...defaultField,
+            datetime_config: {
 			min_date: '2025-01-10',
 			max_date: '2025-01-20',
+            },
 		};
 		renderComponent({ field: fieldWithRange, value: '2025-01-01T14:30:00Z' });
 
@@ -149,8 +152,10 @@ describe('AppsFormDateTimeField', () => {
 	it('should not show error for valid datetime within range', () => {
 		const fieldWithRange = {
 			...defaultField,
+            datetime_config: {
 			min_date: '2025-01-01',
 			max_date: '2025-01-31',
+            },
 		};
 		renderComponent({ field: fieldWithRange, value: '2025-01-15T14:30:00Z' });
 		expect(screen.queryByText(/error/i)).not.toBeInTheDocument();
@@ -159,8 +164,10 @@ describe('AppsFormDateTimeField', () => {
 	it('should handle datetime range constraints', () => {
 		const fieldWithRange = {
 			...defaultField,
+            datetime_config: {
 			min_date: '2025-01-01',
 			max_date: '2025-01-31',
+            },
 		};
 
 		renderComponent({ field: fieldWithRange, value: '2025-01-15T14:30:00Z' });
@@ -189,7 +196,7 @@ describe('AppsFormDateTimeField', () => {
 		});
 
 		it('should restrict past dates when min_date is today or future', () => {
-			const fieldWithMinDate = { ...defaultField, min_date: 'today' };
+            const fieldWithMinDate = {...defaultField, datetime_config: {min_date: 'today'}};
 			renderComponent({ field: fieldWithMinDate, value: '2025-01-15T14:30:00Z' });
 
 			// DateTimeInput should receive allowPastDates=false
@@ -197,11 +204,24 @@ describe('AppsFormDateTimeField', () => {
 		});
 
 		it('should allow past dates when min_date is in the past', () => {
-			const fieldWithMinDate = { ...defaultField, min_date: '-5d' };
+            const fieldWithMinDate = {...defaultField, datetime_config: {min_date: '-5d'}};
 			renderComponent({ field: fieldWithMinDate, value: '2025-01-15T14:30:00Z' });
 
 			// DateTimeInput should receive allowPastDates=true
 			expect(screen.getByTestId('datetime-input')).toBeInTheDocument();
 		});
 	});
+
+    describe('manualTimeEntry resolution', () => {
+        it('is false when not set', () => {
+            renderComponent();
+            expect(screen.getByTestId('datetime-input')).toHaveAttribute('data-manual-time-entry', 'false');
+        });
+
+        it('is true when manual_time_entry is set', () => {
+            const field = {...defaultField, datetime_config: {manual_time_entry: true}};
+            renderComponent({field});
+            expect(screen.getByTestId('datetime-input')).toHaveAttribute('data-manual-time-entry', 'true');
+        });
+    });
 });

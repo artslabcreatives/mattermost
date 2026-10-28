@@ -5,8 +5,9 @@ import {writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import fs from 'node:fs';
 
-import {Browser, BrowserContext, request} from '@playwright/test';
-import {UserProfile} from '@mattermost/types/users';
+import type {Browser, BrowserContext} from '@playwright/test';
+import {request} from '@playwright/test';
+import type {UserProfile} from '@mattermost/types/users';
 
 import {testConfig} from './test_config';
 import {pages} from './ui/pages';
@@ -14,11 +15,10 @@ import {resolvePlaywrightPath} from './util';
 
 export class TestBrowser {
     readonly browser: Browser;
-    context: BrowserContext | null;
+    private contexts: BrowserContext[] = [];
 
     constructor(browser: Browser) {
         this.browser = browser;
-        this.context = null;
     }
 
     async login(user: UserProfile) {
@@ -31,16 +31,18 @@ export class TestBrowser {
 
         // Sign in a user in new browser context
         const context = await this.browser.newContext(options);
+        await routeInternalBaseUrlToHost(context);
         const page = await context.newPage();
 
         const channelsPage = new pages.ChannelsPage(page);
         const systemConsolePage = new pages.SystemConsolePage(page);
         const scheduledPostsPage = new pages.ScheduledPostsPage(page);
         const draftsPage = new pages.DraftsPage(page);
+        const recapsPage = new pages.RecapsPage(page);
         const threadsPage = new pages.ThreadsPage(page);
         const contentReviewPage = new pages.ContentReviewPage(page);
 
-        this.context = context;
+        this.contexts.push(context);
 
         return {
             context,
@@ -49,16 +51,45 @@ export class TestBrowser {
             systemConsolePage,
             scheduledPostsPage,
             draftsPage,
+            recapsPage,
             threadsPage,
             contentReviewPage,
         };
     }
 
-    async close() {
-        if (this.context) {
-            await this.context.close();
-        }
+    /**
+     * Switch the auth state of an existing context to a different user
+     * without creating a new context. After switching, pages in the context
+     * should be reloaded to pick up the new auth state.
+     */
+    async switchUser(context: BrowserContext, user: UserProfile) {
+        const storagePath = await loginByAPI(user.username, user.password);
+        await (context as any).setStorageState(storagePath);
     }
+
+    async close() {
+        for (const context of this.contexts) {
+            await context.close();
+        }
+        this.contexts = [];
+    }
+}
+
+/**
+ * Plugin webapp bundles build absolute URLs from ServiceSettings.SiteURL, which in `testcontainers`
+ * mode is a Docker network alias that only other containers can resolve. Left alone those fetches
+ * hang from the host browser, so anything waiting on network idle never settles. Rewrite them onto
+ * the host-mapped URL, which serves the same server. No-op in `external` mode, where the two match.
+ */
+async function routeInternalBaseUrlToHost(context: BrowserContext) {
+    const {internalBaseURL, baseURL} = testConfig;
+    if (internalBaseURL === baseURL) {
+        return;
+    }
+
+    await context.route(`${internalBaseURL}/**`, async (route) => {
+        await route.continue({url: route.request().url().replace(internalBaseURL, baseURL)});
+    });
 }
 
 export async function loginByAPI(loginId: string, password: string, token = '', ldapOnly = false) {

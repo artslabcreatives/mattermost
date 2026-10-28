@@ -7,6 +7,10 @@ import { batchActions } from 'redux-batched-actions';
 import type { AccessControlAttributes } from '@mattermost/types/access_control';
 import type {
 	Channel,
+    ChannelJoinRequest,
+    ChannelJoinRequestApprovalResponse,
+    ChannelJoinRequestList,
+    ChannelJoinRequestPatch,
 	ChannelNotifyProps,
 	ChannelMembership,
 	ChannelModerationPatch,
@@ -15,6 +19,7 @@ import type {
 	ServerChannel,
 	ChannelStats,
 	ChannelWithTeamData,
+    GetChannelJoinRequestsOptions,
 } from '@mattermost/types/channels';
 import type { OptsSignalExt } from '@mattermost/types/client4';
 import type { ServerError } from '@mattermost/types/errors';
@@ -28,6 +33,7 @@ import { getCategoryInTeamByType } from 'mattermost-redux/selectors/entities/cha
 import {
 	getChannel as getChannelSelector,
 	getMyChannelMember as getMyChannelMemberSelector,
+    hasAutotranslationBecomeEnabled,
 	isManuallyUnread,
 } from 'mattermost-redux/selectors/entities/channels';
 import { getCurrentTeamId } from 'mattermost-redux/selectors/entities/teams';
@@ -37,6 +43,7 @@ import { DelayedDataLoader } from 'mattermost-redux/utils/data_loader';
 import { addChannelToInitialCategory, addChannelToCategory } from './channel_categories';
 import { logError } from './errors';
 import { bindClientFunc, forceLogoutIfNecessary } from './helpers';
+import {resetReloadPostsInChannel} from './posts';
 import { savePreferences } from './preferences';
 import { loadRolesIfNeeded } from './roles';
 import { getMissingProfilesByIds } from './users';
@@ -260,6 +267,44 @@ export function patchChannel(channelId: string, patch: Partial<Channel>): Action
 		onSuccess: [ChannelTypes.RECEIVED_CHANNEL],
 		params: [channelId, patch],
 	});
+}
+
+export function setMyChannelAutotranslation(channelId: string, enabled: boolean): ActionFuncAsync<boolean> {
+    return async (dispatch, getState) => {
+        const state = getState();
+        const myChannelMember = getMyChannelMemberSelector(state, channelId);
+
+        if (!myChannelMember) {
+            return {data: false, error: 'Channel member not found'};
+        }
+
+        const updatedMember: ChannelMembership = {
+            ...myChannelMember,
+            autotranslation_disabled: !enabled,
+        };
+        try {
+            await Client4.setMyChannelAutotranslation(channelId, enabled);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            return {data: undefined, error};
+        }
+
+        // We check before updating the store
+        const becameEnabled = hasAutotranslationBecomeEnabled(state, updatedMember);
+
+        dispatch({
+            type: ChannelTypes.RECEIVED_MY_CHANNEL_MEMBER,
+            data: updatedMember,
+        });
+
+        // If autotranslation changed, delete posts for this channel
+        if (becameEnabled) {
+            await dispatch(resetReloadPostsInChannel(channelId));
+        }
+
+        return {data: true, error: undefined};
+    };
 }
 
 export function updateChannelPrivacy(channelId: string, privacy: string): ActionFuncAsync<Channel> {
@@ -489,11 +534,16 @@ export function fetchAllMyChannelMembers(): ActionFuncAsync {
 			dispatch(loadRolesIfNeeded(roles));
 		}
 
-		dispatch({
+        dispatch(batchActions([
+            {
 			type: ChannelTypes.RECEIVED_MY_CHANNEL_MEMBERS,
 			data: channelMembers,
 			currentUserId,
-		});
+            },
+            {
+                type: ChannelTypes.INIT_CHANNEL_MEMBERSHIPS_LOADED,
+            },
+        ]));
 		return { data: channelMembers };
 	};
 }
@@ -509,10 +559,15 @@ export function fetchAllMyTeamsChannels(): ActionFuncAsync {
 			return { error };
 		}
 
-		dispatch({
+        dispatch(batchActions([
+            {
 			type: ChannelTypes.RECEIVED_CHANNELS,
 			data: channels,
-		});
+            },
+            {
+                type: ChannelTypes.INIT_CHANNELS_LOADED,
+            },
+        ]));
 		return { data: channels };
 	};
 }
@@ -699,6 +754,23 @@ export function unsetActiveChannelOnServer(): ActionFuncAsync {
 	};
 }
 
+export function readAllMessages(userId: string): ActionFuncAsync {
+    return async (dispatch, getState) => {
+        let response;
+        try {
+            response = await Client4.markAllMessagesAsRead(userId);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            return {error};
+        }
+
+        dispatch(markMultipleChannelsAsRead(response.last_viewed_at_times));
+
+        return {data: true};
+    };
+}
+
 export function readMultipleChannels(channelIds: string[]): ActionFuncAsync {
 	return async (dispatch, getState) => {
 		let response;
@@ -763,6 +835,26 @@ export function getArchivedChannels(teamId: string, page = 0, perPage: number = 
 
 		return { data: channels };
 	};
+}
+
+export function getRecommendedChannelsForUser(teamId: string): ActionFuncAsync<Channel[]> {
+    return async (dispatch, getState) => {
+        let channels;
+        try {
+            channels = await Client4.getRecommendedChannelsForUser(teamId);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            return {error};
+        }
+
+        dispatch({
+            type: ChannelTypes.RECEIVED_CHANNELS,
+            teamId,
+            data: channels,
+        });
+
+        return {data: channels};
+    };
 }
 
 export function getAllChannelsWithCount(page = 0, perPage: number = General.CHANNELS_CHUNK_SIZE, notAssociatedToGroup = '', excludeDefaultChannels = false, includeDeleted = false, excludePolicyConstrained = false, accessControlPolicyEnforced = false, excludeAccessControlPolicyEnforced = false): ActionFuncAsync<ChannelsWithTotalCount> {
@@ -1441,6 +1533,187 @@ export function getChannelAccessControlAttributes(channelId: string): ActionFunc
 	};
 }
 
+// ---------------------------------------------------------------------------
+// Discoverable Private Channels — join request thunks
+// ---------------------------------------------------------------------------
+
+function isApprovalResponse(value: ChannelJoinRequest | ChannelJoinRequestApprovalResponse): value is ChannelJoinRequestApprovalResponse {
+    return (value as ChannelJoinRequest).id === undefined;
+}
+
+// requestJoinChannel calls POST /channels/{id}/join_request. The server returns
+// either an approval shortcut (when the user matches an attached access policy)
+// or a persisted ChannelJoinRequest row that the admin queue must review. The
+// return value preserves that distinction so the caller can route to a "Joined"
+// toast vs. a "Pending" state without a second round-trip.
+export function requestJoinChannel(channelId: string, message = ''): ActionFuncAsync<ChannelJoinRequest | ChannelJoinRequestApprovalResponse> {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client4.requestJoinChannel(channelId, message);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            return {error};
+        }
+
+        if (isApprovalResponse(data)) {
+            // The ABAC fast path adds the user directly. No pending row to
+            // track; the user_added WS event will surface the channel in the
+            // sidebar. Clear any cached pending state for this channel.
+            dispatch({
+                type: ChannelTypes.CHANNEL_JOIN_REQUEST_REMOVED,
+                data: {channel_id: channelId},
+            });
+        } else {
+            dispatch({
+                type: ChannelTypes.RECEIVED_MY_CHANNEL_JOIN_REQUEST,
+                data,
+            });
+        }
+
+        return {data};
+    };
+}
+
+// getMyChannelJoinRequest reads the calling user's pending request for a
+// specific channel. The server returns 404 when none exists, which we surface
+// as a successful "no pending request" result rather than an error.
+export function getMyChannelJoinRequest(channelId: string): ActionFuncAsync<ChannelJoinRequest | null> {
+    return async (dispatch, getState) => {
+        let data: ChannelJoinRequest;
+        try {
+            data = await Client4.getMyChannelJoinRequest(channelId);
+        } catch (error) {
+            const status = (error as ServerError | undefined)?.status_code;
+            if (status === 404) {
+                dispatch({
+                    type: ChannelTypes.CHANNEL_JOIN_REQUEST_REMOVED,
+                    data: {channel_id: channelId},
+                });
+                return {data: null};
+            }
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            return {error};
+        }
+
+        dispatch({
+            type: ChannelTypes.RECEIVED_MY_CHANNEL_JOIN_REQUEST,
+            data,
+        });
+        return {data};
+    };
+}
+
+// withdrawMyChannelJoinRequest cancels the user's pending request via DELETE
+// on the join_request resource. On success the server emits
+// channel_join_request_updated; we also patch local state immediately so the
+// Browse row flips without waiting for the WS round-trip.
+export function withdrawMyChannelJoinRequest(channelId: string): ActionFuncAsync<ChannelJoinRequest> {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client4.withdrawMyChannelJoinRequest(channelId);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            return {error};
+        }
+
+        dispatch({
+            type: ChannelTypes.CHANNEL_JOIN_REQUEST_REMOVED,
+            data: {channel_id: channelId, request_id: data.id},
+        });
+        return {data};
+    };
+}
+
+// getChannelJoinRequests powers the admin queue. The list is keyed by channel
+// id in the reducer so two open queues do not collide.
+export function getChannelJoinRequests(channelId: string, opts: GetChannelJoinRequestsOptions = {}): ActionFuncAsync<ChannelJoinRequestList> {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client4.getChannelJoinRequests(channelId, opts);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            return {error};
+        }
+
+        dispatch({
+            type: ChannelTypes.RECEIVED_CHANNEL_JOIN_REQUESTS,
+            data: {channel_id: channelId, list: data},
+        });
+        return {data};
+    };
+}
+
+// countPendingChannelJoinRequests is called by the channel header / LHS /
+// RHS indicators. Cheap endpoint; safe to poll on channel switch.
+export function countPendingChannelJoinRequests(channelId: string): ActionFuncAsync<number> {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client4.countPendingChannelJoinRequests(channelId);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            return {error};
+        }
+
+        dispatch({
+            type: ChannelTypes.RECEIVED_CHANNEL_JOIN_REQUEST_COUNT,
+            data: {channel_id: channelId, count: data.count},
+        });
+        return {data: data.count};
+    };
+}
+
+// patchChannelJoinRequest is the admin approve/deny action. The server
+// re-runs the PDP gate inside AddChannelMember on approve, so an active ABAC
+// policy is honored even if the admin tries to approve a non-matching user.
+export function patchChannelJoinRequest(channelId: string, requestId: string, patch: ChannelJoinRequestPatch): ActionFuncAsync<ChannelJoinRequest> {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client4.patchChannelJoinRequest(channelId, requestId, patch);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            return {error};
+        }
+
+        dispatch({
+            type: ChannelTypes.CHANNEL_JOIN_REQUEST_UPDATED,
+            data,
+        });
+        return {data};
+    };
+}
+
+// getMyChannelJoinRequests powers the My Pending Requests tab inside Browse
+// Channels (lands in PR 4). Returns the user's requests across all channels.
+export function getMyChannelJoinRequests(opts: GetChannelJoinRequestsOptions = {}): ActionFuncAsync<ChannelJoinRequestList> {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client4.getMyChannelJoinRequests(opts);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            return {error};
+        }
+
+        dispatch({
+            type: ChannelTypes.RECEIVED_MY_CHANNEL_JOIN_REQUESTS,
+            data,
+        });
+        return {data};
+    };
+}
+
 export default {
 	selectChannel,
 	createChannel,
@@ -1471,4 +1744,11 @@ export default {
 	getChannelModerations,
 	getChannelMemberCountsByGroup,
 	getChannelAccessControlAttributes,
+    requestJoinChannel,
+    getMyChannelJoinRequest,
+    withdrawMyChannelJoinRequest,
+    getChannelJoinRequests,
+    countPendingChannelJoinRequests,
+    patchChannelJoinRequest,
+    getMyChannelJoinRequests,
 };

@@ -45,7 +45,7 @@ var ConfigSetCmd = &cobra.Command{
 	Use:     "set",
 	Short:   "Set config setting",
 	Long:    "Sets the value of a config setting by its name in dot notation. Accepts multiple values for array settings",
-	Example: "config set SqlSettings.DriverName mysql\nconfig set SqlSettings.DataSourceReplicas \"replica1\" \"replica2\"",
+	Example: "config set SqlSettings.DriverName postgres\nconfig set SqlSettings.DataSourceReplicas \"replica1\" \"replica2\"",
 	Args:    cobra.MinimumNArgs(2),
 	RunE:    withClient(configSetCmdF),
 }
@@ -99,7 +99,7 @@ var ConfigMigrateCmd = &cobra.Command{
 	Use:     "migrate [from_config] [to_config]",
 	Short:   "Migrate existing config between backends",
 	Long:    "Migrate a file-based configuration to (or from) a database-based configuration. Point the Mattermost server at the target configuration to start using it. Note that this command is only available in `--local` mode.",
-	Example: `config migrate path/to/config.json "postgres://mmuser:mostest@localhost:5432/mattermost_test?sslmode=disable&connect_timeout=10"`,
+	Example: `config migrate path/to/config.json "postgres://mmuser:mostest_password@localhost:5432/mattermost_test?sslmode=disable&connect_timeout=10"`,
 	Args:    cobra.ExactArgs(2),
 	RunE:    withClient(configMigrateCmdF),
 }
@@ -189,7 +189,7 @@ func getValue(path []string, obj any) (any, bool) {
 					return mapVal.Interface(), true
 				}
 				data := mapVal.Interface()
-				if mapVal.Kind() == reflect.Ptr {
+				if mapVal.Kind() == reflect.Pointer {
 					data = mapVal.Elem().Interface() // if value is a pointer, dereference it
 				}
 				// pass subpath
@@ -268,7 +268,7 @@ func setValue(path []string, obj reflect.Value, newValue any) error {
 	}
 
 	if len(path) == 1 {
-		if val.Kind() == reflect.Ptr {
+		if val.Kind() == reflect.Pointer {
 			return setValue(path, val.Elem(), newValue)
 		} else if obj.Kind() == reflect.Map {
 			// since we cannot set map elements directly, we clone the value, set it, and then put it back in the map
@@ -296,7 +296,7 @@ func setValue(path []string, obj reflect.Value, newValue any) error {
 			if strings.HasPrefix(remainingPath, key) {
 				mapVal := mapIter.Value()
 
-				if mapVal.Kind() == reflect.Ptr {
+				if mapVal.Kind() == reflect.Pointer {
 					mapVal = mapVal.Elem() // if value is a pointer, dereference it
 				}
 				i := len(strings.Split(key, ".")) + 1
@@ -322,7 +322,7 @@ func setConfigValue(path []string, config *model.Config, newValue []string) erro
 
 func resetConfigValue(path []string, config *model.Config, newValue any) error {
 	nv := reflect.ValueOf(newValue)
-	if nv.Kind() == reflect.Ptr {
+	if nv.Kind() == reflect.Pointer {
 		switch nv.Elem().Kind() {
 		case reflect.Int:
 			return setValue(path, reflect.ValueOf(config).Elem(), strconv.Itoa(*newValue.(*int)))
@@ -569,7 +569,7 @@ func cloudRestricted(cfg any, path []string) bool {
 
 // cloudRestricted checks if the config path is restricted to the cloud
 func cloudRestrictedR(t reflect.Type, path []string) bool {
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 
@@ -577,9 +577,7 @@ func cloudRestrictedR(t reflect.Type, path []string) bool {
 		return false
 	}
 
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-
+	for field := range t.Fields() {
 		if len(path) == 0 || field.Name != path[0] {
 			continue
 		}

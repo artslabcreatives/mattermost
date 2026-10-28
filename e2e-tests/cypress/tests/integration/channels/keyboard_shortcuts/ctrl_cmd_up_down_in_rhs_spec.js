@@ -10,7 +10,7 @@
 // Stage: @prod
 // Group: @channels @keyboard_shortcuts
 
-import * as TIMEOUTS from '../../../fixtures/timeouts';
+import * as TIMEOUTS from '@/fixtures/timeouts';
 
 describe('Keyboard Shortcuts', () => {
     before(() => {
@@ -64,6 +64,20 @@ describe('Keyboard Shortcuts', () => {
 
                     // * Check if the message is equal to the last message
                     cy.findByTestId('reply_textbox').should('have.text', messages[previousMessageIndex]);
+
+                    // Restoring a slash command can open autocomplete, which steals CTRL/CMD+UP.
+                    // It doesn't always open, and may render outside the RHS, so check the
+                    // whole document and only dismiss it when present.
+                    if (messages[previousMessageIndex] === '/shrug') {
+                        cy.wait(TIMEOUTS.ONE_SEC);
+                        cy.document().then((doc) => {
+                            if (doc.querySelector('#suggestionList')) {
+                                cy.findByTestId('reply_textbox').type('{esc}');
+                                cy.document().its('body').find('#suggestionList').should('not.exist');
+                            }
+                        });
+                        cy.findByTestId('reply_textbox').should('be.focused').and('have.text', '/shrug');
+                    }
 
                     previousMessageIndex--;
                 }

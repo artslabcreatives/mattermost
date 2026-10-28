@@ -2,15 +2,16 @@
 // See LICENSE.txt for license information.
 
 import cloneDeep from 'lodash/cloneDeep';
-import React from 'react';
+import React, {type JSX} from 'react';
 import { FormattedMessage } from 'react-intl';
 
-import type { AccessControlPolicy, AccessControlPolicyActiveUpdate } from '@mattermost/types/access_control';
+import type {AccessControlPolicy, AccessControlPolicyRule} from '@mattermost/types/access_control';
+import {getMembershipRule, buildRulesWithMembership, getAutoAddFromRules, autoAddModeForToggle} from '@mattermost/types/access_control';
 import type { Channel, ChannelModeration as ChannelPermissions, ChannelModerationPatch } from '@mattermost/types/channels';
 import { SyncableType } from '@mattermost/types/groups';
 import type { SyncablePatch, Group } from '@mattermost/types/groups';
 import type { JobTypeBase } from '@mattermost/types/jobs';
-import type { UserPropertyField } from '@mattermost/types/properties';
+import type {UserPropertyField} from '@mattermost/types/properties_user';
 import type { Scheme } from '@mattermost/types/schemes';
 import type { Team } from '@mattermost/types/teams';
 import type { UserProfile } from '@mattermost/types/users';
@@ -18,6 +19,7 @@ import type { UserProfile } from '@mattermost/types/users';
 import { Permissions } from 'mattermost-redux/constants';
 import type { ActionResult } from 'mattermost-redux/types/actions';
 
+import {excludeSessionAttributes} from 'components/admin_console/access_control/editors/shared';
 import BlockableLink from 'components/admin_console/blockable_link';
 import ChannelAccessRulesConfirmModal from 'components/channel_settings_modal/channel_access_rules_confirm_modal';
 import ConfirmModal from 'components/confirm_modal';
@@ -95,6 +97,7 @@ interface ChannelDetailsState {
 	// Channel-level access rules state
 	channelRulesExpression: string;
 	channelRulesOriginalExpression: string;
+    channelRulesExistingRules: AccessControlPolicyRule[];
 	channelRulesAutoSync: boolean;
 	channelRulesOriginalAutoSync: boolean;
 	channelRulesHaveChanges: boolean;
@@ -117,7 +120,7 @@ export type ChannelDetailsActions = {
 	getChannel: (channelId: string) => void;
 	getTeam: (teamId: string) => Promise<ActionResult>;
 	getChannelModerations: (channelId: string) => Promise<ActionResult>;
-	patchChannel: (channelId: string, patch: Channel) => Promise<ActionResult>;
+    patchChannel: (channelId: string, patch: Partial<Channel>) => Promise<ActionResult>;
 	updateChannelPrivacy: (channelId: string, privacy: string) => Promise<ActionResult>;
 	patchGroupSyncable: (groupID: string, syncableID: string, syncableType: SyncableType, patch: Partial<SyncablePatch>) => Promise<ActionResult>;
 	patchChannelModerations: (channelID: string, patch: ChannelModerationPatch[]) => Promise<ActionResult>;
@@ -139,7 +142,6 @@ export type ChannelDetailsActions = {
 	saveChannelAccessPolicy: (policy: AccessControlPolicy) => Promise<ActionResult>;
 	validateChannelExpression: (expression: string, channelId: string) => Promise<ActionResult>;
 	createAccessControlSyncJob: (job: JobTypeBase & { data: any }) => Promise<ActionResult>;
-	updateAccessControlPoliciesActive: (states: AccessControlPolicyActiveUpdate[]) => Promise<ActionResult>;
 	searchUsersForExpression: (expression: string, term: string, after: string, limit: number, channelId?: string) => Promise<ActionResult>;
 	getChannelMembers: (channelId: string, page?: number, perPage?: number) => Promise<ActionResult>;
 	getProfilesByIds: (userIds: string[]) => Promise<ActionResult>;
@@ -179,6 +181,7 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
 			// Channel-level access rules state
 			channelRulesExpression: '',
 			channelRulesOriginalExpression: '',
+            channelRulesExistingRules: [],
 			channelRulesAutoSync: false,
 			channelRulesOriginalAutoSync: false,
 			channelRulesHaveChanges: false,
@@ -362,10 +365,11 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
 	};
 
 	private channelPermissionsChanged = (name: string, channelRole: ChannelModerationRoles) => {
-		const currentValueIndex = this.state.channelPermissions.findIndex((element) => element.name === name);
-		const currentValue = this.state.channelPermissions[currentValueIndex].roles[channelRole]!.value;
+        this.setState((state) => {
+            const currentValueIndex = state.channelPermissions.findIndex((element) => element.name === name);
+            const currentValue = state.channelPermissions[currentValueIndex].roles[channelRole]!.value;
 		const newValue = !currentValue;
-		let channelPermissions = [...this.state.channelPermissions];
+            let channelPermissions = [...state.channelPermissions];
 
 		if (name === Permissions.CHANNEL_MODERATED_PERMISSIONS.CREATE_POST) {
 			const originalObj = this.props.channelPermissions.find((element) => element.name === Permissions.CHANNEL_MODERATED_PERMISSIONS.USE_CHANNEL_MENTIONS)?.roles![channelRole];
@@ -406,7 +410,8 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
 				},
 			},
 		};
-		this.setState({ channelPermissions, saveNeeded: true });
+            return {channelPermissions, saveNeeded: true};
+        });
 		this.props.actions.setNavigationBlocked(true);
 	};
 
@@ -556,7 +561,6 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
 
 		// Then patch the channel
 		const patchResult = await actions.patchChannel(channel.id, {
-			...channel,
 			group_constrained: isSynced,
 		});
 
@@ -779,19 +783,13 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
 							id: channelID, // Channel-level policies use the channel ID as policy ID
 							name: accessControlPolicy?.name || `Channel Rules for ${channel.display_name}`,
 							type: 'channel',
-							version: accessControlPolicy?.version || 'v0.2',
 							revision: accessControlPolicy ? (accessControlPolicy.revision || 1) + 1 : 1,
 							created_at: accessControlPolicy?.created_at || Date.now(),
-							active: false, // Always save as false initially, then update separately
 
 							// Include parent policies as imports
 							imports: this.state.accessControlPolicies.map((p) => p.id),
 
-							// Add/update channel-level rules
-							rules: [{
-								actions: ['*'],
-								expression: channelRulesExpression,
-							}],
+                            rules: buildRulesWithMembership(this.state.channelRulesExistingRules, channelRulesExpression, autoAddModeForToggle(channelRulesAutoSync)),
 						};
 
 						// Save the channel-level policy using the existing action
@@ -800,18 +798,7 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
 							serverError = <FormError error={result.error.message} />;
 							saveNeeded = true;
 						} else {
-							// Update the active status separately
-							try {
-								await actions.updateAccessControlPoliciesActive([{ id: channelID, active: channelRulesAutoSync } as AccessControlPolicyActiveUpdate]);
-							} catch (activeError) {
-								// eslint-disable-next-line no-console
-								console.error('Failed to update policy active status:', activeError);
-								serverError = <FormError error={`Failed to update active status: ${activeError.message || activeError}`} />;
-								saveNeeded = true;
-							}
-
-							if (!serverError) {
-								// Step 3: Create a job to immediately sync channel membership when rules exist
+                            // Create a job to immediately sync channel membership when rules exist.
 								// This ensures both user removal (always) and addition (conditional) happen immediately
 								// EXACT SAME LOGIC as Channel Settings Modal
 								if (channelRulesExpression.trim()) {
@@ -836,12 +823,9 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
 									channelRulesOriginalAutoSync: channelRulesAutoSync,
 									channelRulesHaveChanges: false,
 									accessRulesConfirmed: false, // Reset confirmation flag for future saves
-
-									// Update stored policy to reflect saved state
-									accessControlPolicy: { ...channelPolicy, active: channelRulesAutoSync },
+                                accessControlPolicy: channelPolicy,
 								});
 							}
-						}
 					} else {
 						// If expression is empty, keep policy with parent policies but remove channel rules
 						if (this.state.accessControlPolicies.length > 0) {
@@ -849,11 +833,9 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
 								id: accessControlPolicy?.id || channelID,
 								name: accessControlPolicy?.name || channel.display_name,
 								type: 'channel',
-								version: accessControlPolicy?.version || 'v0.2',
 								created_at: accessControlPolicy?.created_at || Date.now(),
 								revision: (accessControlPolicy?.revision || 1) + 1,
-								active: channelRulesAutoSync,
-								rules: [], // Remove channel-level rules
+                                rules: buildRulesWithMembership(this.state.channelRulesExistingRules, '', autoAddModeForToggle(channelRulesAutoSync)),
 								imports: this.state.accessControlPolicies.map((p) => p.id), // SAME LOGIC as Channel Settings Modal
 							};
 
@@ -1142,7 +1124,7 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
 			}
 
 			this.setState({
-				userAttributes: attributes,
+                userAttributes: excludeSessionAttributes(attributes),
 				attributesLoaded: true,
 			});
 		} catch (error) {
@@ -1166,18 +1148,19 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
 
 				// Check if this is a channel-level policy (not a parent policy)
 				if (policy.type === 'channel' && policy.rules && policy.rules.length > 0) {
-					const rule = policy.rules[0];
-					const autoSyncValue = policy.active === true; // Explicitly check for true
+                    const rule = getMembershipRule(policy.rules);
+                    const autoSyncValue = getAutoAddFromRules(policy.rules);
 					this.setState({
-						channelRulesExpression: rule.expression || '',
-						channelRulesOriginalExpression: rule.expression || '',
+                        channelRulesExpression: rule?.expression || '',
+                        channelRulesOriginalExpression: rule?.expression || '',
+                        channelRulesExistingRules: policy.rules,
 						channelRulesAutoSync: autoSyncValue,
 						channelRulesOriginalAutoSync: autoSyncValue,
 						channelRulesHaveChanges: false,
 					});
 				}
 			}
-		} catch (error) {
+        } catch {
 			// No channel policy exists, continue with empty rules
 		}
 	};
@@ -1189,8 +1172,8 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
 	private combineParentAndChannelExpressions = (channelExpression: string): string => {
 		// Get expressions from parent policies
 		const parentExpressions = this.state.accessControlPolicies.
-			map((policy) => policy.rules?.[0]?.expression).
-			filter((expr) => expr && expr.trim());
+            map((policy) => getMembershipRule(policy.rules)?.expression).
+            filter((expr): expr is string => Boolean(expr && expr.trim()));
 
 		// Combine channel expression with parent expressions
 		const allExpressions = [];
@@ -1209,7 +1192,7 @@ export default class ChannelDetails extends React.PureComponent<ChannelDetailsPr
 		if (allExpressions.length === 0) {
 			return '';
 		} else if (allExpressions.length === 1) {
-			return allExpressions[0];
+            return allExpressions[0]!;
 		}
 
 		// Wrap each expression in parentheses and combine with &&

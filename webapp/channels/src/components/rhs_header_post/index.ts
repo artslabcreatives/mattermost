@@ -13,11 +13,6 @@ import { getCurrentUserId, getCurrentUserMentionKeys } from 'mattermost-redux/se
 
 import {
 	setRhsExpanded,
-	showMentions,
-	showSearchResults,
-	showFlaggedPosts,
-	showPinnedPosts,
-	showChannelFiles,
 	closeRightHandSide,
 	toggleRhsExpanded,
 	goBack,
@@ -34,7 +29,7 @@ import type { GlobalState } from 'types/store';
 
 import RhsHeaderPost from './rhs_header_post';
 
-type OwnProps = Pick<ComponentProps<typeof RhsHeaderPost>, 'rootPostId'>
+type OwnProps = Pick<ComponentProps<typeof RhsHeaderPost>, 'rootPostId'>;
 
 function makeMapStateToProps() {
 	const getThreadOrSynthetic = makeGetThreadOrSynthetic();
@@ -72,11 +67,6 @@ function makeMapStateToProps() {
 
 const actions = {
 	setRhsExpanded,
-	showSearchResults,
-	showMentions,
-	showFlaggedPosts,
-	showPinnedPosts,
-	showChannelFiles,
 	closeRightHandSide,
 	toggleRhsExpanded,
 	setThreadFollow,

@@ -1,17 +1,20 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import type { ChangeEvent, FormEvent } from 'react';
+import React, {useEffect, useState, useRef} from 'react';
+import type {FormEvent, JSX} from 'react';
 import { useIntl } from 'react-intl';
 import { useSelector, useDispatch } from 'react-redux';
 
 import type { UserProfile } from '@mattermost/types/users';
 
+import {isDesktopApp, getDesktopVersion, isMacApp} from '@mattermost/shared/utils/user_agent';
+
 import { getCurrentChannelNameForSearchShortcut } from 'mattermost-redux/selectors/entities/channels';
 import { searchProfiles } from 'mattermost-redux/actions/users';
 
 import HeaderIconWrapper from 'components/channel_header/components/header_icon_wrapper';
+import useSearchResultsActions from 'components/common/hooks/use_search_results_actions';
 import SearchBar from 'components/search_bar/search_bar';
 import SearchHint from 'components/search_hint/search_hint';
 import SearchResults from 'components/search_results';
@@ -19,17 +22,17 @@ import type Provider from 'components/suggestion/provider';
 import SearchChannelProvider from 'components/suggestion/search_channel_provider';
 import SearchDateProvider from 'components/suggestion/search_date_provider';
 import SearchUserProvider from 'components/suggestion/search_user_provider';
+import type {SuggestionBoxElement} from 'components/suggestion/suggestion_box/suggestion_box';
 import SearchIcon from 'components/widgets/icons/search_icon';
 import Popover from 'components/widgets/popover';
 
 import Constants, { searchHintOptions, RHSStates, searchFilesHintOptions } from 'utils/constants';
 import * as Keyboard from 'utils/keyboard';
 import { isServerVersionGreaterThanOrEqualTo } from 'utils/server_version';
-import { isDesktopApp, getDesktopVersion, isMacApp } from 'utils/user_agent';
 
 import type { SearchType } from 'types/store/rhs';
 
-import type { Props, SearchFilterType } from './types';
+import type {Props} from './types';
 
 interface SearchHintOption {
 	searchTerm: string;
@@ -85,12 +88,7 @@ const Search = ({
 		autocompleteChannelsForSearch,
 		autocompleteUsersInTeam,
 		closeRightHandSide,
-		filterFilesSearchByExt,
-		getMoreFilesForSearch,
-		getMorePostsForSearch,
 		openRHSSearch,
-		setRhsExpanded,
-		showChannelFiles,
 		showSearchResults,
 		updateRhsState,
 		updateSearchTeam,
@@ -107,14 +105,13 @@ const Search = ({
 	isPinnedPosts,
 	isPinnedFiles,
 	isRhsExpanded,
+    isSearch,
 	isSearchingTerm,
-	searchTeam,
 	searchTerms = '',
 	searchType,
 	searchVisible,
 	channelDisplayName = '',
 	children,
-	currentChannel,
 	enableFindShortcut,
 	getFocus,
 	hideSearchBar,
@@ -134,8 +131,8 @@ const Search = ({
 	const [visibleSearchHintOptions, setVisibleSearchHintOptions] = useState<SearchHintOption[]>(
 		determineVisibleSearchHintOptions(searchTerms, searchType),
 	);
-	const [searchFilterType, setSearchFilterType] = useState<SearchFilterType>('all');
 	const [userResults, setUserResults] = useState<UserProfile[]>([]);
+    const searchActions = useSearchResultsActions();
 
 	const suggestionProviders = useRef<Provider[]>([
 		new SearchDateProvider(),
@@ -179,10 +176,10 @@ const Search = ({
 	}, [hideSearchBar, currentChannelName]);
 
 	useEffect((): void => {
-		if (isMobileView && isSideBarRight) {
+        if (isMobileView && isSideBarRight && isSearch) {
 			handleFocus();
 		}
-	}, [isMobileView, isSideBarRight]);
+    }, [isMobileView, isSideBarRight, isSearch]);
 
 	// When the new search UI submits a people or all search, searchType changes in Redux.
 	// Run searchProfiles here so people results appear in the RHS results panel.
@@ -212,22 +209,6 @@ const Search = ({
 			handleBlur();
 		}
 	}, [isMobileView, searchTerms]);
-
-	const getMorePostsForSearchCallback = useCallback(() => {
-		let team = searchTeam;
-		if (isMentionSearch) {
-			team = '';
-		}
-		getMorePostsForSearch(team);
-	}, [searchTeam, isMentionSearch, getMorePostsForSearch]);
-
-	const getMoreFilesForSearchCallback = useCallback(() => {
-		let team = searchTeam;
-		if (isMentionSearch) {
-			team = '';
-		}
-		getMoreFilesForSearch(team);
-	}, [searchTeam, isMentionSearch, getMoreFilesForSearch]);
 
 	// handle cloding of rhs-flyout
 	const handleClose = (): void => closeRightHandSide();
@@ -271,19 +252,9 @@ const Search = ({
 	};
 
 	const handleUpdateSearchTeamFromResult = async (teamId: string) => {
-		updateSearchTeam(teamId);
-		const newTerms = searchTerms.
-			replace(/\bin:[^\s]*/gi, '').replace(/\s{2,}/g, ' ').
-			replace(/\bfrom:[^\s]*/gi, '').replace(/\s{2,}/g, ' ');
-
-		if (newTerms.trim() !== searchTerms.trim()) {
-			updateSearchTerms(newTerms);
-		}
-
-		handleSearch().then(() => {
+        searchActions.updateSearchTeam(teamId);
 			setKeepInputFocused(false);
 			setFocused(false);
-		});
 	};
 
 	const handleUpdateSearchTerms = (terms: string): void => {
@@ -299,7 +270,7 @@ const Search = ({
 		setFocused(true);
 	};
 
-	const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    const handleChange = (e: React.ChangeEvent<SuggestionBoxElement>): void => {
 		const term = e.target.value;
 		updateSearchTerms(term);
 	};
@@ -333,7 +304,7 @@ const Search = ({
 		setIndexChangedViaKeyPress(changedViaKeyPress);
 	};
 
-	const handleEnterKey = (e: ChangeEvent<HTMLInputElement>): void => {
+    const handleEnterKey = (e: React.KeyboardEvent<SuggestionBoxElement>): void => {
 		e.preventDefault();
 
 		if (indexChangedViaKeyPress) {
@@ -404,44 +375,6 @@ const Search = ({
 		updateSearchTeam(null);
 		updateSearchType('');
 		setUserResults([]);
-	};
-
-	const handleShrink = (): void => {
-		setRhsExpanded(false);
-	};
-
-	const handleSetSearchFilter = (filterType: SearchFilterType): void => {
-		switch (filterType) {
-			case 'documents':
-				filterFilesSearchByExt(['doc', 'pdf', 'docx', 'odt', 'rtf', 'txt']);
-				break;
-			case 'spreadsheets':
-				filterFilesSearchByExt(['xls', 'xlsx', 'ods']);
-				break;
-			case 'presentations':
-				filterFilesSearchByExt(['ppt', 'pptx', 'odp']);
-				break;
-			case 'code':
-				filterFilesSearchByExt(['py', 'go', 'java', 'kt', 'c', 'cpp', 'h', 'html', 'js', 'ts', 'cs', 'vb', 'php', 'pl', 'r', 'rb', 'sql', 'swift', 'json']);
-				break;
-			case 'images':
-				filterFilesSearchByExt(['png', 'jpg', 'jpeg', 'bmp', 'tiff', 'svg', 'xcf']);
-				break;
-			case 'audio':
-				filterFilesSearchByExt(['ogg', 'mp3', 'wav', 'flac']);
-				break;
-			case 'video':
-				filterFilesSearchByExt(['ogm', 'mp4', 'avi', 'webm', 'mov', 'mkv', 'mpeg', 'mpg']);
-				break;
-			default:
-				filterFilesSearchByExt([]);
-		}
-		setSearchFilterType(filterType);
-		if (isChannelFiles && currentChannel) {
-			showChannelFiles(currentChannel.id);
-		} else {
-			showSearchResults(false);
-		}
 	};
 
 	const setHoverHintIndex = (_highlightedSearchHintIndex: number): void => {
@@ -581,18 +514,16 @@ const Search = ({
 					isPinnedPosts={isPinnedPosts}
 					isPinnedFiles={isPinnedFiles}
 					isChannelFiles={isChannelFiles}
-					shrink={handleShrink}
 					channelDisplayName={channelDisplayName}
 					isOpened={isSideBarRightOpen}
 					updateSearchTerms={handleAddSearchTerm}
 					updateSearchTeam={handleUpdateSearchTeamFromResult}
 					handleSearchHintSelection={handleSearchHintSelection}
 					isSideBarExpanded={isRhsExpanded}
-					getMorePostsForSearch={getMorePostsForSearchCallback}
-					getMoreFilesForSearch={getMoreFilesForSearchCallback}
-					setSearchFilterType={handleSetSearchFilter}
-					searchFilterType={searchFilterType}
-					setSearchType={(value: SearchType) => updateSearchType(value)}
+                    getMorePostsForSearch={searchActions.getMorePostsForSearch}
+                    getMoreFilesForSearch={searchActions.getMoreFilesForSearch}
+                    setSearchFilterType={searchActions.setSearchFilterType}
+                    searchFilterType={searchActions.searchFilterType}
 					searchType={searchType || 'messages'}
 					crossTeamSearchEnabled={crossTeamSearchEnabled}
 					userResults={userResults}

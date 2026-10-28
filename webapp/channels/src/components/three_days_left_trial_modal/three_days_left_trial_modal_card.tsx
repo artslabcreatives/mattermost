@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {type JSX} from 'react';
 
 import LearnMoreActionButton from './learn_more_action_button';
 
@@ -15,9 +15,8 @@ export type ThreeDaysLeftTrialCardProps = {
 	svgElement: React.ReactNode;
 	buttonLabel?: string;
 	pageURL?: string;
-	isCloud?: boolean;
 	onClose?: () => void;
-}
+};
 
 const ThreeDaysLeftTrialCard = (
 	{

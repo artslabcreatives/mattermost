@@ -1,35 +1,38 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import { shallow } from 'enzyme';
 import React from 'react';
-import * as redux from 'react-redux';
 
 import KeyboardShortcutsModal from 'components/keyboard_shortcuts/keyboard_shortcuts_modal/keyboard_shortcuts_modal';
 
-import mockStore from 'tests/test_store';
+import {renderWithContext} from 'tests/react_testing_utils';
 import { suitePluginIds } from 'utils/constants';
 
 describe('components/KeyboardShortcutsModal', () => {
 	const initialState = {
+        entities: {
+            general: {
+                config: {},
+            },
+        },
 		plugins: {
 			plugins: {},
 		},
 	};
 
-	test('should match snapshot modal', async () => {
-		const store = await mockStore(initialState);
-		jest.spyOn(redux, 'useSelector').mockImplementation((cb) => cb(store.getState()));
-
-		const wrapper = shallow(
+    test('should match snapshot modal', () => {
+        const {baseElement} = renderWithContext(
 			<KeyboardShortcutsModal onExited={jest.fn()} />,
+            initialState,
 		);
 
-		expect(wrapper).toMatchSnapshot();
+        expect(baseElement).toMatchSnapshot();
 	});
 
-	test('should match snapshot modal with Calls enabled', async () => {
-		const store = await mockStore({
+    test('should match snapshot modal with Calls enabled', () => {
+        const {baseElement} = renderWithContext(
+            <KeyboardShortcutsModal onExited={jest.fn()}/>,
+            {
 			...initialState,
 			plugins: {
 				...initialState.plugins,
@@ -41,14 +44,9 @@ describe('components/KeyboardShortcutsModal', () => {
 					},
 				},
 			},
-		});
-
-		jest.spyOn(redux, 'useSelector').mockImplementation((cb) => cb(store.getState()));
-
-		const wrapper = shallow(
-			<KeyboardShortcutsModal onExited={jest.fn()} />,
+            },
 		);
 
-		expect(wrapper).toMatchSnapshot();
+        expect(baseElement).toMatchSnapshot();
 	});
 });

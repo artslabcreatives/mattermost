@@ -1,24 +1,20 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type { ComponentType } from 'react';
 import React from 'react';
-import type { IntlShape } from 'react-intl';
 import { useIntl } from 'react-intl';
+
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
 
 import { removeAuditCertificate, uploadAuditCertificate } from 'actions/admin_actions';
 
 import useGetCloudInstallationStatus from 'components/common/hooks/useGetCloudInstallationStatus';
-import WithTooltip from 'components/with_tooltip';
 
 import FileUploadSetting from '../file_upload_setting';
 import RemoveFileSetting from '../remove_file_setting';
 
 type Props = {
 	id?: string;
-	config: any;
-	license: any;
-	intl: IntlShape;
 	value: any;
 	onChange: (id: string, value: string) => void;
 	disabled: boolean;
@@ -67,24 +63,8 @@ const AuditLoggingCertificateUploadSetting: React.FC<Props> = (props: Props) => 
 		uploadAuditCertificate(file, successCallback, errorCallback);
 	};
 
-	const withTooltip = <P extends object>(Component: ComponentType<P>, tooltipText: string): React.FC<P> => {
-		if (disabled || installationStatus === 'stable') {
-			return (props: P) => <Component {...props} />;
-		}
-
-		return (props: P) => (
-			<WithTooltip title={tooltipText}>
-				<div>
-					<Component {...props} />
-				</div>
-			</WithTooltip>
-		);
-	};
-
+    const disableTooltip = disabled || installationStatus === 'stable';
 	const tooltipText = formatMessage({ id: 'admin.audit_logging_experimental.certificate.tooltip', defaultMessage: 'A previous update is still in progress. Please wait.' });
-
-	const WrappedRemoveFileSetting = withTooltip(RemoveFileSetting, tooltipText);
-	const WrappedFileUploadSetting = withTooltip(FileUploadSetting, tooltipText);
 
 	if (fileValue) {
 		const removeFile = (id: string, callback: () => void) => {
@@ -103,7 +83,11 @@ const AuditLoggingCertificateUploadSetting: React.FC<Props> = (props: Props) => 
 			removeAction(successCallback, errorCallback);
 		};
 		return (
-			<WrappedRemoveFileSetting
+            <WithConditionalTooltip
+                disableTooltip={disableTooltip}
+                tooltipText={tooltipText}
+            >
+                <RemoveFileSetting
 				id={id}
 				label={label}
 				helpText={formatMessage({ id: 'admin.audit_logging_experimental.certificate.remove_help_text', defaultMessage: 'Remove the certificate used for audit logging encryption.' })}
@@ -114,6 +98,7 @@ const AuditLoggingCertificateUploadSetting: React.FC<Props> = (props: Props) => 
 				disabled={disabled || installationStatus !== 'stable'}
 				setByEnv={setByEnv}
 			/>
+            </WithConditionalTooltip>
 		);
 	}
 
@@ -136,7 +121,11 @@ const AuditLoggingCertificateUploadSetting: React.FC<Props> = (props: Props) => 
 	};
 
 	return (
-		<WrappedFileUploadSetting
+        <WithConditionalTooltip
+            disableTooltip={disableTooltip}
+            tooltipText={tooltipText}
+        >
+            <FileUploadSetting
 			id={id}
 			label={label}
 			helpText={helpText}
@@ -146,7 +135,28 @@ const AuditLoggingCertificateUploadSetting: React.FC<Props> = (props: Props) => 
 			onSubmit={uploadFile}
 			error={fileError || undefined} //now passes local error state
 		/>
+        </WithConditionalTooltip>
 	);
 };
+
+interface WithConditionalTooltipProps {
+    children: React.ReactNode;
+    disableTooltip: boolean;
+    tooltipText: string;
+}
+
+function WithConditionalTooltip({children, disableTooltip, tooltipText}: WithConditionalTooltipProps) {
+    if (disableTooltip) {
+        return children;
+    }
+
+    return (
+        <WithTooltip title={tooltipText}>
+            <div>
+                {children}
+            </div>
+        </WithTooltip>
+    );
+}
 
 export default AuditLoggingCertificateUploadSetting;

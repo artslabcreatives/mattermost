@@ -1,12 +1,13 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import { shallow } from 'enzyme';
 import React from 'react';
 
 import type { UserProfile as UserProfileType } from '@mattermost/types/users';
 
 import { Preferences } from 'mattermost-redux/constants';
+
+import {render, screen} from 'tests/react_testing_utils';
 
 import UserProfile from './user_profile';
 
@@ -27,8 +28,8 @@ describe('components/UserProfile', () => {
 	};
 
 	test('should match snapshot', () => {
-		const wrapper = shallow(<UserProfile {...baseProps} />);
-		expect(wrapper).toMatchSnapshot();
+        const {container} = render(<UserProfile {...baseProps}/>);
+        expect(container).toMatchSnapshot();
 	});
 
 	test('should match snapshot, with colorization', () => {
@@ -37,8 +38,8 @@ describe('components/UserProfile', () => {
 			colorize: true,
 		};
 
-		const wrapper = shallow(<UserProfile {...props} />);
-		expect(wrapper).toMatchSnapshot();
+        const {container} = render(<UserProfile {...props}/>);
+        expect(container).toMatchSnapshot();
 	});
 
 	test('should match snapshot, when user is shared', () => {
@@ -47,27 +48,43 @@ describe('components/UserProfile', () => {
 			isShared: true,
 		};
 
-		const wrapper = shallow(<UserProfile {...props} />);
-		expect(wrapper).toMatchSnapshot();
+        const {container} = render(<UserProfile {...props}/>);
+        expect(container).toMatchSnapshot();
 	});
 
 	test('should match snapshot, when popover is disabled', () => {
-		const wrapper = shallow(
+        const {container} = render(
 			<UserProfile
 				{...baseProps}
 				disablePopover={true}
 			/>,
 		);
-		expect(wrapper).toMatchSnapshot();
+        expect(container).toMatchSnapshot();
 	});
 
 	test('should match snapshot, when displayUsername is enabled', () => {
-		const wrapper = shallow(
+        const {container} = render(
 			<UserProfile
 				{...baseProps}
 				displayUsername={true}
 			/>,
 		);
-		expect(wrapper).toMatchSnapshot();
+        expect(container).toMatchSnapshot();
+    });
+
+    test('should render ImportedInactiveTag for imported inactive user', () => {
+        const props = {
+            ...baseProps,
+            user: {username: 'username', props: {importedInactive: 'true'}} as unknown as UserProfileType,
+        };
+        const {container} = render(<UserProfile {...props}/>);
+        expect(screen.getByText('IMPORTED - INACTIVE')).toBeInTheDocument();
+        expect(container).toMatchSnapshot();
+    });
+
+    test('should not render ImportedInactiveTag for regular user', () => {
+        const {container} = render(<UserProfile {...baseProps}/>);
+        expect(screen.queryByText('IMPORTED - INACTIVE')).not.toBeInTheDocument();
+        expect(container).toMatchSnapshot();
 	});
 });

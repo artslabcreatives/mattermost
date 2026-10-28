@@ -6,6 +6,10 @@ export type ServerError = {
     server_error_id?: string;
     stack?: string;
     message: string;
+    detailed_error?: string;
     status_code?: number;
     url?: string;
+
+    // Caller-authored context returned by the server on any AppError. Mirrors model.AppError.Props.
+    props?: Record<string, string>;
 };

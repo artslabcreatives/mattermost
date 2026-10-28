@@ -43,6 +43,7 @@ func (api *API) InitUserLocal() {
 	api.BaseRoutes.UserByEmailImage.Handle("/default", api.APILocal(localGetDefaultProfileImageByEmail)).Methods(http.MethodGet)
 	api.BaseRoutes.UserByEmailImage.Handle("", api.APILocal(localGetProfileImageByEmail)).Methods(http.MethodGet)
 	api.BaseRoutes.UserByEmail.Handle("", api.APILocal(localGetUserByEmail)).Methods(http.MethodGet)
+	api.BaseRoutes.Users.Handle("/auth_data", api.APILocal(localGetUserByAuthData)).Methods(http.MethodGet)
 
 	api.BaseRoutes.Users.Handle("/tokens/revoke", api.APILocal(revokeUserAccessToken)).Methods(http.MethodPost)
 	api.BaseRoutes.User.Handle("/tokens", api.APILocal(getUserAccessTokensForUser)).Methods(http.MethodGet)
@@ -286,7 +287,7 @@ func localGetUser(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := c.App.GetUser(c.Params.UserId)
+	user, err := c.App.GetUser(c.AppContext, c.Params.UserId)
 	if err != nil {
 		c.Err = err
 		return
@@ -327,7 +328,7 @@ func localDeleteUser(c *Context, w http.ResponseWriter, r *http.Request) {
 	auditRec := c.MakeAuditRecord(model.AuditEventLocalDeleteUser, model.AuditStatusFail)
 	defer c.LogAuditRec(auditRec)
 
-	user, err := c.App.GetUser(userId)
+	user, err := c.App.GetUser(c.AppContext, userId)
 	if err != nil {
 		c.Err = err
 		return
@@ -510,6 +511,46 @@ func localGetDefaultProfileImageByEmail(c *Context, w http.ResponseWriter, r *ht
 	w.Header().Set("Content-Type", "image/png")
 	if _, err := w.Write(img); err != nil {
 		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
+}
+
+func localGetUserByAuthData(c *Context, w http.ResponseWriter, r *http.Request) {
+	authData := r.URL.Query().Get("value")
+	if authData == "" {
+		c.SetInvalidParam("value")
+		return
+	}
+	if len(authData) > model.UserAuthDataMaxLength {
+		c.SetInvalidParam("value")
+		return
+	}
+	user, err := c.App.GetUserByAuthData(&authData)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	userTermsOfService, err := c.App.GetUserTermsOfService(user.Id)
+	if err != nil && err.StatusCode != http.StatusNotFound {
+		c.Err = err
+		return
+	}
+
+	if userTermsOfService != nil {
+		user.TermsOfServiceId = userTermsOfService.TermsOfServiceId
+		user.TermsOfServiceCreateAt = userTermsOfService.CreateAt
+	}
+
+	etag := user.Etag(*c.App.Config().PrivacySettings.ShowFullName, *c.App.Config().PrivacySettings.ShowEmailAddress)
+
+	if c.HandleEtag(etag, "Get User", w, r) {
+		return
+	}
+
+	c.App.SanitizeProfile(user, c.IsSystemAdmin())
+	w.Header().Set(model.HeaderEtagServer, etag)
+	if jerr := json.NewEncoder(w).Encode(user); jerr != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(jerr))
 	}
 }
 

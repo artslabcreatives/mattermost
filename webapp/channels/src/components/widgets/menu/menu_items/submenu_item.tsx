@@ -3,7 +3,7 @@
 
 import classNames from 'classnames';
 import React from 'react';
-import type { CSSProperties } from 'react';
+import type {CSSProperties, JSX} from 'react';
 import { injectIntl } from 'react-intl';
 import type { WrappedComponentProps } from 'react-intl';
 
@@ -60,17 +60,17 @@ export type Props = WrappedComponentProps & {
 	rightDecorator?: React.ReactNode;
 	isHeader?: boolean;
 	tabIndex?: number;
-}
+};
 
 type State = {
 	show: boolean;
-}
+};
 
 /**
  * @deprecated Use the "webapp/channels/src/components/menu" instead.
  */
 export class SubMenuItem extends React.PureComponent<Props, State> {
-	private node: React.RefObject<HTMLLIElement>;
+    private node: React.RefObject<HTMLLIElement | null>;
 
 	public static defaultProps = {
 		show: true,

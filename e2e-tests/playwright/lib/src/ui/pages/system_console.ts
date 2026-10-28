@@ -1,103 +1,143 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {Page} from '@playwright/test';
+import type {Page} from '@playwright/test';
 
-import {components} from '@/ui/components';
+import SystemConsoleNavbar from '@/ui/components/system_console/navbar';
+import SystemConsoleSidebar from '@/ui/components/system_console/sidebar';
+import SystemConsoleHeader from '@/ui/components/system_console/header';
+import EditionAndLicense from '@/ui/components/system_console/sections/about/edition_and_license';
+import TeamStatistics from '@/ui/components/system_console/sections/reporting/team_statistics';
+import Users from '@/ui/components/system_console/sections/user_management/users';
+import DelegatedGranularAdministration from '@/ui/components/system_console/sections/user_management/delegated_granular_administration';
+import PermissionsSystemScheme from '@/ui/components/system_console/sections/user_management/permissions_system_scheme';
+import MobileSecurity from '@/ui/components/system_console/sections/environment/mobile_security';
+import Localization from '@/ui/components/system_console/sections/site_configuration/localization';
+import Notifications from '@/ui/components/system_console/sections/site_configuration/notifications';
+import UsersAndTeams from '@/ui/components/system_console/sections/site_configuration/users_and_teams';
+import BoardAttributes from '@/ui/components/system_console/sections/system_attributes/board_attributes';
+import GlobalAttributes from '@/ui/components/system_console/sections/system_attributes/global_attributes';
+import SystemProperties from '@/ui/components/system_console/sections/system_attributes/system_properties';
+import SessionAttributes from '@/ui/components/system_console/sections/system_attributes/session_attributes';
+import FeatureDiscovery from '@/ui/components/system_console/sections/system_users/feature_discovery';
+import PluginManagement from '@/ui/components/system_console/sections/plugins/plugin_management';
+import AdLdap from '@/ui/components/system_console/sections/authentication/ad_ldap';
+import {testConfig} from '@/test_config';
 
 export default class SystemConsolePage {
     readonly page: Page;
 
-    readonly sidebar;
-    readonly navbar;
+    // Layout
+    readonly navbar: SystemConsoleNavbar;
+    readonly sidebar: SystemConsoleSidebar;
+    readonly header: SystemConsoleHeader;
+
+    // About
+    readonly editionAndLicense: EditionAndLicense;
+
+    // Reporting
+    readonly teamStatistics: TeamStatistics;
+
+    // User Management
+    readonly users: Users;
+    readonly delegatedGranularAdministration: DelegatedGranularAdministration;
+    readonly permissionsSystemScheme: PermissionsSystemScheme;
+
+    // Environment
+    readonly mobileSecurity: MobileSecurity;
 
     // Site Configuration
+    readonly localization: Localization;
+    readonly notifications: Notifications;
+    readonly usersAndTeams: UsersAndTeams;
 
-    // System Console > Notifications
-    readonly notifications;
+    // System Attributes
+    readonly globalAttributes: GlobalAttributes;
+    readonly systemProperties: SystemProperties;
+    readonly sessionAttributes: SessionAttributes;
+    readonly boardAttributes: BoardAttributes;
 
-    /**
-     * System Console -> User Management -> Users
-     */
-    readonly systemUsers;
-    readonly systemUsersFilterPopover;
-    readonly systemUsersRoleMenu;
-    readonly systemUsersStatusMenu;
-    readonly systemUsersDateRangeMenu;
-    readonly systemUsersColumnToggleMenu;
-    readonly systemUsersActionMenus;
+    // Feature Discovery (license-gated features)
+    readonly featureDiscovery: FeatureDiscovery;
 
-    readonly mobileSecurity;
+    // Plugins
+    readonly pluginManagement: PluginManagement;
 
-    readonly featureDiscovery;
-
-    // modal
-    readonly confirmModal;
-    readonly exportModal;
-    readonly saveChangesModal;
+    // Authentication
+    readonly adLdap: AdLdap;
 
     constructor(page: Page) {
         this.page = page;
 
+        // Layout
+        this.navbar = new SystemConsoleNavbar(page.getByTestId('backstage-navbar'));
+        this.sidebar = new SystemConsoleSidebar(page.getByTestId('admin-sidebar'));
+
+        const adminConsoleWrapper = page.locator('#adminConsoleWrapper');
+        this.header = new SystemConsoleHeader(adminConsoleWrapper);
+
+        // About
+        this.editionAndLicense = new EditionAndLicense(adminConsoleWrapper);
+
+        // Reporting
+        this.teamStatistics = new TeamStatistics(adminConsoleWrapper);
+
+        // User Management
+        this.users = new Users(adminConsoleWrapper);
+        this.delegatedGranularAdministration = new DelegatedGranularAdministration(adminConsoleWrapper);
+        this.permissionsSystemScheme = new PermissionsSystemScheme(adminConsoleWrapper);
+
+        // Environment
+        this.mobileSecurity = new MobileSecurity(adminConsoleWrapper);
+
         // Site Configuration
-        // System Console > Notifications
-        this.notifications = new components.SystemConsoleNotifications(
-            page.getByTestId('sysconsole_section_notifications'),
-        );
+        this.localization = new Localization(adminConsoleWrapper);
+        this.notifications = new Notifications(adminConsoleWrapper);
+        this.usersAndTeams = new UsersAndTeams(adminConsoleWrapper);
 
-        // Areas of the page
-        this.navbar = new components.SystemConsoleNavbar(page.locator('.backstage-navbar'));
-        this.sidebar = new components.SystemConsoleSidebar(page.locator('.admin-sidebar'));
+        // System Attributes
+        this.globalAttributes = new GlobalAttributes(adminConsoleWrapper);
+        this.systemProperties = new SystemProperties(adminConsoleWrapper);
+        this.sessionAttributes = new SessionAttributes(adminConsoleWrapper);
+        this.boardAttributes = new BoardAttributes(adminConsoleWrapper);
 
-        // Sections and sub-sections
-        this.systemUsers = new components.SystemUsers(page.getByTestId('systemUsersSection'));
-        this.mobileSecurity = new components.SystemConsoleMobileSecurity(
-            page.getByTestId('sysconsole_section_MobileSecuritySettings'),
-            this.page,
-        );
-        this.featureDiscovery = new components.SystemConsoleFeatureDiscovery(page.getByTestId('featureDiscovery'));
+        // Feature Discovery
+        this.featureDiscovery = new FeatureDiscovery(adminConsoleWrapper);
 
-        // Menus & Popovers
-        this.systemUsersFilterPopover = new components.SystemUsersFilterPopover(
-            page.locator('#systemUsersFilterPopover'),
-        );
-        this.systemUsersRoleMenu = new components.SystemUsersFilterMenu(page.locator('#DropdownInput_filterRole'));
-        this.systemUsersStatusMenu = new components.SystemUsersFilterMenu(page.locator('#DropdownInput_filterStatus'));
-        this.systemUsersColumnToggleMenu = new components.SystemUsersColumnToggleMenu(
-            page.locator('#systemUsersColumnTogglerMenu'),
-        );
-        this.systemUsersDateRangeMenu = new components.SystemUsersFilterMenu(
-            page.locator('#systemUsersDateRangeSelectorMenu'),
-        );
-        this.systemUsersActionMenus = Array.from(Array(10).keys()).map(
-            (index) => new components.SystemUsersFilterMenu(page.locator(`#actionMenu-systemUsersTable-${index}`)),
-        );
+        // Plugins
+        this.pluginManagement = new PluginManagement(adminConsoleWrapper);
 
-        this.confirmModal = new components.GenericConfirmModal(page.locator('#confirmModal'));
-        this.exportModal = new components.GenericConfirmModal(page.getByRole('dialog', {name: 'Export user data'}));
-        this.saveChangesModal = new components.SystemUsers(page.locator('div.modal-content'));
+        // Authentication
+        this.adLdap = new AdLdap(adminConsoleWrapper);
     }
 
     async toBeVisible() {
         await this.page.waitForLoadState('networkidle');
-
-        await this.sidebar.toBeVisible();
         await this.navbar.toBeVisible();
+        await this.sidebar.toBeVisible();
     }
 
     async goto() {
-        await this.page.goto('/admin_console');
+        await this.page.goto(new URL('/admin_console', testConfig.baseURL).href);
     }
 
-    async saveRoleChange() {
-        await this.saveChangesModal.container.locator('button.btn-primary:has-text("Save")').click();
+    /** Notifications settings URL is environment/notifications (sidebar groups under Site Configuration). */
+    async gotoNotificationsSettings() {
+        await this.page.goto(new URL('/admin_console/environment/notifications', testConfig.baseURL).href);
     }
 
-    async clickResetButton() {
-        await this.saveChangesModal.container.locator('button.btn-primary:has-text("Reset")').click();
+    async gotoPluginManagement() {
+        await this.page.goto(new URL('/admin_console/plugins/plugin_management', testConfig.baseURL).href);
+        await this.pluginManagement.toBeVisible();
     }
 
-    async clickUpdateEmailButton() {
-        await this.saveChangesModal.container.locator('button.btn-primary:has-text("Update")').click();
+    async gotoEditionAndLicense() {
+        await this.page.goto(new URL('/admin_console/about/license', testConfig.baseURL).href);
+        await this.editionAndLicense.toBeVisible();
+    }
+
+    async gotoAdLdap() {
+        await this.page.goto(new URL('/admin_console/authentication/ldap', testConfig.baseURL).href);
+        await this.adLdap.toBeVisible();
     }
 }

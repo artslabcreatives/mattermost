@@ -79,9 +79,11 @@ export default function DateTimePickerModal({
 		};
 	}, [isInteracting, onExited]);
 
-	const handleChange = useCallback((dateTime: Moment) => {
+    const handleChange = useCallback((dateTime: Moment | null) => {
+        if (dateTime) {
 		setDateTime(dateTime);
 		onChange?.(dateTime);
+        }
 	}, [onChange]);
 
 	const handleConfirm = useCallback(() => {

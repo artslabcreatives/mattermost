@@ -38,7 +38,7 @@ export type Props = {
 export type State = {
 	refreshNonce: string;
 	field: AppField;
-}
+};
 
 const reactStyles = {
 	menuPortal: (provided) => ({

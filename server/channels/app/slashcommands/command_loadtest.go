@@ -268,7 +268,7 @@ func (*LoadTestProvider) SetupCommand(a *app.App, rctx request.CTX, args *model.
 		}
 
 		rctx.Logger().Info("Testing environment created")
-		for i := 0; i < len(environment.Teams); i++ {
+		for i := range environment.Teams {
 			rctx.Logger().Info("Team Created: " + environment.Teams[i].Name)
 			rctx.Logger().Info("\t User to login: " + environment.Environments[i].Users[0].Email + ", " + UserPassword)
 		}
@@ -673,7 +673,7 @@ func (*LoadTestProvider) URLCommand(a *app.App, rctx request.CTX, args *model.Co
 		post.ChannelId = args.ChannelId
 		post.UserId = args.UserId
 
-		if _, err := a.CreatePostMissingChannel(rctx, post, false, true); err != nil {
+		if _, _, err := a.CreatePostMissingChannel(rctx, post, false, true); err != nil {
 			return &model.CommandResponse{Text: "Unable to create post", ResponseType: model.CommandResponseTypeEphemeral}, err
 		}
 	}
@@ -722,7 +722,7 @@ func (*LoadTestProvider) JSONCommand(a *app.App, rctx request.CTX, args *model.C
 		post.Message = message
 	}
 
-	if _, err := a.CreatePostMissingChannel(rctx, &post, false, true); err != nil {
+	if _, _, err := a.CreatePostMissingChannel(rctx, &post, false, true); err != nil {
 		return &model.CommandResponse{Text: "Unable to create post", ResponseType: model.CommandResponseTypeEphemeral}, err
 	}
 

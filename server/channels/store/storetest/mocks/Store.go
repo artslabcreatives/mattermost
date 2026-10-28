@@ -10,6 +10,7 @@ import (
 
 	model "github.com/mattermost/mattermost/server/public/model"
 	mlog "github.com/mattermost/mattermost/server/public/shared/mlog"
+	request "github.com/mattermost/mattermost/server/public/shared/request"
 	store "github.com/mattermost/mattermost/server/v8/channels/store"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -159,6 +160,46 @@ func (_m *Store) ChannelBookmark() store.ChannelBookmarkStore {
 	return r0
 }
 
+// ChannelGuard provides a mock function with no fields
+func (_m *Store) ChannelGuard() store.ChannelGuardStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChannelGuard")
+	}
+
+	var r0 store.ChannelGuardStore
+	if rf, ok := ret.Get(0).(func() store.ChannelGuardStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.ChannelGuardStore)
+		}
+	}
+
+	return r0
+}
+
+// ChannelJoinRequest provides a mock function with no fields
+func (_m *Store) ChannelJoinRequest() store.ChannelJoinRequestStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChannelJoinRequest")
+	}
+
+	var r0 store.ChannelJoinRequestStore
+	if rf, ok := ret.Get(0).(func() store.ChannelJoinRequestStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.ChannelJoinRequestStore)
+		}
+	}
+
+	return r0
+}
+
 // ChannelMemberHistory provides a mock function with no fields
 func (_m *Store) ChannelMemberHistory() store.ChannelMemberHistoryStore {
 	ret := _m.Called()
@@ -298,6 +339,26 @@ func (_m *Store) ContentFlagging() store.ContentFlaggingStore {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(store.ContentFlaggingStore)
+		}
+	}
+
+	return r0
+}
+
+// DeliveryTracking provides a mock function with no fields
+func (_m *Store) DeliveryTracking() store.DeliveryTrackingStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeliveryTracking")
+	}
+
+	var r0 store.DeliveryTrackingStore
+	if rf, ok := ret.Get(0).(func() store.DeliveryTrackingStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.DeliveryTrackingStore)
 		}
 	}
 
@@ -468,6 +529,36 @@ func (_m *Store) GetDbVersion(numerical bool) (string, error) {
 
 	if rf, ok := ret.Get(1).(func(bool) error); ok {
 		r1 = rf(numerical)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetDiagnostics provides a mock function with given fields: rctx
+func (_m *Store) GetDiagnostics(rctx request.CTX) (*store.DatabaseDiagnostics, error) {
+	ret := _m.Called(rctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDiagnostics")
+	}
+
+	var r0 *store.DatabaseDiagnostics
+	var r1 error
+	if rf, ok := ret.Get(0).(func(request.CTX) (*store.DatabaseDiagnostics, error)); ok {
+		return rf(rctx)
+	}
+	if rf, ok := ret.Get(0).(func(request.CTX) *store.DatabaseDiagnostics); ok {
+		r0 = rf(rctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*store.DatabaseDiagnostics)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(request.CTX) error); ok {
+		r1 = rf(rctx)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1124,6 +1215,26 @@ func (_m *Store) ScheduledPost() store.ScheduledPostStore {
 	return r0
 }
 
+// ScheduledRecap provides a mock function with no fields
+func (_m *Store) ScheduledRecap() store.ScheduledRecapStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ScheduledRecap")
+	}
+
+	var r0 store.ScheduledRecapStore
+	if rf, ok := ret.Get(0).(func() store.ScheduledRecapStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.ScheduledRecapStore)
+		}
+	}
+
+	return r0
+}
+
 // Scheme provides a mock function with no fields
 func (_m *Store) Scheme() store.SchemeStore {
 	ret := _m.Called()
@@ -1158,6 +1269,26 @@ func (_m *Store) Session() store.SessionStore {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(store.SessionStore)
+		}
+	}
+
+	return r0
+}
+
+// SessionAttribute provides a mock function with no fields
+func (_m *Store) SessionAttribute() store.SessionAttributeStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for SessionAttribute")
+	}
+
+	var r0 store.SessionAttributeStore
+	if rf, ok := ret.Get(0).(func() store.SessionAttributeStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.SessionAttributeStore)
 		}
 	}
 
@@ -1457,6 +1588,26 @@ func (_m *Store) UserTermsOfService() store.UserTermsOfServiceStore {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(store.UserTermsOfServiceStore)
+		}
+	}
+
+	return r0
+}
+
+// View provides a mock function with no fields
+func (_m *Store) View() store.ViewStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for View")
+	}
+
+	var r0 store.ViewStore
+	if rf, ok := ret.Get(0).(func() store.ViewStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.ViewStore)
 		}
 	}
 

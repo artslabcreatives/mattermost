@@ -4,35 +4,94 @@
 package app
 
 import (
+	"bytes"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/shared/i18n"
+	"github.com/mattermost/mattermost/server/v8/channels/app/platform"
+	"github.com/mattermost/mattermost/server/v8/channels/testlib"
 )
 
+// TestGetGroup tests basic group retrieval and verifies that ViewUsersRestrictions
+// are properly applied when fetching member IDs to prevent guest users from
+// enumerating user IDs they shouldn't have access to.
 func TestGetGroup(t *testing.T) {
 	mainHelper.Parallel(t)
-	th := Setup(t)
+	th := Setup(t).InitBasic(t)
 
-	group := th.CreateGroup(t)
+	t.Run("basic retrieval", func(t *testing.T) {
+		group := th.CreateGroup(t)
 
-	group, err := th.App.GetGroup(group.Id, nil, nil)
-	require.Nil(t, err)
-	require.NotNil(t, group)
+		g, err := th.App.GetGroup(group.Id, nil, nil)
+		require.Nil(t, err)
+		require.NotNil(t, g)
 
-	nilGroup, err := th.App.GetGroup(model.NewId(), nil, nil)
-	require.NotNil(t, err)
-	require.Nil(t, nilGroup)
+		nilGroup, err := th.App.GetGroup(model.NewId(), nil, nil)
+		require.NotNil(t, err)
+		require.Nil(t, nilGroup)
+	})
 
-	group, err = th.App.GetGroup(group.Id, &model.GetGroupOpts{IncludeMemberCount: false}, nil)
-	require.Nil(t, err)
-	require.Nil(t, group.MemberCount)
+	t.Run("include member count", func(t *testing.T) {
+		group := th.CreateGroup(t)
 
-	group, err = th.App.GetGroup(group.Id, &model.GetGroupOpts{IncludeMemberCount: true}, nil)
-	require.Nil(t, err)
-	require.NotNil(t, group.MemberCount)
+		g, err := th.App.GetGroup(group.Id, &model.GetGroupOpts{IncludeMemberCount: false}, nil)
+		require.Nil(t, err)
+		require.Nil(t, g.MemberCount)
+
+		g, err = th.App.GetGroup(group.Id, &model.GetGroupOpts{IncludeMemberCount: true}, nil)
+		require.Nil(t, err)
+		require.NotNil(t, g.MemberCount)
+	})
+
+	t.Run("member IDs respect view restrictions", func(t *testing.T) {
+		user1 := th.CreateUser(t)
+		user2 := th.CreateUser(t)
+		user3 := th.CreateUser(t)
+
+		team := th.CreateTeam(t)
+		channel := th.CreateChannel(t, team)
+
+		th.LinkUserToTeam(t, user1, team)
+		th.AddUserToChannel(t, user1, channel)
+
+		id := model.NewId()
+		groupWithUserIds := &model.GroupWithUserIds{
+			Group: model.Group{
+				DisplayName:    "dn_" + id,
+				Name:           new("name" + id),
+				Source:         model.GroupSourceCustom,
+				AllowReference: true,
+			},
+			UserIds: []string{user1.Id, user2.Id, user3.Id},
+		}
+		group, err := th.App.CreateGroupWithUserIds(groupWithUserIds)
+		require.Nil(t, err)
+
+		opts := &model.GetGroupOpts{IncludeMemberIDs: true}
+
+		g, appErr := th.App.GetGroup(group.Id, opts, nil)
+		require.Nil(t, appErr)
+		assert.Len(t, g.MemberIDs, 3)
+
+		g, appErr = th.App.GetGroup(group.Id, opts, &model.ViewUsersRestrictions{Channels: []string{channel.Id}})
+		require.Nil(t, appErr)
+		assert.Len(t, g.MemberIDs, 1)
+		assert.Contains(t, g.MemberIDs, user1.Id)
+
+		g, appErr = th.App.GetGroup(group.Id, opts, &model.ViewUsersRestrictions{Teams: []string{team.Id}})
+		require.Nil(t, appErr)
+		assert.Len(t, g.MemberIDs, 1)
+		assert.Contains(t, g.MemberIDs, user1.Id)
+
+		g, appErr = th.App.GetGroup(group.Id, opts, &model.ViewUsersRestrictions{Channels: []string{}, Teams: []string{}})
+		require.Nil(t, appErr)
+		assert.Empty(t, g.MemberIDs)
+	})
 }
 
 func TestGetGroupByRemoteID(t *testing.T) {
@@ -74,9 +133,9 @@ func TestCreateGroup(t *testing.T) {
 	id := model.NewId()
 	group := &model.Group{
 		DisplayName: "dn_" + id,
-		Name:        model.NewPointer("name" + id),
+		Name:        new("name" + id),
 		Source:      model.GroupSourceLdap,
-		RemoteId:    model.NewPointer(model.NewId()),
+		RemoteId:    new(model.NewId()),
 	}
 
 	g, err := th.App.CreateGroup(group)
@@ -93,7 +152,7 @@ func TestCreateGroup(t *testing.T) {
 			DisplayName: "dn_" + model.NewId(),
 			Name:        &user.Username,
 			Source:      model.GroupSourceLdap,
-			RemoteId:    model.NewPointer(model.NewId()),
+			RemoteId:    new(model.NewId()),
 		}
 		g, err = th.App.CreateGroup(usernameGroup)
 		require.NotNil(t, err)
@@ -222,7 +281,7 @@ func TestUpsertGroupSyncableTeamGroupConstrained(t *testing.T) {
 	group2 := th.CreateGroup(t)
 
 	team := th.CreateTeam(t)
-	team.GroupConstrained = model.NewPointer(true)
+	team.GroupConstrained = new(true)
 	team, err := th.App.UpdateTeam(team)
 	require.Nil(t, err)
 	_, err = th.App.UpsertGroupSyncable(model.NewGroupTeam(group1.Id, team.Id, false))
@@ -324,7 +383,7 @@ func TestGetGroupsByChannel(t *testing.T) {
 
 	groups, _, err := th.App.GetGroupsByChannel(th.BasicChannel.Id, opts)
 	require.Nil(t, err)
-	require.ElementsMatch(t, []*model.GroupWithSchemeAdmin{{Group: *group, SchemeAdmin: model.NewPointer(false)}}, groups)
+	require.ElementsMatch(t, []*model.GroupWithSchemeAdmin{{Group: *group, SchemeAdmin: new(false)}}, groups)
 	require.NotNil(t, groups[0].SchemeAdmin)
 
 	groups, _, err = th.App.GetGroupsByChannel(model.NewId(), opts)
@@ -362,7 +421,7 @@ func TestGetGroupsAssociatedToChannelsByTeam(t *testing.T) {
 
 	assert.Equal(t, map[string][]*model.GroupWithSchemeAdmin{
 		th.BasicChannel.Id: {
-			{Group: *group, SchemeAdmin: model.NewPointer(false)},
+			{Group: *group, SchemeAdmin: new(false)},
 		},
 	}, groups)
 	require.NotNil(t, groups[th.BasicChannel.Id][0].SchemeAdmin)
@@ -392,7 +451,7 @@ func TestGetGroupsByTeam(t *testing.T) {
 
 	groups, _, err := th.App.GetGroupsByTeam(th.BasicTeam.Id, model.GroupSearchOpts{})
 	require.Nil(t, err)
-	require.ElementsMatch(t, []*model.GroupWithSchemeAdmin{{Group: *group, SchemeAdmin: model.NewPointer(false)}}, groups)
+	require.ElementsMatch(t, []*model.GroupWithSchemeAdmin{{Group: *group, SchemeAdmin: new(false)}}, groups)
 	require.NotNil(t, groups[0].SchemeAdmin)
 
 	groups, _, err = th.App.GetGroupsByTeam(model.NewId(), model.GroupSearchOpts{})
@@ -463,4 +522,222 @@ func TestUserIsInAdminRoleGroup(t *testing.T) {
 	actual, err = th.App.UserIsInAdminRoleGroup(th.BasicUser.Id, th.BasicTeam.Id, model.GroupSyncableTypeTeam)
 	require.Nil(t, err)
 	require.False(t, actual)
+}
+
+func TestPublishReceivedGroupEvent(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t)
+
+	testCluster := &testlib.FakeClusterInterface{}
+	th.Server.Platform().SetCluster(testCluster)
+	defer th.Server.Platform().SetCluster(nil)
+
+	capturePublishedGroup := func(t *testing.T, publish func()) *model.WebSocketEvent {
+		t.Helper()
+		testCluster.ClearMessages()
+		publish()
+
+		events := selectReceivedGroupEvents(t, testCluster)
+		require.Len(t, events, 1)
+		return events[0]
+	}
+
+	t.Run("broadcast scope follows allow_reference", func(t *testing.T) {
+		testCases := []struct {
+			name           string
+			allowReference bool
+			restricted     bool
+		}{
+			{"non-referenceable group is restricted to group readers", false, true},
+			{"referenceable group is broadcast to everyone", true, false},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				group := &model.Group{
+					Id:             model.NewId(),
+					DisplayName:    "dn_" + model.NewId(),
+					Source:         model.GroupSourceLdap,
+					AllowReference: tc.allowReference,
+				}
+
+				ev := capturePublishedGroup(t, func() {
+					require.Nil(t, th.App.publishReceivedGroupEvent(group))
+				})
+
+				if tc.restricted {
+					assertBroadcastRestricted(t, ev)
+				} else {
+					assertBroadcastUnrestricted(t, ev)
+				}
+			})
+		}
+	})
+
+	t.Run("gate is applied through the real mutation paths", func(t *testing.T) {
+		newGroupFixture := func(t *testing.T, allowReference bool) *model.Group {
+			t.Helper()
+			id := model.NewId()
+			group, appErr := th.App.CreateGroup(&model.Group{
+				DisplayName:    "dn_" + id,
+				Name:           new("name" + id),
+				Source:         model.GroupSourceLdap,
+				RemoteId:       new(model.NewId()),
+				AllowReference: allowReference,
+			})
+			require.Nil(t, appErr)
+			return group
+		}
+
+		t.Run("CreateGroupWithUserIds", func(t *testing.T) {
+			id := model.NewId()
+			ev := capturePublishedGroup(t, func() {
+				_, appErr := th.App.CreateGroupWithUserIds(&model.GroupWithUserIds{
+					Group: model.Group{
+						DisplayName:    "dn_" + id,
+						Name:           new("name" + id),
+						Source:         model.GroupSourceCustom,
+						AllowReference: false,
+					},
+				})
+				require.Nil(t, appErr)
+			})
+			assertRestrictedGroupEvent(t, ev)
+		})
+
+		t.Run("UpdateGroup", func(t *testing.T) {
+			group := newGroupFixture(t, false)
+			group.DisplayName = "dn_" + model.NewId()
+
+			ev := capturePublishedGroup(t, func() {
+				_, appErr := th.App.UpdateGroup(group)
+				require.Nil(t, appErr)
+			})
+			assertRestrictedGroupEvent(t, ev)
+		})
+
+		t.Run("UpdateGroup leaves a referenceable group unrestricted", func(t *testing.T) {
+			group := newGroupFixture(t, true)
+			group.DisplayName = "dn_" + model.NewId()
+
+			ev := capturePublishedGroup(t, func() {
+				_, appErr := th.App.UpdateGroup(group)
+				require.Nil(t, appErr)
+			})
+			assertBroadcastUnrestricted(t, ev)
+		})
+
+		t.Run("DeleteGroup", func(t *testing.T) {
+			group := newGroupFixture(t, false)
+
+			ev := capturePublishedGroup(t, func() {
+				_, appErr := th.App.DeleteGroup(group.Id)
+				require.Nil(t, appErr)
+			})
+			assertRestrictedGroupEvent(t, ev)
+		})
+
+		t.Run("RestoreGroup", func(t *testing.T) {
+			group := newGroupFixture(t, false)
+			_, appErr := th.App.DeleteGroup(group.Id)
+			require.Nil(t, appErr)
+
+			ev := capturePublishedGroup(t, func() {
+				_, appErr := th.App.RestoreGroup(group.Id)
+				require.Nil(t, appErr)
+			})
+			assertRestrictedGroupEvent(t, ev)
+		})
+	})
+}
+
+func selectReceivedGroupEvents(t *testing.T, cluster *testlib.FakeClusterInterface) []*model.WebSocketEvent {
+	t.Helper()
+
+	var events []*model.WebSocketEvent
+	for _, msg := range cluster.SelectMessages(func(msg *model.ClusterMessage) bool {
+		return msg.Event == model.ClusterEventPublish
+	}) {
+		ev, err := model.WebSocketEventFromJSON(bytes.NewReader(msg.Data))
+		require.NoError(t, err)
+		if ev.EventType() == model.WebsocketEventReceivedGroup {
+			events = append(events, ev)
+		}
+	}
+
+	return events
+}
+
+func assertBroadcastUnrestricted(t *testing.T, ev *model.WebSocketEvent) {
+	t.Helper()
+
+	require.Empty(t, ev.GetBroadcast().RequiredPermissions)
+	require.False(t, ev.GetBroadcast().ContainsSensitiveData)
+}
+
+func assertBroadcastRestricted(t *testing.T, ev *model.WebSocketEvent) {
+	t.Helper()
+
+	require.Equal(t, []string{model.PermissionSysconsoleReadUserManagementGroups.Id}, ev.GetBroadcast().RequiredPermissions)
+	require.True(t, ev.GetBroadcast().ContainsSensitiveData)
+}
+
+func assertRestrictedGroupEvent(t *testing.T, ev *model.WebSocketEvent) {
+	t.Helper()
+
+	assertBroadcastRestricted(t, ev)
+
+	groupJSON, ok := ev.GetData()["group"].(string)
+	require.True(t, ok)
+
+	var group *model.Group
+	require.NoError(t, json.Unmarshal([]byte(groupJSON), &group))
+	require.False(t, group.AllowReference)
+	require.NotNil(t, group.MemberCount)
+}
+
+func TestReceivedGroupEventDelivery(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+
+	connForRoles := func(t *testing.T, user *model.User, roles string) *platform.WebConn {
+		t.Helper()
+
+		session, appErr := th.App.CreateSession(th.Context, &model.Session{UserId: user.Id, Roles: roles})
+		require.Nil(t, appErr)
+
+		wc := &platform.WebConn{
+			Platform: th.Server.Platform(),
+			Suite:    th.App,
+			UserId:   user.Id,
+			T:        i18n.T,
+		}
+		wc.SetConnectionID(model.NewId())
+		wc.SetSession(session)
+		wc.SetSessionToken(session.Token)
+		wc.SetSessionExpiresAt(session.ExpiresAt)
+
+		return wc
+	}
+
+	restricted := model.NewWebSocketEvent(model.WebsocketEventReceivedGroup, "", "", "", nil, "")
+	restrictBroadcastToGroupReaders(restricted.GetBroadcast())
+
+	testCases := []struct {
+		description string
+		user        *model.User
+		roles       string
+		expected    bool
+	}{
+		{"system manager holding no manage_system", th.BasicUser2, model.SystemUserRoleId + " " + model.SystemManagerRoleId, true},
+		{"system admin", th.SystemAdminUser, model.SystemUserRoleId + " " + model.SystemAdminRoleId, true},
+		{"regular user", th.BasicUser, model.SystemUserRoleId, false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			wc := connForRoles(t, tc.user, tc.roles)
+			require.Equal(t, tc.expected, wc.ShouldSendEvent(restricted))
+		})
+	}
 }

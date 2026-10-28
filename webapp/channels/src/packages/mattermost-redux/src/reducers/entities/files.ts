@@ -273,10 +273,29 @@ function pinnedFileIdsByChannelId(state: Record<string, string[]> = {}, action: 
 	}
 }
 
+export function rejectedFiles(state: Set<string> = new Set(), action: MMReduxAction) {
+    switch (action.type) {
+    case FileTypes.FILE_DOWNLOAD_REJECTED: {
+        const {file_id: fileId} = action.data;
+        if (fileId) {
+            const nextState = new Set(state);
+            nextState.add(fileId);
+            return nextState;
+        }
+        return state;
+    }
+    case UserTypes.LOGOUT_SUCCESS:
+        return new Set();
+    default:
+        return state;
+    }
+}
+
 export default combineReducers({
 	files,
 	filesFromSearch,
 	pinnedFileIdsByChannelId,
 	fileIdsByPostId,
 	filePublicLink,
+    rejectedFiles,
 });

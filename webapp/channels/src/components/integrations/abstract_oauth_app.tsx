@@ -1,12 +1,13 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {ChangeEvent, FormEvent} from 'react';
+import type {ChangeEvent, FormEvent, JSX} from 'react';
 import React from 'react';
 import {FormattedMessage} from 'react-intl';
 import type {MessageDescriptor} from 'react-intl';
 import {Link} from 'react-router-dom';
 
+import {buttonClassNames} from '@mattermost/shared/components/button';
 import type {OAuthApp} from '@mattermost/types/integrations';
 import type {Team} from '@mattermost/types/teams';
 
@@ -59,7 +60,7 @@ type Props = {
     */
     action: (app: OAuthApp) => Promise<void>;
 
-}
+};
 
 type State = {
     name: string;
@@ -76,7 +77,7 @@ type State = {
 
 export default class AbstractOAuthApp extends React.PureComponent<Props, State> {
     private image: HTMLImageElement;
-    private icon_url: React.RefObject<HTMLInputElement>;
+    private icon_url: React.RefObject<HTMLInputElement | null>;
 
     constructor(props: Props) {
         super(props);
@@ -530,7 +531,7 @@ export default class AbstractOAuthApp extends React.PureComponent<Props, State> 
                                 errors={[this.props.serverError, this.state.clientError]}
                             />
                             <Link
-                                className='btn btn-tertiary'
+                                className={buttonClassNames({emphasis: 'tertiary'})}
                                 to={`/${this.props.team.name}/integrations/oauth2-apps`}
                             >
                                 <FormattedMessage
@@ -539,7 +540,6 @@ export default class AbstractOAuthApp extends React.PureComponent<Props, State> 
                                 />
                             </Link>
                             <SpinnerButton
-                                className='btn btn-primary'
                                 type='submit'
                                 spinning={this.state.saving}
                                 spinningText={this.props.loading}

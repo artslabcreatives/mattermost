@@ -2,7 +2,6 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import type { ReactNode } from 'react';
 import { defineMessage, useIntl } from 'react-intl';
 
 import type { LimitSummary } from 'components/common/hooks/useGetHighestThresholdCloudLimit';
@@ -40,7 +39,7 @@ export default function useWords(highestLimit: LimitSummary | false, isAdminUser
 
 	const values = {
 		callToAction,
-		a: (chunks: React.ReactNode | React.ReactNodeArray) => {
+        a: (chunks: React.ReactNode | readonly React.ReactNode[]) => {
 			if (isAirGapped) {
 				// Return plain text if air-gapped
 				return <>{chunks}</>;
@@ -74,7 +73,7 @@ export default function useWords(highestLimit: LimitSummary | false, isAdminUser
 			id: 'workspace_limits.menu_limit.notify_admin',
 			defaultMessage: 'Notify admin',
 		});
-		values.a = (chunks: React.ReactNode | React.ReactNodeArray) => (
+        values.a = (chunks: React.ReactNode | readonly React.ReactNode[]) => (
 			<NotifyAdminCTA
 				ctaText={chunks}
 				notifyRequestData={{
@@ -152,7 +151,7 @@ export default function useWords(highestLimit: LimitSummary | false, isAdminUser
 					id: 'workspace_limits.menu_limit.messages',
 					defaultMessage: 'Total messages',
 				}),
-				description: intl.formatMessage<ReactNode>(
+            description: intl.formatMessage(
 					description,
 					values,
 				),
@@ -197,7 +196,7 @@ export default function useWords(highestLimit: LimitSummary | false, isAdminUser
 					id: 'workspace_limits.menu_limit.file_storage',
 					defaultMessage: 'File storage limit',
 				}),
-				description: intl.formatMessage<ReactNode>(
+            description: intl.formatMessage(
 					description,
 					values,
 				),

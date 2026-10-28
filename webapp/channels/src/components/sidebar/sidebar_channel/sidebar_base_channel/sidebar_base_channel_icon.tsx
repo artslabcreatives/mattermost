@@ -3,43 +3,34 @@
 
 import React from 'react';
 
-import type { Channel, ChannelType } from '@mattermost/types/channels';
-import { Client4 } from 'mattermost-redux/client';
+import type {Channel} from '@mattermost/types/channels';
 
+import {Client4} from 'mattermost-redux/client';
+
+import ChannelTypeIcon from 'components/channel_type_icon';
 import Avatar from 'components/widgets/users/avatar';
+
 import Constants from 'utils/constants';
 
 type Props = {
-	channelType: ChannelType;
-	channel?: Channel;
-}
+    channel: Channel;
+};
 
-const SidebarBaseChannelIcon = ({
-	channelType,
-	channel,
-}: Props) => {
-	if (channel && channel.last_picture_update && channel.last_picture_update > 0) {
-		const iconUrl = Client4.getChannelIconUrl(channel.id, channel.last_picture_update);
-		return (
-			<Avatar
-				size='xs'
-				url={iconUrl}
-				alt={channel.display_name}
-			/>
-		);
-	}
+const SidebarBaseChannelIcon = ({channel}: Props) => {
+    if (channel.last_picture_update && channel.last_picture_update > 0) {
+        return (
+            <Avatar
+                size='xs'
+                url={Client4.getChannelIconUrl(channel.id, channel.last_picture_update)}
+                alt={channel.display_name}
+            />
+        );
+    }
 
-	if (channelType === Constants.OPEN_CHANNEL) {
-		return (
-			<i className='icon icon-globe' />
-		);
-	}
-	if (channelType === Constants.PRIVATE_CHANNEL) {
-		return (
-			<i className='icon icon-lock-outline' />
-		);
-	}
-	return null;
+    if (channel.type !== Constants.OPEN_CHANNEL && channel.type !== Constants.PRIVATE_CHANNEL) {
+        return null;
+    }
+    return <ChannelTypeIcon channel={channel}/>;
 };
 
 export default SidebarBaseChannelIcon;

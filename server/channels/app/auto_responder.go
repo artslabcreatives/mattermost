@@ -36,7 +36,7 @@ func (a *App) SendAutoResponseIfNecessary(rctx request.CTX, channel *model.Chann
 		receiverId = sender.Id
 	}
 
-	receiver, aErr := a.GetUser(receiverId)
+	receiver, aErr := a.GetUser(rctx, receiverId)
 	if aErr != nil {
 		return false, aErr
 	}
@@ -77,7 +77,7 @@ func (a *App) SendAutoResponse(rctx request.CTX, channel *model.Channel, receive
 		UserId:    receiver.Id,
 	}
 
-	if _, err := a.CreatePost(rctx, autoResponderPost, channel, model.CreatePostFlags{}); err != nil {
+	if _, _, err := a.CreatePost(rctx, autoResponderPost, channel, model.CreatePostFlags{}); err != nil {
 		return false, err
 	}
 
@@ -99,7 +99,7 @@ func (a *App) SetAutoResponderStatus(rctx request.CTX, user *model.User, oldNoti
 }
 
 func (a *App) DisableAutoResponder(rctx request.CTX, userID string, asAdmin bool) *model.AppError {
-	user, err := a.GetUser(userID)
+	user, err := a.GetUser(rctx, userID)
 	if err != nil {
 		return err
 	}

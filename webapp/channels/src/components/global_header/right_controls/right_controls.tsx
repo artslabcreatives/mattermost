@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {type JSX} from 'react';
 import { useSelector } from 'react-redux';
 import styled from 'styled-components';
 
@@ -49,7 +49,7 @@ const StyledCustomizeYourExperienceTour = styled.div`
 
 export type Props = {
 	productId?: ProductIdentifier;
-}
+};
 
 const RightControls = ({ productId = null }: Props): JSX.Element => {
 	// guest validation to see which point the messaging tour tip starts

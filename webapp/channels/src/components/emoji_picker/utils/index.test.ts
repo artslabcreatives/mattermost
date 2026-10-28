@@ -15,7 +15,7 @@ enum SkinTones {
 	MediumLight = '1F3FC',
 	Medium = '1F3FD',
 	MediumDark = '1F3FE',
-	Dark = '1F3FF'
+    Dark = '1F3FF',
 }
 
 const smileEmoji = {

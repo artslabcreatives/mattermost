@@ -1,15 +1,36 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import { shallow } from 'enzyme';
 import React from 'react';
 
 import type { AppBinding, AppCallResponse } from '@mattermost/types/apps';
 import type { Post } from '@mattermost/types/posts';
 
-import { shallowWithIntl } from 'tests/helpers/intl-test-helper';
+import {act, renderWithContext, screen} from 'tests/react_testing_utils';
 
-import SelectBinding, { RawSelectBinding } from './select_binding';
+import SelectBinding from './select_binding';
+
+type MockOnSelected = ((selected: {text: string; value: string}) => void) | undefined;
+
+let mockOnSelected: MockOnSelected;
+
+jest.mock('components/autocomplete_selector', () => {
+    return {
+        __esModule: true,
+        default: (props: any) => {
+            mockOnSelected = props.onSelected;
+            return (
+                <div data-testid='autoCompleteSelector'>
+                    <input
+                        placeholder={props.placeholder}
+                        value={props.value || ''}
+                        readOnly={true}
+                    />
+                </div>
+            );
+        },
+    };
+});
 
 describe('components/post_view/embedded_bindings/select_binding', () => {
 	const post = {
@@ -73,16 +94,30 @@ describe('components/post_view/embedded_bindings/select_binding', () => {
 		},
 	};
 
-	const intl = {
-		formatMessage: (message: { id: string; defaultMessage: string }) => {
-			return message.defaultMessage;
+    const initialState = {
+        entities: {
+            general: {config: {}},
+            users: {profiles: {}},
+            groups: {myGroups: []},
+            emojis: {},
+            channels: {},
+            teams: {teams: {}},
+            preferences: {myPreferences: {}},
 		},
-	} as any;
+    };
+
+    beforeEach(() => {
+        mockOnSelected = undefined;
+    });
 
 	test('should start with nothing selected', () => {
-		const wrapper = shallowWithIntl(<SelectBinding {...baseProps} />);
+        renderWithContext(<SelectBinding {...baseProps}/>, initialState);
 
-		expect(wrapper.state()).toMatchObject({});
+        const selector = screen.getByTestId('autoCompleteSelector');
+        expect(selector).toBeInTheDocument();
+
+        const input = selector.querySelector('input');
+        expect(input).toHaveValue('');
 	});
 
 	describe('handleSelected', () => {
@@ -109,15 +144,16 @@ describe('components/post_view/embedded_bindings/select_binding', () => {
 					postEphemeralCallResponseForPost: jest.fn(),
 					openAppsModal: jest.fn(),
 				},
-				intl,
 			};
 
-			const wrapper = shallow<RawSelectBinding>(<RawSelectBinding {...props} />);
+            renderWithContext(<SelectBinding {...props}/>, initialState);
 
-			await wrapper.instance().handleSelected({
+            await act(async () => {
+                mockOnSelected!({
 				text: 'Option 1',
 				value: 'option1',
 			});
+            });
 
 			expect(props.actions.getChannel).toHaveBeenCalledWith('some_channel_id');
 			expect(props.actions.handleBindingClick).toHaveBeenCalledWith({
@@ -167,15 +203,16 @@ describe('components/post_view/embedded_bindings/select_binding', () => {
 				postEphemeralCallResponseForPost: jest.fn(),
 				openAppsModal: jest.fn(),
 			},
-			intl,
 		};
 
-		const wrapper = shallow<RawSelectBinding>(<RawSelectBinding {...props} />);
+        renderWithContext(<SelectBinding {...props}/>, initialState);
 
-		await wrapper.instance().handleSelected({
+        await act(async () => {
+            mockOnSelected!({
 			text: 'Option 1',
 			value: 'option1',
 		});
+        });
 
 		expect(props.actions.postEphemeralCallResponseForPost).toHaveBeenCalledWith(errorResponse, 'The error', post);
 	});

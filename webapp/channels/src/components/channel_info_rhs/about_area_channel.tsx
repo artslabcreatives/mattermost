@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React from 'react';
@@ -9,7 +9,9 @@ import type {Channel} from '@mattermost/types/channels';
 
 import {Client4} from 'mattermost-redux/client';
 
+import ChannelInfoAttributes from 'components/channel_attributes/channel_info_attributes';
 import ChannelPopoverController from 'components/channel_popover';
+import CopyButton from 'components/copy_button';
 import Markdown from 'components/markdown';
 import Avatar from 'components/widgets/users/avatar';
 
@@ -58,15 +60,7 @@ const ChannelInfo = styled.div`
     margin-left: 12px;
     display: flex;
     flex-direction: column;
-`;
-
-const ChannelName = styled.p`
-    font-family: Metropolis, sans-serif;
-    font-size: 18px;
-    line-height: 24px;
-    color: rgb(var(--center-channel-color-rgb));
-    font-weight: 600;
-    margin: 0;
+    min-width: 0;
 `;
 
 const ChannelTypeLabel = styled.div`
@@ -75,12 +69,29 @@ const ChannelTypeLabel = styled.div`
     color: rgba(var(--center-channel-color-rgb), 0.75);
 `;
 
+const ChannelName = styled.div`
+    font-size: 20px;
+    font-family: Metropolis, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+`;
+
 const ChannelId = styled.div`
-    margin-bottom: 12px;
+    padding: 4px 0;
+    margin-bottom: 8px;
     font-size: 11px;
     line-height: 16px;
     letter-spacing: 0.02em;
     color: rgba(var(--center-channel-color-rgb), 0.75);
+    &:not(:last-child) {
+        margin-bottom: 0px;
+    }
+    .post-code__clipboard {
+        opacity: 0;
+    }
+    &:hover .post-code__clipboard {
+        opacity: 1;
+    }
 `;
 
 const ChannelPurpose = styled.div`
@@ -92,17 +103,29 @@ const ChannelPurpose = styled.div`
 
 const ChannelDescriptionHeading = styled.div`
     color: rgba(var(--center-channel-color-rgb), 0.75);
-    font-size: 12px;
+    font-size: 11px;
     font-style: normal;
     font-weight: 600;
     line-height: 16px;
-    letter-spacing: 0.24px;
+    letter-spacing: 0.11px;
     text-transform: uppercase;
-    padding: 6px 0px;
+    padding: 6px 0;
 `;
 
 const ChannelHeader = styled.div`
     margin-bottom: 12px;
+`;
+
+const SmallCopyButton = styled(CopyButton)`
+    i {
+        font-size: 14px;
+        margin-left: 4px;
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+
+        &:hover {
+            color: rgba(var(--center-channel-color-rgb), 0.88);
+        }
+    }
 `;
 
 interface Props {
@@ -114,6 +137,7 @@ interface Props {
     canManageMembers: boolean;
     channelURL: string;
     actions: {
+        editChannelName: () => void;
         editChannelPurpose: () => void;
         editChannelHeader: () => void;
         toggleFavorite: () => void;
@@ -165,7 +189,15 @@ const AboutAreaChannel = ({
                     </ChannelAvatar>
                 </ChannelPopoverController>
                 <ChannelInfo>
-                    <ChannelName>{channel.display_name}</ChannelName>
+                    <ChannelName>
+                        <EditableArea
+                            editable={canEditChannelProperties}
+                            content={<div>{channel.display_name}</div>}
+                            onEdit={actions.editChannelName}
+                            editTooltip={formatMessage({id: 'channel_info_rhs.about_area.edit_channel_name', defaultMessage: 'Rename channel'})}
+                            emptyLabel={formatMessage({id: 'channel_info_rhs.about_area.edit_channel_name', defaultMessage: 'Rename channel'})}
+                        />
+                    </ChannelName>
                     <ChannelTypeLabel>
                         {channel.type === Constants.PRIVATE_CHANNEL ? (
                             <FormattedMessage
@@ -181,6 +213,8 @@ const AboutAreaChannel = ({
                     </ChannelTypeLabel>
                 </ChannelInfo>
             </ChannelInfoContainer>
+
+            <ChannelInfoAttributes channelId={channel.id}/>
 
             {(channel.purpose || canEditChannelProperties) && (
                 <ChannelPurpose>
@@ -200,6 +234,7 @@ const AboutAreaChannel = ({
                             </LineLimiter>
                         )}
                         onEdit={actions.editChannelPurpose}
+                        editTooltip={formatMessage({id: 'channel_info_rhs.about_area.edit_channel_purpose', defaultMessage: 'Edit channel purpose'})}
                         emptyLabel={formatMessage({id: 'channel_info_rhs.about_area.add_channel_purpose', defaultMessage: 'Add a channel purpose'})}
                     />
                 </ChannelPurpose>
@@ -223,14 +258,27 @@ const AboutAreaChannel = ({
                         )}
                         editable={canEditChannelProperties}
                         onEdit={actions.editChannelHeader}
+                        editTooltip={formatMessage({id: 'channel_info_rhs.about_area.edit_channel_header', defaultMessage: 'Edit channel header'})}
                         emptyLabel={formatMessage({id: 'channel_info_rhs.about_area.add_channel_header', defaultMessage: 'Add a channel header'})}
                     />
                 </ChannelHeader>
             )}
 
             <ChannelId>
-                {formatMessage({id: 'channel_info_rhs.about_area_id', defaultMessage: 'ID:'})} {channel.id}
+                {formatMessage({id: 'channel_info_rhs.about_area_handle', defaultMessage: 'Channel handle:'})} {channel.name}
+                <SmallCopyButton
+                    content={channel.name}
+                    isForText={true}
+                />
             </ChannelId>
+            <ChannelId>
+                {formatMessage({id: 'channel_info_rhs.about_area_id', defaultMessage: 'ID:'})} {channel.id}
+                <SmallCopyButton
+                    content={channel.id}
+                    isForText={true}
+                />
+            </ChannelId>
+
         </>
     );
 };

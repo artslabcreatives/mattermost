@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, { memo } from 'react';
+import React, {memo, type JSX} from 'react';
 import { defineMessages, useIntl } from 'react-intl';
 
 import { GenericModal } from '@mattermost/components';
@@ -30,10 +30,11 @@ type Props = {
 		handleRestore: (post: Post) => void;
 	};
 	onExited: () => void;
-}
+    isChannelAutotranslated: boolean;
+};
 
-const RestorePostModal = ({ post, postHeader, actions, onExited }: Props) => {
-	const { formatMessage } = useIntl();
+const RestorePostModal = ({post, postHeader, actions, onExited, isChannelAutotranslated}: Props) => {
+    const {formatMessage, locale} = useIntl();
 	const onHide = () => onExited();
 
 	const handleRestore = async () => {
@@ -56,7 +57,6 @@ const RestorePostModal = ({ post, postHeader, actions, onExited }: Props) => {
 			aria-labelledby='restorePostModalLabel'
 			modalHeaderText={modalHeaderText}
 			handleCancel={onHide}
-			cancelButtonClassName='cancel-button'
 			handleConfirm={handleRestore}
 		>
 			<div className='edit-post-history__restore__modal__content'>
@@ -66,6 +66,8 @@ const RestorePostModal = ({ post, postHeader, actions, onExited }: Props) => {
 					overflowType='ellipsis'
 					maxHeight={100}
 					showPostEditedIndicator={false}
+                    userLanguage={locale}
+                    isChannelAutotranslated={isChannelAutotranslated}
 				/>
 				<FileAttachmentListContainer
 					post={post}

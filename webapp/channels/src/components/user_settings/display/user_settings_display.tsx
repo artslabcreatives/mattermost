@@ -64,7 +64,7 @@ type Option = {
 		more?: MessageDescriptor;
 	};
 	childOption?: ChildOption;
-}
+};
 
 type SectionProps = {
 	section: string;
@@ -78,13 +78,13 @@ type SectionProps = {
 	description: MessageDescriptor;
 	disabled?: boolean;
 	onSubmit?: () => void;
-}
+};
 
 export type OwnProps = {
 	user: UserProfile;
 	adminMode?: boolean;
 	userPreferences?: PreferencesType;
-}
+};
 
 type Props = OwnProps & {
 	user: UserProfile;
@@ -126,7 +126,7 @@ type Props = OwnProps & {
 		updateMe: (user: UserProfile) => Promise<ActionResult>;
 		patchUser: (user: UserProfile) => Promise<ActionResult>;
 	};
-}
+};
 
 type State = {
 	[key: string]: any;
@@ -145,7 +145,7 @@ type State = {
 	clickToReply: string;
 	handleSubmit?: () => void;
 	serverError?: string;
-}
+};
 
 export default class UserSettingsDisplay extends React.PureComponent<Props, State> {
 	public prevSections: {
@@ -1165,8 +1165,6 @@ export default class UserSettingsDisplay extends React.PureComponent<Props, Stat
 							renderEmoticonsAsEmoji={this.props.renderEmoticonsAsEmoji}
 							user={this.props.user}
 							updateSection={this.updateSection}
-							adminMode={this.props.adminMode}
-							userPreferences={this.props.userPreferences}
 						/>
 					)}
 				/>

@@ -10,7 +10,7 @@ import type { Post, PostSeenReceipts } from '@mattermost/types/posts';
 import { openModal } from 'actions/views/modals';
 import { fetchPostSeenReceipts } from 'actions/views/post_seen';
 
-import WithTooltip from 'components/with_tooltip';
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
 import MessageInfoModal, { DoubleCheckIcon, SingleCheckIcon } from 'components/message_info_modal';
 
 import { ModalIdentifiers } from 'utils/constants';

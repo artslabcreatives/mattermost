@@ -1,14 +1,13 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {type JSX} from 'react';
 import styled from 'styled-components';
 
 import { CompletedAnimation } from './onboarding_tasklist_animations';
 
 export interface TaskProps {
-	label: React.ReactElement;
-	icon?: React.ReactNode;
+    label: React.ReactElement<any>;
 	onClick?: () => void;
 	completedStatus: boolean;
 }

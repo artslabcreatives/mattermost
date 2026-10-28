@@ -16,25 +16,22 @@ export type Props<T extends Value> = {
 	ariaLabelRenderer: GetOptionValue<T>;
 	loading?: boolean;
 	onAdd: (value: T) => void;
-	onPageChange?: (newPage: number, currentPage: number) => void;
 	onSelect: (value: T | null) => void;
 	optionRenderer: (
 		option: T,
 		isSelected: boolean,
 		add: (value: T) => void,
-		select: (value: T) => void
+        select: (value: T) => void,
 	) => React.ReactNode;
 	query?: string;
-	selectedItemRef?: React.RefObject<HTMLDivElement>;
+    selectedItemRef?: React.RefObject<HTMLDivElement | null>;
 	options: T[];
-	page: number;
-	perPage: number;
 	customNoOptionsMessage?: React.ReactNode;
-}
+};
 
 type State = {
 	selected: number;
-}
+};
 const KeyCodes = Constants.KeyCodes;
 
 export default class MultiSelectList<T extends Value> extends React.PureComponent<Props<T>, State> {
@@ -142,7 +139,7 @@ export default class MultiSelectList<T extends Value> extends React.PureComponen
 
 		return (
 			<div
-				ref={isSelected ? this.selectedItemRef : option.value}
+                ref={isSelected ? this.selectedItemRef : undefined}
 				className={rowSelected}
 				key={'multiselectoption' + option.value}
 				onClick={() => add(option)}
@@ -212,7 +209,10 @@ export default class MultiSelectList<T extends Value> extends React.PureComponen
 			const ariaLabel = this.props.ariaLabelRenderer(selectedOption);
 
 			renderOutput = (
-				<div className='more-modal__list'>
+                <div
+                    data-testid='more-modal-list'
+                    className='more-modal__list'
+                >
 					<div
 						className='sr-only'
 						aria-live='polite'

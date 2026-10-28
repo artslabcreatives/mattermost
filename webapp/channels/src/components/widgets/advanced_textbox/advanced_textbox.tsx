@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, type JSX} from 'react';
 import { useIntl } from 'react-intl';
 
 import ShowFormat from 'components/advanced_text_editor/show_formatting/show_formatting';
@@ -151,7 +151,7 @@ const AdvancedTextbox = ({
 				{internalError && (
 					<div className='AdvancedTextbox__error-message'>
 						<i className='icon icon-alert-circle-outline' />
-						<span>{internalError}</span>
+                        <span data-testid='advanced-textbox-error-text'>{internalError}</span>
 					</div>
 				)}
 

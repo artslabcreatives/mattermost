@@ -231,6 +231,22 @@ func (mr *MockClientMockRecorder) CreateCommand(arg0, arg1 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateCommand", reflect.TypeOf((*MockClient)(nil).CreateCommand), arg0, arg1)
 }
 
+// CreateDirectChannel mocks base method.
+func (m *MockClient) CreateDirectChannel(arg0 context.Context, arg1, arg2 string) (*model.Channel, *model.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateDirectChannel", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*model.Channel)
+	ret1, _ := ret[1].(*model.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// CreateDirectChannel indicates an expected call of CreateDirectChannel.
+func (mr *MockClientMockRecorder) CreateDirectChannel(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateDirectChannel", reflect.TypeOf((*MockClient)(nil).CreateDirectChannel), arg0, arg1, arg2)
+}
+
 // CreateIncomingWebhook mocks base method.
 func (m *MockClient) CreateIncomingWebhook(arg0 context.Context, arg1 *model.IncomingWebhook) (*model.IncomingWebhook, *model.Response, error) {
 	m.ctrl.T.Helper()
@@ -344,9 +360,9 @@ func (mr *MockClientMockRecorder) CreateUser(arg0, arg1 interface{}) *gomock.Cal
 }
 
 // CreateUserAccessToken mocks base method.
-func (m *MockClient) CreateUserAccessToken(arg0 context.Context, arg1, arg2 string) (*model.UserAccessToken, *model.Response, error) {
+func (m *MockClient) CreateUserAccessToken(arg0 context.Context, arg1, arg2 string, arg3 int64) (*model.UserAccessToken, *model.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateUserAccessToken", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "CreateUserAccessToken", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*model.UserAccessToken)
 	ret1, _ := ret[1].(*model.Response)
 	ret2, _ := ret[2].(error)
@@ -354,9 +370,9 @@ func (m *MockClient) CreateUserAccessToken(arg0 context.Context, arg1, arg2 stri
 }
 
 // CreateUserAccessToken indicates an expected call of CreateUserAccessToken.
-func (mr *MockClientMockRecorder) CreateUserAccessToken(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) CreateUserAccessToken(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUserAccessToken", reflect.TypeOf((*MockClient)(nil).CreateUserAccessToken), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUserAccessToken", reflect.TypeOf((*MockClient)(nil).CreateUserAccessToken), arg0, arg1, arg2, arg3)
 }
 
 // DeleteCPAField mocks base method.
@@ -650,6 +666,22 @@ func (mr *MockClientMockRecorder) GenerateSupportPacket(arg0 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateSupportPacket", reflect.TypeOf((*MockClient)(nil).GenerateSupportPacket), arg0)
 }
 
+// GetAllRoles mocks base method.
+func (m *MockClient) GetAllRoles(arg0 context.Context) ([]*model.Role, *model.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllRoles", arg0)
+	ret0, _ := ret[0].([]*model.Role)
+	ret1, _ := ret[1].(*model.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetAllRoles indicates an expected call of GetAllRoles.
+func (mr *MockClientMockRecorder) GetAllRoles(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllRoles", reflect.TypeOf((*MockClient)(nil).GetAllRoles), arg0)
+}
+
 // GetAllTeams mocks base method.
 func (m *MockClient) GetAllTeams(arg0 context.Context, arg1 string, arg2, arg3 int) ([]*model.Team, *model.Response, error) {
 	m.ctrl.T.Helper()
@@ -715,9 +747,9 @@ func (mr *MockClientMockRecorder) GetBotsOrphaned(arg0, arg1, arg2, arg3 interfa
 }
 
 // GetChannel mocks base method.
-func (m *MockClient) GetChannel(arg0 context.Context, arg1, arg2 string) (*model.Channel, *model.Response, error) {
+func (m *MockClient) GetChannel(arg0 context.Context, arg1 string) (*model.Channel, *model.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetChannel", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetChannel", arg0, arg1)
 	ret0, _ := ret[0].(*model.Channel)
 	ret1, _ := ret[1].(*model.Response)
 	ret2, _ := ret[2].(error)
@@ -725,9 +757,9 @@ func (m *MockClient) GetChannel(arg0 context.Context, arg1, arg2 string) (*model
 }
 
 // GetChannel indicates an expected call of GetChannel.
-func (mr *MockClientMockRecorder) GetChannel(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetChannel(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChannel", reflect.TypeOf((*MockClient)(nil).GetChannel), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChannel", reflect.TypeOf((*MockClient)(nil).GetChannel), arg0, arg1)
 }
 
 // GetChannelByName mocks base method.
@@ -1052,6 +1084,22 @@ func (mr *MockClientMockRecorder) GetMarketplacePlugins(arg0, arg1 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMarketplacePlugins", reflect.TypeOf((*MockClient)(nil).GetMarketplacePlugins), arg0, arg1)
 }
 
+// GetMe mocks base method.
+func (m *MockClient) GetMe(arg0 context.Context, arg1 string) (*model.User, *model.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMe", arg0, arg1)
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(*model.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetMe indicates an expected call of GetMe.
+func (mr *MockClientMockRecorder) GetMe(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMe", reflect.TypeOf((*MockClient)(nil).GetMe), arg0, arg1)
+}
+
 // GetOAuthApps mocks base method.
 func (m *MockClient) GetOAuthApps(arg0 context.Context, arg1, arg2 int) ([]*model.OAuthApp, *model.Response, error) {
 	m.ctrl.T.Helper()
@@ -1066,6 +1114,22 @@ func (m *MockClient) GetOAuthApps(arg0 context.Context, arg1, arg2 int) ([]*mode
 func (mr *MockClientMockRecorder) GetOAuthApps(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOAuthApps", reflect.TypeOf((*MockClient)(nil).GetOAuthApps), arg0, arg1, arg2)
+}
+
+// GetOldClientLicense mocks base method.
+func (m *MockClient) GetOldClientLicense(arg0 context.Context, arg1 string) (map[string]string, *model.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOldClientLicense", arg0, arg1)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(*model.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetOldClientLicense indicates an expected call of GetOldClientLicense.
+func (mr *MockClientMockRecorder) GetOldClientLicense(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOldClientLicense", reflect.TypeOf((*MockClient)(nil).GetOldClientLicense), arg0, arg1)
 }
 
 // GetOutgoingWebhook mocks base method.
@@ -1404,6 +1468,22 @@ func (mr *MockClientMockRecorder) GetTeamByName(arg0, arg1, arg2 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTeamByName", reflect.TypeOf((*MockClient)(nil).GetTeamByName), arg0, arg1, arg2)
 }
 
+// GetTeamMembersByIds mocks base method.
+func (m *MockClient) GetTeamMembersByIds(arg0 context.Context, arg1 string, arg2 []string) ([]*model.TeamMember, *model.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTeamMembersByIds", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*model.TeamMember)
+	ret1, _ := ret[1].(*model.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetTeamMembersByIds indicates an expected call of GetTeamMembersByIds.
+func (mr *MockClientMockRecorder) GetTeamMembersByIds(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTeamMembersByIds", reflect.TypeOf((*MockClient)(nil).GetTeamMembersByIds), arg0, arg1, arg2)
+}
+
 // GetUpload mocks base method.
 func (m *MockClient) GetUpload(arg0 context.Context, arg1 string) (*model.UploadSession, *model.Response, error) {
 	m.ctrl.T.Helper()
@@ -1500,6 +1580,22 @@ func (mr *MockClientMockRecorder) GetUserByUsername(arg0, arg1, arg2 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByUsername", reflect.TypeOf((*MockClient)(nil).GetUserByUsername), arg0, arg1, arg2)
 }
 
+// GetUserStatus mocks base method.
+func (m *MockClient) GetUserStatus(arg0 context.Context, arg1, arg2 string) (*model.Status, *model.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserStatus", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*model.Status)
+	ret1, _ := ret[1].(*model.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetUserStatus indicates an expected call of GetUserStatus.
+func (mr *MockClientMockRecorder) GetUserStatus(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserStatus", reflect.TypeOf((*MockClient)(nil).GetUserStatus), arg0, arg1, arg2)
+}
+
 // GetUsers mocks base method.
 func (m *MockClient) GetUsers(arg0 context.Context, arg1, arg2 int, arg3 string) ([]*model.User, *model.Response, error) {
 	m.ctrl.T.Helper()
@@ -1530,6 +1626,22 @@ func (m *MockClient) GetUsersByIds(arg0 context.Context, arg1 []string) ([]*mode
 func (mr *MockClientMockRecorder) GetUsersByIds(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUsersByIds", reflect.TypeOf((*MockClient)(nil).GetUsersByIds), arg0, arg1)
+}
+
+// GetUsersInChannel mocks base method.
+func (m *MockClient) GetUsersInChannel(arg0 context.Context, arg1 string, arg2, arg3 int, arg4 string) ([]*model.User, *model.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUsersInChannel", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].([]*model.User)
+	ret1, _ := ret[1].(*model.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetUsersInChannel indicates an expected call of GetUsersInChannel.
+func (mr *MockClientMockRecorder) GetUsersInChannel(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUsersInChannel", reflect.TypeOf((*MockClient)(nil).GetUsersInChannel), arg0, arg1, arg2, arg3, arg4)
 }
 
 // GetUsersInTeam mocks base method.
@@ -2186,6 +2298,22 @@ func (mr *MockClientMockRecorder) RevokeUserAccessToken(arg0, arg1 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevokeUserAccessToken", reflect.TypeOf((*MockClient)(nil).RevokeUserAccessToken), arg0, arg1)
 }
 
+// RotateUserAccessToken mocks base method.
+func (m *MockClient) RotateUserAccessToken(arg0 context.Context, arg1 string, arg2 int64) (*model.UserAccessToken, *model.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RotateUserAccessToken", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*model.UserAccessToken)
+	ret1, _ := ret[1].(*model.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// RotateUserAccessToken indicates an expected call of RotateUserAccessToken.
+func (mr *MockClientMockRecorder) RotateUserAccessToken(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RotateUserAccessToken", reflect.TypeOf((*MockClient)(nil).RotateUserAccessToken), arg0, arg1, arg2)
+}
+
 // SearchTeams mocks base method.
 func (m *MockClient) SearchTeams(arg0 context.Context, arg1 *model.TeamSearch) ([]*model.Team, *model.Response, error) {
 	m.ctrl.T.Helper()
@@ -2509,6 +2637,22 @@ func (m *MockClient) UpdateUserRoles(arg0 context.Context, arg1, arg2 string) (*
 func (mr *MockClientMockRecorder) UpdateUserRoles(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserRoles", reflect.TypeOf((*MockClient)(nil).UpdateUserRoles), arg0, arg1, arg2)
+}
+
+// UpdateUserStatus mocks base method.
+func (m *MockClient) UpdateUserStatus(arg0 context.Context, arg1 string, arg2 *model.Status) (*model.Status, *model.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUserStatus", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*model.Status)
+	ret1, _ := ret[1].(*model.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// UpdateUserStatus indicates an expected call of UpdateUserStatus.
+func (mr *MockClientMockRecorder) UpdateUserStatus(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserStatus", reflect.TypeOf((*MockClient)(nil).UpdateUserStatus), arg0, arg1, arg2)
 }
 
 // UploadData mocks base method.

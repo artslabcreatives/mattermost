@@ -6,12 +6,13 @@ import { useIntl } from 'react-intl';
 import type { IntlShape } from 'react-intl';
 import { useSelector } from 'react-redux';
 
+import {isMobile} from '@mattermost/shared/utils/user_agent';
 import type { Channel } from '@mattermost/types/channels';
 import type { ClientConfig, ClientLicense } from '@mattermost/types/config';
 import type { ServerError } from '@mattermost/types/errors';
 import type { Group } from '@mattermost/types/groups';
 import { isMessageAttachmentArray } from '@mattermost/types/message_attachments';
-import type { Post, PostPriorityMetadata } from '@mattermost/types/posts';
+import type {Post, PostPriorityMetadata, PostTranslation} from '@mattermost/types/posts';
 import { PostPriority } from '@mattermost/types/posts';
 import type { Reaction } from '@mattermost/types/reactions';
 import type { UserProfile } from '@mattermost/types/users';
@@ -42,7 +43,6 @@ import * as Keyboard from 'utils/keyboard';
 import { formatWithRenderer } from 'utils/markdown';
 import MentionableRenderer from 'utils/markdown/mentionable_renderer';
 import { allAtMentions } from 'utils/text_formatting';
-import { isMobile } from 'utils/user_agent';
 
 import type { GlobalState } from 'types/store';
 
@@ -61,6 +61,17 @@ export function fromAutoResponder(post: Post): boolean {
 
 export function isFromWebhook(post: Post): boolean {
 	return post.props?.from_webhook === 'true';
+}
+
+export function isSilentNotification(post: Post): boolean {
+    return post.props?.silent_notification === true;
+}
+
+export function isNotificationSuppressed(post: Post): boolean {
+    if (post.props?.force_notification) {
+        return false;
+    }
+    return isSilentNotification(post);
 }
 
 export function isFromBot(post: Post): boolean {
@@ -86,6 +97,11 @@ export function getImageSrc(src: string, hasImageProxy = false): string {
 	if (!src) {
 		return src;
 	}
+
+    // Don't proxy base64-encoded images
+    if (src.startsWith('data:image/')) {
+        return src;
+    }
 
 	const imageAPI = Client4.getBaseRoute() + '/image?url=';
 
@@ -232,11 +248,15 @@ export function shouldFocusMainTextbox(e: React.KeyboardEvent | KeyboardEvent, a
 		return false;
 	}
 
-	// Do not focus if we're currently focused on a textarea or input
+    // Do not focus if we're currently focused on a textarea, an input, or a
+    // rich text editor
 	const keepFocusTags = ['TEXTAREA', 'INPUT'];
 	if (!activeElement || keepFocusTags.includes(activeElement.tagName)) {
 		return false;
 	}
+    if (activeElement.closest('[contenteditable="true"]')) {
+        return false;
+    }
 
 	// Focus if it is an attempted paste
 	if (Keyboard.cmdOrCtrlPressed(e) && Keyboard.isKeyPressed(e, Constants.KeyCodes.V)) {
@@ -329,10 +349,7 @@ export function postMessageOnKeyPress(
 		return { allowSending: false, ignoreKeyPress: true };
 	}
 
-	if (
-		message.trim() === '' ||
-		!(sendMessageOnCtrlEnter || sendCodeBlockOnCtrlEnter)
-	) {
+    if (!(sendMessageOnCtrlEnter || sendCodeBlockOnCtrlEnter)) {
 		return { allowSending: true };
 	}
 
@@ -341,6 +358,9 @@ export function postMessageOnKeyPress(
 	if (sendMessageOnCtrlEnter) {
 		return sendOnCtrlEnter(message, ctrlOrMetaKeyPressed, true, caretPosition);
 	} else if (sendCodeBlockOnCtrlEnter) {
+        if (message.trim() === '') {
+            return {allowSending: true};
+        }
 		return sendOnCtrlEnter(message, ctrlOrMetaKeyPressed, false, caretPosition);
 	}
 
@@ -462,12 +482,12 @@ export function makeGetMentionsFromMessage(): (state: GlobalState, post: Post) =
 	);
 }
 
-export function usePostAriaLabel(post: Post | undefined) {
+export function usePostAriaLabel(post: Post | undefined, autotranslated: boolean) {
 	const intl = useIntl();
 
-	const getDisplayName = useMemo(makeGetDisplayName, []);
-	const getReactionsForPost = useMemo(makeGetReactionsForPost, []);
-	const getMentionsFromMessage = useMemo(makeGetMentionsFromMessage, []);
+    const getDisplayName = useMemo(() => makeGetDisplayName(), []);
+    const getReactionsForPost = useMemo(() => makeGetReactionsForPost(), []);
+    const getMentionsFromMessage = useMemo(() => makeGetMentionsFromMessage(), []);
 
 	const createAriaLabelMemoized = memoizeResult(createAriaLabelForPost);
 
@@ -492,17 +512,26 @@ export function usePostAriaLabel(post: Post | undefined) {
 			emojiMap,
 			mentions,
 			teammateNameDisplaySetting,
+            autotranslated,
 		);
 	});
 }
 
-export function createAriaLabelForPost(post: Post, author: string, isFlagged: boolean, reactions: Record<string, Reaction> | undefined, intl: IntlShape, emojiMap: EmojiMap, mentions: Record<string, UserProfile>, teammateNameDisplaySetting: string): string {
+export function createAriaLabelForPost(post: Post, author: string, isFlagged: boolean, reactions: Record<string, Reaction> | undefined, intl: IntlShape, emojiMap: EmojiMap, mentions: Record<string, UserProfile>, teammateNameDisplaySetting: string, autotranslated: boolean): string {
 	const { formatMessage, formatTime, formatDate } = intl;
 
-	let message = post.state === Posts.POST_DELETED ? formatMessage({
+    const translation = getPostTranslation(post, intl.locale);
+    const isTranslated = autotranslated && post.type === '' && translation?.state === 'ready';
+    let message = post.message || '';
+
+    if (post.state === Posts.POST_DELETED) {
+        message = formatMessage({
 		id: 'post_body.deleted',
 		defaultMessage: '(message deleted)',
-	}) : post.message || '';
+        });
+    } else if (isTranslated) {
+        message = getPostTranslatedMessage(message, translation);
+    }
 	let match;
 
 	// Match all the shorthand forms of emojis first
@@ -620,6 +649,25 @@ export function createAriaLabelForPost(post: Post, author: string, isFlagged: bo
 		});
 	}
 
+    if (isTranslated) {
+        const originalLanguage = translation?.source_lang || 'unknown';
+        const originalLanguageName = originalLanguage === 'unknown' ? intl.formatMessage({
+            id: 'show_translation.unknown_language',
+            defaultMessage: 'Unknown',
+        }) : intl.formatDisplayName(originalLanguage, {type: 'language'});
+
+        const targetLanguageName = intl.formatDisplayName(intl.locale, {type: 'language'});
+
+        ariaLabel += formatMessage({
+            id: 'post.ariaLabel.translated',
+            defaultMessage: ', translated from {sourceLanguage} to {targetLanguage}',
+        },
+        {
+            sourceLanguage: originalLanguageName,
+            targetLanguage: targetLanguageName,
+        });
+    }
+
 	return ariaLabel;
 }
 
@@ -640,6 +688,10 @@ export function areConsecutivePostsBySameUser(post: Post, previousPost: Post): b
 	if (!(post && previousPost)) {
 		return false;
 	}
+
+    if (hasAiGeneratedMetadata(post)) {
+        return false;
+    }
 
 	const sameUser = post.user_id === previousPost.user_id;
 	const withinTimeWindow = post.create_at - previousPost.create_at <= Posts.POST_COLLAPSE_TIMEOUT;
@@ -876,4 +928,13 @@ export function hasRequestedPersistentNotifications(priority?: PostPriorityMetad
 		priority?.priority === PostPriority.URGENT &&
 		priority?.persistent_notifications
 	);
+}
+
+export function getPostTranslation(post: Post, locale: string): PostTranslation | undefined {
+    const normalizedLocale = locale.split('-')[0];
+    return post.metadata?.translations?.[normalizedLocale];
+}
+
+export function getPostTranslatedMessage(originalMessage: string, translation: PostTranslation): string {
+    return translation.object?.message || originalMessage;
 }

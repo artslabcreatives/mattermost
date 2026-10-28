@@ -9,6 +9,7 @@ import * as GlobalActions from 'actions/global_actions';
 
 import testConfigureStore from 'packages/mattermost-redux/test/test_store';
 import { renderWithContext, waitFor } from 'tests/react_testing_utils';
+import * as BrowserUtils from 'utils/browser_utils';
 import { StoragePrefixes } from 'utils/constants';
 
 import { handleLoginLogoutSignal, redirectToOnboardingOrDefaultTeam } from './actions';
@@ -24,6 +25,11 @@ jest.mock('./performance_reporter_controller', () => () => <div />);
 
 jest.mock('utils/utils', () => ({
 	applyTheme: jest.fn(),
+    makeIsEligibleForClick: jest.fn(),
+}));
+
+jest.mock('utils/browser_utils', () => ({
+    reloadPage: jest.fn(),
 }));
 
 jest.mock('actions/global_actions', () => ({
@@ -31,10 +37,7 @@ jest.mock('actions/global_actions', () => ({
 }));
 
 jest.mock('mattermost-redux/actions/general', () => ({
-	getFirstAdminSetupComplete: jest.fn(() => Promise.resolve({
-		type: 'FIRST_ADMIN_COMPLETE_SETUP_RECEIVED',
-		data: true,
-	})),
+    ...jest.requireActual('mattermost-redux/actions/general'),
 	setUrl: () => { },
 }));
 
@@ -68,11 +71,8 @@ describe('components/Root', () => {
 					isMeRequested: false,
 				});
 			}),
-			getFirstAdminSetupComplete: jest.fn(),
-			getProfiles: jest.fn(),
 			loadRecentlyUsedCustomEmojis: jest.fn(),
 			migrateRecentEmojis: jest.fn(),
-			registerCustomPostRenderer: jest.fn(),
 			initializeProducts: jest.fn(),
 			...bindActionCreators({
 				handleLoginLogoutSignal,
@@ -93,11 +93,9 @@ describe('components/Root', () => {
 	};
 
 	let originalMatchMedia: (query: string) => MediaQueryList;
-	let originalReload: () => void;
 
 	beforeAll(() => {
 		originalMatchMedia = window.matchMedia;
-		originalReload = window.location.reload;
 
 		Object.defineProperty(window, 'matchMedia', {
 			writable: true,
@@ -106,22 +104,17 @@ describe('components/Root', () => {
 				media: query,
 			})),
 		});
-
-		Object.defineProperty(window.location, 'reload', {
-			configurable: true,
-			writable: true,
-		});
-
-		window.location.reload = jest.fn();
 	});
 
 	afterEach(() => {
 		jest.restoreAllMocks();
+
+        // Reset the reloadPage mock after each test
+        (BrowserUtils.reloadPage as jest.Mock).mockClear();
 	});
 
 	afterAll(() => {
 		window.matchMedia = originalMatchMedia;
-		window.location.reload = originalReload;
 	});
 
 	test('should load config and license on mount and redirect to sign-up page', async () => {
@@ -228,7 +221,7 @@ describe('components/Root', () => {
 		window.dispatchEvent(new Event('focus'));
 
 		await waitFor(() => {
-			expect(window.location.reload).toHaveBeenCalledTimes(1);
+            expect(BrowserUtils.reloadPage).toHaveBeenCalledTimes(1);
 		});
 	});
 

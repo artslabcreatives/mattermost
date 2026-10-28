@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {type JSX} from 'react';
 import { FormattedMessage } from 'react-intl';
 import { useDispatch } from 'react-redux';
 
@@ -15,9 +15,8 @@ import { ModalIdentifiers } from 'utils/constants';
 type Props = {
 	onTryAgain?: () => void;
 	title?: JSX.Element;
-	subtitle?: JSX.Element;
 	buttonText?: JSX.Element;
-}
+};
 
 export default function StartTrialFormModalResult(props: Props) {
 	const dispatch = useDispatch();

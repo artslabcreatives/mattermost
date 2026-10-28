@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {type JSX} from 'react';
 import { FormattedMessage } from 'react-intl';
 
 import type { ChannelMembership } from '@mattermost/types/channels';
@@ -292,7 +292,6 @@ export default class UserGrid extends React.PureComponent<Props, State> {
 				columns={columns}
 				rows={rows}
 				loading={this.state.loading || this.props.loading}
-				page={this.state.page}
 				nextPage={this.nextPage}
 				previousPage={this.previousPage}
 				startCount={startCount}

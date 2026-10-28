@@ -18,7 +18,7 @@ import ChannelPencilIcon from './channel_pencil_icon';
 
 type OwnProps = {
 	id: Channel['id'];
-}
+};
 
 function hasDraft(draft: PostDraft | null, id: Channel['id'], currentChannelId?: string): boolean {
 	if (draft === null) {

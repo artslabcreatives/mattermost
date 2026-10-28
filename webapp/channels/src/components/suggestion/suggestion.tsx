@@ -30,10 +30,15 @@ const SuggestionContainer = React.forwardRef<HTMLLIElement, SuggestionProps<unkn
 		onMouseMove,
 
 		tabIndex = -1,
+        className,
 		...otherProps
 	} = props;
 
 	Reflect.deleteProperty(otherProps, 'item');
+
+    // Suggestions are usually connected, and a connect() without mapDispatchToProps injects a
+    // `dispatch` prop that the suggestion then forwards here along with the rest of its props.
+    Reflect.deleteProperty(otherProps, 'dispatch');
 
 	const handleClick = useCallback((e: React.MouseEvent) => {
 		e.preventDefault();
@@ -50,8 +55,9 @@ const SuggestionContainer = React.forwardRef<HTMLLIElement, SuggestionProps<unkn
 	return (
 		<li
 			ref={ref}
-			className={classNames('suggestion-list__item', { 'suggestion--selected': isSelection })}
+            className={classNames('suggestion-list__item', {'suggestion--selected': isSelection}, className)}
 			role='option'
+            data-testid={isSelection ? 'suggestion-selected' : undefined}
 			onClick={handleClick}
 			onMouseMove={handleMouseMove}
 			tabIndex={tabIndex}

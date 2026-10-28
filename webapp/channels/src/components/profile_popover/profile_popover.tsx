@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { getCurrentChannelId, getCurrentUserId } from 'mattermost-redux/selectors/entities/common';
-import { getLicense, getFeatureFlagValue } from 'mattermost-redux/selectors/entities/general';
+import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import { getCurrentRelativeTeamUrl, getCurrentTeamId } from 'mattermost-redux/selectors/entities/teams';
 import { getCurrentTimezone } from 'mattermost-redux/selectors/entities/timezone';
 import { getStatusForUserId, getUser } from 'mattermost-redux/selectors/entities/users';
@@ -16,8 +16,6 @@ import { closeModal } from 'actions/views/modals';
 import { getMembershipForEntities } from 'actions/views/profile_popover';
 import { getSelectedPost } from 'selectors/rhs';
 import { getIsMobileView } from 'selectors/views/browser';
-
-import { usePluginVisibilityInSharedChannel } from 'components/common/hooks/usePluginVisibilityInSharedChannel';
 
 import Pluggable from 'plugins/pluggable';
 import { getHistory } from 'utils/browser_history';
@@ -77,7 +75,6 @@ const ProfilePopover = ({
 	const user = useSelector((state: GlobalState) => getUser(state, userId));
 	const currentTeamId = useSelector((state: GlobalState) => getCurrentTeamId(state));
 	const channelId = useSelector((state: GlobalState) => (channelIdProp || getDefaultChannelId(state)));
-	const pluginItemsVisible = usePluginVisibilityInSharedChannel(channelId);
 	const isMobileView = useSelector(getIsMobileView);
 	const teamUrl = useSelector(getCurrentRelativeTeamUrl);
 	const modals = useSelector((state: GlobalState) => state.views.modals);
@@ -86,7 +83,7 @@ const ProfilePopover = ({
 	const currentUserId = useSelector(getCurrentUserId);
 	const license = useSelector((state: GlobalState) => getLicense(state));
 	const isEnterprise = isEnterpriseLicense(license);
-	const enableCustomProfileAttributes = useSelector((state: GlobalState) => getFeatureFlagValue(state, 'CustomProfileAttributes') === 'true' && isEnterprise && !fromWebhook);
+    const enableCustomProfileAttributes = isEnterprise && !fromWebhook;
 
 	const [loadingDMChannel, setLoadingDMChannel] = useState<string>();
 
@@ -165,6 +162,7 @@ const ProfilePopover = ({
 			<ProfilePopoverTitle
 				channelId={channelId}
 				isBot={user.is_bot}
+                isImportedInactive={user.props?.importedInactive === 'true'}
 				returnFocus={handleReturnFocus}
 				roles={user.roles}
 				userId={user.id}
@@ -194,7 +192,6 @@ const ProfilePopover = ({
 						userProfile={user}
 					/>
 				)}
-				{pluginItemsVisible && (
 					<div className='user-profile-popover-pluggables'>
 						<Pluggable
 							pluggableName={PLUGGABLE_COMPONENT_NAME_PROFILE_POPOVER}
@@ -204,7 +201,6 @@ const ProfilePopover = ({
 							fromWebhook={fromWebhook}
 						/>
 					</div>
-				)}
 
 				{enableCustomProfileAttributes && !user.is_bot && (
 					<ProfilePopoverCustomAttributes
@@ -227,7 +223,10 @@ const ProfilePopover = ({
 					hide={hide}
 				/>
 			</div>
-			<div className='user-profile-popover-bottom-row'>
+            <div
+                className='user-profile-popover-bottom-row'
+                data-testid='user-profile-popover-bottom-row'
+            >
 				<hr className='user-popover__bottom-row-hr' />
 				<ProfilePopoverOverrideDisclaimer
 					haveOverrideProp={haveOverrideProp}
@@ -252,14 +251,12 @@ const ProfilePopover = ({
 					user={user}
 					hide={hide}
 				/>
-				{pluginItemsVisible && (
 					<Pluggable
 						pluggableName='PopoverUserActions'
 						user={user}
 						hide={hide}
 						status={hideStatus ? null : status}
 					/>
-				)}
 			</div>
 		</div>
 	);

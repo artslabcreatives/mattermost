@@ -1,32 +1,29 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import { shallow } from 'enzyme';
 import React from 'react';
 
-import type { UsersState } from '@mattermost/types/users';
-
+import {savePreferences} from 'mattermost-redux/actions/preferences';
 import Permissions from 'mattermost-redux/constants/permissions';
 
-import { mountWithIntl } from 'tests/helpers/intl-test-helper';
+import {renderWithContext, screen, userEvent} from 'tests/react_testing_utils';
 import { WindowSizes } from 'utils/constants';
-
-import type { GlobalState } from 'types/store';
 
 import AddChannelsCtaButton from './add_channels_cta_button';
 
+jest.mock('mattermost-redux/actions/preferences', () => ({
+    savePreferences: jest.fn(() => ({type: 'MOCK_SAVE_PREFERENCES'})),
+}));
+
 const mockDispatch = jest.fn();
-let mockState: GlobalState;
 
 jest.mock('react-redux', () => ({
-	...jest.requireActual('react-redux') as typeof import('react-redux'),
-	useSelector: (selector: (state: typeof mockState) => unknown) => selector(mockState),
+    ...jest.requireActual('react-redux'),
 	useDispatch: () => mockDispatch,
 }));
 
 describe('components/new_channel_modal', () => {
-	beforeEach(() => {
-		mockState = {
+    const initialState = {
 			entities: {
 				general: {
 					config: {},
@@ -35,10 +32,10 @@ describe('components/new_channel_modal', () => {
 					currentChannelId: 'current_channel_id',
 					channels: {},
 					roles: {
-						current_channel_id: [
+                    current_channel_id: new Set([
 							'channel_user',
 							'channel_admin',
-						],
+                    ]),
 					},
 				},
 				teams: {
@@ -51,7 +48,7 @@ describe('components/new_channel_modal', () => {
 					teams: {
 						current_team_id: {
 							id: 'current_team_id',
-							description: 'Curent team description',
+                        description: 'Current team description',
 							name: 'current-team',
 						},
 					},
@@ -87,19 +84,25 @@ describe('components/new_channel_modal', () => {
 					windowSize: WindowSizes.DESKTOP_VIEW,
 				},
 			},
-		} as unknown as GlobalState;
+    };
+
+    beforeEach(() => {
+        mockDispatch.mockClear();
+        (savePreferences as jest.Mock).mockClear();
 	});
 
 	test('should match snapshot', () => {
-		expect(
-			shallow(
-				<AddChannelsCtaButton />,
-			),
-		).toMatchSnapshot();
+        const {container} = renderWithContext(<AddChannelsCtaButton/>, initialState);
+
+        expect(container).toMatchSnapshot();
 	});
 
 	test('should match snapshot when user has only join channel permissions', () => {
-		const userWithJoinChannelsPermission = {
+        const joinOnlyState = {
+            ...initialState,
+            entities: {
+                ...initialState.entities,
+                users: {
 			currentUserId: 'current_user_id',
 			profiles: {
 				current_user_id: {
@@ -107,53 +110,69 @@ describe('components/new_channel_modal', () => {
 					roles: 'system_user_join_permissions',
 				},
 			},
-		} as unknown as UsersState;
-		mockState = { ...mockState, entities: { ...mockState.entities, users: userWithJoinChannelsPermission } };
+                },
+            },
+        };
 
-		expect(
-			shallow(
-				<AddChannelsCtaButton />,
-			),
-		).toMatchSnapshot();
+        const {container} = renderWithContext(<AddChannelsCtaButton/>, joinOnlyState);
+
+        expect(container).toMatchSnapshot();
 	});
 
 	test('should find the add channels button when user has permissions', () => {
-		const wrapper = mountWithIntl(
-			<AddChannelsCtaButton />,
-		);
-		expect(wrapper.find('#addChannelsCta').prop('aria-haspopup')).toBeTruthy();
+        renderWithContext(<AddChannelsCtaButton/>, initialState);
+
+        const button = screen.getByRole('button', {name: /add channels/i});
+        expect(button).toHaveAttribute('aria-haspopup', 'true');
 	});
 
 	test('should return nothing when user does not have permissions', () => {
-		const guestUser = {
+        const guestState = {
+            ...initialState,
+            entities: {
+                ...initialState.entities,
+                users: {
 			currentUserId: 'guest_user_id',
 			profiles: {
-				user_id: {
+                        guest_user_id: {
 					id: 'guest_user_id',
-					roles: 'team_role',
+                            roles: 'guest_user',
 				},
 			},
-		} as unknown as UsersState;
-		mockState = { ...mockState, entities: { ...mockState.entities, users: guestUser } };
+                },
+            },
+        };
 
-		const wrapper = mountWithIntl(
-			<AddChannelsCtaButton />,
-		);
-		expect(wrapper.find('.AddChannelsCtaDropdown').exists()).toBeFalsy();
+        const {container} = renderWithContext(<AddChannelsCtaButton/>, guestState);
+
+        expect(container.querySelector('.AddChannelsCtaDropdown')).not.toBeInTheDocument();
 	});
 
-	test('should fire dispatch to save preferences when button is clicked', () => {
-		const wrapper = mountWithIntl(
-			<AddChannelsCtaButton />,
+    test('should fire dispatch to save preferences when button is clicked', async () => {
+        renderWithContext(<AddChannelsCtaButton/>, initialState);
+
+        const button = screen.getByRole('button', {name: /add channels/i});
+        expect(savePreferences).not.toHaveBeenCalled();
+
+        await userEvent.click(button);
+
+        expect(savePreferences).toHaveBeenCalledWith(
+            'current_user_id',
+            [{
+                category: 'touched',
+                user_id: 'current_user_id',
+                name: 'add_channels_cta',
+                value: 'true',
+            }],
 		);
-		const button = wrapper.find('#addChannelsCta');
-		expect(mockDispatch).not.toHaveBeenCalled();
-		button.simulate('click');
-		expect(mockDispatch).toHaveBeenCalled();
 	});
 
 	test('should not display as a Cta Dropdown when user only has permissions to join channels ', () => {
-		const userWithJoinChannelsPermission = {
+        const joinOnlyState = {
+            ...initialState,
+            entities: {
+                ...initialState.entities,
+                users: {
 			currentUserId: 'current_user_id',
 			profiles: {
 				current_user_id: {
@@ -161,27 +180,22 @@ describe('components/new_channel_modal', () => {
 					roles: 'system_user_join_permissions',
 				},
 			},
-		} as unknown as UsersState;
-		mockState = { ...mockState, entities: { ...mockState.entities, users: userWithJoinChannelsPermission } };
+                },
+            },
+        };
 
-		const wrapper = mountWithIntl(
-			<AddChannelsCtaButton />,
-		);
+        const {container} = renderWithContext(<AddChannelsCtaButton/>, joinOnlyState);
 
-		// do not find the menu
-		expect(wrapper.find('.AddChannelsCtaDropdown').exists()).toBeFalsy();
-
-		// only find the button
-		const button = wrapper.find('button#addChannelsCta');
-		expect(button.exists()).toBeTruthy();
-
-		button.simulate('click');
-
-		// when clicked show the browse channels modal
+        expect(container.querySelector('.AddChannelsCtaDropdown')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', {name: /add channels/i})).toBeInTheDocument();
 	});
 
 	test('should still display as a Cta Dropdown when user has permissions to create at least one form of channel', () => {
-		const userWithJoinChannelsPermission = {
+        const createPublicState = {
+            ...initialState,
+            entities: {
+                ...initialState.entities,
+                users: {
 			currentUserId: 'current_user_id',
 			profiles: {
 				current_user_id: {
@@ -189,13 +203,13 @@ describe('components/new_channel_modal', () => {
 					roles: 'system_user_create_public_permissions',
 				},
 			},
-		} as unknown as UsersState;
-		mockState = { ...mockState, entities: { ...mockState.entities, users: userWithJoinChannelsPermission } };
+                },
+            },
+        };
 
-		const wrapper = mountWithIntl(
-			<AddChannelsCtaButton />,
-		);
+        renderWithContext(<AddChannelsCtaButton/>, createPublicState);
 
-		expect(wrapper.find('#addChannelsCta').prop('aria-haspopup')).toBeTruthy();
+        const button = screen.getByRole('button', {name: /add channels/i});
+        expect(button).toHaveAttribute('aria-haspopup', 'true');
 	});
 });
