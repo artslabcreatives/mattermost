@@ -4,7 +4,6 @@
 package web
 
 import (
-	b64 "encoding/base64"
 	"html"
 	"net/http"
 	"strconv"
@@ -17,6 +16,11 @@ import (
 )
 
 const maxSAMLResponseSize = 2 * 1024 * 1024 // 2MB
+
+// maxRelayStatePropsSize is a sanity bound on the signed relayProps payload size. It isn't tied
+// to any storage constraint (RelayState is no longer persisted) - it just keeps a maliciously
+// large redirect_to from bloating the RelayState round-tripped through the IdP indefinitely.
+const maxRelayStatePropsSize = 4096
 
 func (w *Web) InitSaml() {
 	w.MainRouter.Handle("/login/sso/saml", w.APIHandler(loginWithSaml)).Methods(http.MethodGet)
@@ -86,7 +90,12 @@ func loginWithSaml(c *Context, w http.ResponseWriter, r *http.Request) {
 	relayProps[model.UserAuthServiceIsMobile] = strconv.FormatBool(isMobile)
 
 	if len(relayProps) > 0 {
-		relayState = b64.StdEncoding.EncodeToString([]byte(model.MapToJSON(relayProps)))
+		if size := len(model.MapToJSON(relayProps)); size > maxRelayStatePropsSize {
+			c.Err = model.NewAppError("loginWithSaml", "api.user.saml.relay_state_too_long.app_error", nil, "", http.StatusBadRequest)
+			return
+		}
+
+		relayState = model.SignSamlRelayState(c.App.SamlRelayStateSigningKey(), relayProps)
 	}
 
 	data, err := samlInterface.BuildRequest(c.AppContext, relayState)
@@ -112,14 +121,12 @@ func completeSaml(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	relayProps := make(map[string]string)
 	if relayState != "" {
-		stateStr := ""
-		b, err := b64.StdEncoding.DecodeString(relayState)
+		props, err := model.VerifySamlRelayState(c.App.SamlRelayStateSigningKey(), relayState)
 		if err != nil {
 			c.Err = model.NewAppError("completeSaml", "api.user.authorize_oauth_user.invalid_state.app_error", nil, "", http.StatusFound).Wrap(err)
 			return
 		}
-		stateStr = string(b)
-		relayProps = model.MapFromJSON(strings.NewReader(stateStr))
+		relayProps = props
 	}
 
 	auditRec := c.MakeAuditRecord(model.AuditEventCompleteSaml, model.AuditStatusFail)
@@ -210,6 +217,7 @@ func completeSaml(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	auditRec.AddMeta("obtained_user_id", user.Id)
+	auditRec.AddMeta("obtained_user_email", user.Email)
 	c.LogAuditWithUserId(user.Id, "obtained user")
 
 	desktopToken := relayProps["desktop_token"]
@@ -261,13 +269,17 @@ func completeSaml(c *Context, w http.ResponseWriter, r *http.Request) {
 
 		redirectURL = utils.AppendQueryParamsToURL(redirectURL, map[string]string{
 			"login_code": code.Token,
+			"srv":        c.App.GetSiteURL(), // Server URL for mobile client verification
 		})
 		utils.RenderMobileAuthComplete(w, redirectURL)
 		return
 	}
 
 	// Legacy: create a session and attach tokens (web/mobile without SAML code exchange)
-	session, err := c.App.DoLogin(c.AppContext, w, r, user, "", isMobile, false, true)
+	session, err := c.App.DoLogin(c.AppContext, w, r, user, model.LoginOptions{
+		IsMobile: isMobile,
+		IsSaml:   true,
+	})
 	if err != nil {
 		handleError(err)
 		return
@@ -281,13 +293,12 @@ func completeSaml(c *Context, w http.ResponseWriter, r *http.Request) {
 	if hasRedirectURL {
 		if isMobile {
 			// Mobile clients with redirect url support
-			// Legacy mobile path: return tokens only when SAML code exchange was not requested
-			if samlChallenge == "" {
-				redirectURL = utils.AppendQueryParamsToURL(redirectURL, map[string]string{
-					model.SessionCookieToken: c.AppContext.Session().Token,
-					model.SessionCookieCsrf:  c.AppContext.Session().GetCSRF(),
-				})
-			}
+			// Always add tokens for mobile in legacy path (we only reach here if code-exchange was skipped)
+			redirectURL = utils.AppendQueryParamsToURL(redirectURL, map[string]string{
+				model.SessionCookieToken: c.AppContext.Session().Token,
+				model.SessionCookieCsrf:  c.AppContext.Session().GetCSRF(),
+				"srv":                    c.App.GetSiteURL(), // Server URL for mobile client verification (config-based, not request Host)
+			})
 			utils.RenderMobileAuthComplete(w, redirectURL)
 		} else {
 			http.Redirect(w, r, redirectURL, http.StatusFound)

@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/html/charset"
 
+	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 	"github.com/mattermost/mattermost/server/v8/channels/app/oembed"
 )
@@ -55,12 +56,14 @@ func (a *App) parseOpenGraphMetadata(requestURL string, body io.Reader, contentT
 	body = forceHTMLEncodingToUTF8(io.LimitReader(body, MaxOpenGraphResponseSize), contentType)
 
 	if err := og.ProcessHTML(body); err != nil {
-		mlog.Warn("parseOpenGraphMetadata processing failed", mlog.String("requestURL", requestURL), mlog.Err(err))
+		mlog.Warn("parseOpenGraphMetadata processing failed", mlog.String("request_url", requestURL), mlog.Err(err))
 	}
 
 	makeOpenGraphURLsAbsolute(og, requestURL)
 
 	openGraphDecodeHTMLEntities(og)
+
+	og = filterSVGImagesFromOpenGraph(og)
 
 	// If image proxy enabled modify open graph data to feed though proxy
 	if toProxyURL := a.ImageProxyAdder(); toProxyURL != nil {
@@ -78,7 +81,7 @@ func (a *App) parseOpenGraphMetadata(requestURL string, body io.Reader, contentT
 func forceHTMLEncodingToUTF8(body io.Reader, contentType string) io.Reader {
 	r, err := charset.NewReader(body, contentType)
 	if err != nil {
-		mlog.Warn("forceHTMLEncodingToUTF8 failed to convert", mlog.String("contentType", contentType), mlog.Err(err))
+		mlog.Warn("forceHTMLEncodingToUTF8 failed to convert", mlog.String("content_type", contentType), mlog.Err(err))
 		return body
 	}
 	return r
@@ -87,7 +90,7 @@ func forceHTMLEncodingToUTF8(body io.Reader, contentType string) io.Reader {
 func makeOpenGraphURLsAbsolute(og *opengraph.OpenGraph, requestURL string) {
 	parsedRequestURL, err := url.Parse(requestURL)
 	if err != nil {
-		mlog.Warn("makeOpenGraphURLsAbsolute failed to parse url", mlog.String("requestURL", requestURL), mlog.Err(err))
+		mlog.Warn("makeOpenGraphURLsAbsolute failed to parse url", mlog.String("request_url", requestURL), mlog.Err(err))
 		return
 	}
 
@@ -98,7 +101,7 @@ func makeOpenGraphURLsAbsolute(og *opengraph.OpenGraph, requestURL string) {
 
 		parsedResultURL, err := url.Parse(resultURL)
 		if err != nil {
-			mlog.Warn("makeOpenGraphURLsAbsolute failed to parse result", mlog.String("requestURL", requestURL), mlog.Err(err))
+			mlog.Warn("makeOpenGraphURLsAbsolute failed to parse result", mlog.String("request_url", requestURL), mlog.Err(err))
 			return resultURL
 		}
 
@@ -143,6 +146,16 @@ func openGraphDataWithProxyAddedToImageURLs(ogdata *opengraph.OpenGraph, toProxy
 	return ogdata
 }
 
+// filterSVGImagesFromOpenGraph removes SVG images from OpenGraph metadata.
+func filterSVGImagesFromOpenGraph(og *opengraph.OpenGraph) *opengraph.OpenGraph {
+	if og == nil || len(og.Images) == 0 {
+		return og
+	}
+
+	og.Images = model.FilterSVGImages(og.Images)
+	return og
+}
+
 func openGraphDecodeHTMLEntities(og *opengraph.OpenGraph) {
 	og.Title = html.UnescapeString(og.Title)
 	og.Description = html.UnescapeString(og.Description)
@@ -168,6 +181,8 @@ func (a *App) parseOpenGraphFromOEmbed(requestURL string, body io.Reader) (*open
 			Height: uint64(oEmbedResponse.ThumbnailHeight),
 		})
 	}
+
+	og = filterSVGImagesFromOpenGraph(og)
 
 	if toProxyURL := a.ImageProxyAdder(); toProxyURL != nil {
 		og = openGraphDataWithProxyAddedToImageURLs(og, toProxyURL)

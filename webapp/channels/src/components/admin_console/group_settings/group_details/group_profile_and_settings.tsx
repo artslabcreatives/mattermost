@@ -58,7 +58,7 @@ type GroupProfileAndSettingsProps = {
 	groupIconUrl?: string | null;
 	onIconUploadClick?: () => void;
 	onIconRemoveClick?: () => void;
-	fileInputRef?: React.RefObject<HTMLInputElement>;
+	fileInputRef?: React.RefObject<HTMLInputElement | null>;
 	onIconFileChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 };
 

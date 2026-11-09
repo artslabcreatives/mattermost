@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
-import React, { useState, useEffect, useRef } from 'react';
+import React, {useState, useEffect, useRef, type JSX} from 'react';
 import type { MessageDescriptor } from 'react-intl';
 import { useIntl } from 'react-intl';
 import ReactSelect, { components } from 'react-select';
@@ -15,9 +15,9 @@ import { formatAsString } from 'utils/i18n';
 type OptionType = {
 	label: string | JSX.Element;
 	value: string;
-}
+};
 
-type Props<T extends OptionType> = Omit<SelectProps<T>, 'onChange' | 'onInputChange' | 'isMulti' | 'placeholder'> & {
+type Props<T extends OptionType> = Omit<SelectProps<T, false>, 'onChange' | 'onInputChange' | 'isMulti' | 'placeholder'> & {
 	value: T;
 	legend?: string | MessageDescriptor;
 	error?: string;
@@ -233,7 +233,7 @@ const DropdownInputHybrid = <T extends OptionType = OptionType>(props: Props<T>)
 						placeholder={focused ? '' : formatAsString(intl.formatMessage, placeholder)}
 						components={{
 							IndicatorsContainer,
-							Option: Option as React.ComponentType<OptionProps<T, false, GroupBase<T>>>,
+                            Option,
 							Control,
 						}}
 						className={classNames('Input', className, { Input__focus: showLegend })}

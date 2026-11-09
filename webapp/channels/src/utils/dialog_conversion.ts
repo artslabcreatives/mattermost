@@ -1,13 +1,12 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type { AppForm, AppField, AppFormValue, AppSelectOption, AppFormValues } from '@mattermost/types/apps';
+import {isAppSelectOption, type AppForm, type AppField, type AppFormValue, type AppSelectOption, type AppFormValues, type DateTimeConfig} from '@mattermost/types/apps';
 import type { DialogElement } from '@mattermost/types/integrations';
 
 import { AppFieldTypes } from 'mattermost-redux/constants/apps';
 
 import { stringToMoment } from 'utils/date_utils';
-import { escapeHtml } from 'utils/text_formatting';
 
 // Dialog element types (from legacy Interactive Dialog spec)
 export const DialogElementTypes = {
@@ -18,6 +17,11 @@ export const DialogElementTypes = {
 	RADIO: 'radio',
 	DATE: 'date',
 	DATETIME: 'datetime',
+    COLLAPSIBLE: 'collapsible',
+    CHECKBOX_GROUP: 'checkbox_group',
+    CHECKBOX_MATRIX: 'checkbox_matrix',
+    FILE: 'file',
+    ACTION_BUTTON: 'action_button',
 } as const;
 
 // Dialog element length limits (server-side validation constraints)
@@ -82,13 +86,6 @@ export type ConversionResult = {
 };
 
 /**
- * Sanitize string input to prevent XSS attacks (only for HTML content)
- */
-export function sanitizeString(input: unknown): string {
-	return escapeHtml(String(input));
-}
-
-/**
  * Validate individual dialog element (logs warnings but doesn't block)
  */
 export function validateDialogElement(element: DialogElement, index: number, options: ConversionOptions): ValidationError[] {
@@ -146,8 +143,8 @@ export function validateDialogElement(element: DialogElement, index: number, opt
 		});
 	}
 
-	// Validation for select/radio options
-	if ((element.type === DialogElementTypes.SELECT || element.type === DialogElementTypes.RADIO) && element.options) {
+    // Validation for select/radio/checkbox_group options
+    if ((element.type === DialogElementTypes.SELECT || element.type === DialogElementTypes.RADIO || element.type === DialogElementTypes.CHECKBOX_GROUP) && element.options) {
 		for (let optIndex = 0; optIndex < element.options.length; optIndex++) {
 			const option = element.options[optIndex];
 
@@ -239,6 +236,16 @@ export function getFieldType(element: DialogElement): string | null {
 			return AppFieldTypes.DATE;
 		case DialogElementTypes.DATETIME:
 			return AppFieldTypes.DATETIME;
+    case DialogElementTypes.COLLAPSIBLE:
+        return AppFieldTypes.COLLAPSIBLE;
+    case DialogElementTypes.CHECKBOX_GROUP:
+        return AppFieldTypes.CHECKBOX_GROUP;
+    case DialogElementTypes.CHECKBOX_MATRIX:
+        return AppFieldTypes.CHECKBOX_MATRIX;
+    case DialogElementTypes.FILE:
+        return AppFieldTypes.FILE;
+    case DialogElementTypes.ACTION_BUTTON:
+        return AppFieldTypes.ACTION_BUTTON;
 		default:
 			return null; // Skip unknown field types
 	}
@@ -249,8 +256,15 @@ export function getFieldType(element: DialogElement): string | null {
  */
 export function getDefaultValue(element: DialogElement): AppFormValue {
 	if (element.default === null || element.default === undefined) {
+        if (element.type === DialogElementTypes.CHECKBOX_GROUP || element.type === DialogElementTypes.CHECKBOX_MATRIX) {
+            return [];
+        }
 		return null;
 	}
+
+    if (element.default === '' && (element.type === DialogElementTypes.CHECKBOX_GROUP || element.type === DialogElementTypes.CHECKBOX_MATRIX)) {
+        return [];
+    }
 
 	switch (element.type) {
 		case DialogElementTypes.BOOL: {
@@ -261,10 +275,28 @@ export function getDefaultValue(element: DialogElement): AppFormValue {
 			return boolString === 'true' || boolString === '1' || boolString === 'yes';
 		}
 
-		case DialogElementTypes.SELECT:
 		case DialogElementTypes.RADIO: {
+        // Radio values are always plain strings (RadioSetting.onChange returns e.target.value).
+        // Normalize to string from the start so the value shape never changes after user interaction.
+        if (element.options && element.default) {
+            const match = element.options.find((opt) => opt.value === element.default);
+            return match ? match.value : null;
+        }
+        return element.default ? String(element.default) : null;
+    }
+
+    case DialogElementTypes.SELECT: {
 			// Handle dynamic selects that use data_source instead of static options
-			if (element.type === 'select' && element.data_source === 'dynamic' && element.default) {
+        if (element.data_source === 'dynamic' && element.default) {
+            if (element.multiselect) {
+                const values = Array.isArray(element.default) ?
+                    element.default :
+                    String(element.default).split(',');
+                const normalizedValues = values.
+                    map((val) => String(val).trim()).
+                    filter((val) => val.length > 0);
+                return normalizedValues.length > 0 ? normalizedValues.map((v) => ({label: v, value: v})) : null;
+            }
 				return {
 					label: String(element.default),
 					value: String(element.default),
@@ -273,7 +305,7 @@ export function getDefaultValue(element: DialogElement): AppFormValue {
 
 			if (element.options && element.default) {
 				// Handle multiselect defaults (comma-separated values)
-				if (element.type === 'select' && element.multiselect) {
+            if (element.multiselect) {
 					const defaultValues = Array.isArray(element.default) ? element.default : String(element.default).split(',').map((val) => val.trim());
 
 					const defaultOptions = defaultValues.map((value) => {
@@ -308,6 +340,9 @@ export function getDefaultValue(element: DialogElement): AppFormValue {
 			return defaultValue === null ? null : String(defaultValue);
 		}
 
+    case DialogElementTypes.ACTION_BUTTON:
+        return null;
+
 		case DialogElementTypes.DATE:
 		case DialogElementTypes.DATETIME: {
 			// Date and datetime values should be passed through as strings (ISO format)
@@ -330,6 +365,18 @@ export function getDefaultValue(element: DialogElement): AppFormValue {
 			return testMoment?.isValid() ? stringValue : null;
 		}
 
+    case DialogElementTypes.CHECKBOX_GROUP:
+        return String(element.default).
+            split(',').
+            map((val) => val.trim()).
+            filter((val) => val.length > 0);
+
+    case DialogElementTypes.CHECKBOX_MATRIX:
+        return String(element.default).
+            split(';').
+            map((val) => val.trim()).
+            filter((val) => val.length > 0);
+
 		default:
 			return String(element.default);
 	}
@@ -347,6 +394,21 @@ export function getOptions(element: DialogElement): AppSelectOption[] | undefine
 		label: String(option.text || ''),
 		value: option.value || '',
 	}));
+}
+
+function getMatrixConfig(element: DialogElement) {
+    if (!element.matrix_config) {
+        return undefined;
+    }
+    const mapOptions = (options: Array<{text: string; value: string}>) => options.map((option) => ({
+        label: String(option.text || ''),
+        value: option.value || '',
+    }));
+    return {
+        rows: mapOptions(element.matrix_config.rows || []),
+        columns: mapOptions(element.matrix_config.columns || []),
+        row_selection: element.matrix_config.row_selection || 'multiple',
+    };
 }
 
 /**
@@ -387,16 +449,44 @@ export function convertElement(element: DialogElement, options: ConversionOption
 		return { field: fallbackField, errors };
 	}
 
+    // Collapsible: convert children recursively; the section itself has no value.
+    if (element.type === DialogElementTypes.COLLAPSIBLE) {
+        const childFields: AppField[] = [];
+        (element.collapsible_config?.elements || []).forEach((child) => {
+            const {field: childField, errors: childErrors} = convertElement(child, options);
+            errors.push(...childErrors);
+            if (childField) {
+                childFields.push(childField);
+            }
+        });
+
+        const collapsibleField: AppField = {
+            name: String(element.name),
+            type: AppFieldTypes.COLLAPSIBLE,
+            label: String(element.display_name),
+            collapsible_config: {
+                fields: childFields,
+                expanded: !element.collapsible_config?.collapsed,
+                bordered: !element.collapsible_config?.borderless,
+            },
+        };
+        return {field: collapsibleField, errors};
+    }
+
 	const appField: AppField = {
 		name: String(element.name),
 		type: fieldType,
 		label: String(element.display_name),
 		description: element.help_text ? String(element.help_text) : undefined,
 		hint: element.placeholder ? String(element.placeholder) : undefined,
-		is_required: !element.optional,
+        is_required: element.type === DialogElementTypes.ACTION_BUTTON ? false : !element.optional,
 		readonly: false,
 		value: getDefaultValue(element),
 	};
+
+    if (element.label_position === 'before' || element.label_position === 'after') {
+        appField.label_position = element.label_position;
+    }
 
 	// Add type-specific properties
 	if (element.type === DialogElementTypes.TEXTAREA) {
@@ -404,6 +494,11 @@ export function convertElement(element: DialogElement, options: ConversionOption
 	} else if (element.type === DialogElementTypes.TEXT && element.subtype) {
 		appField.subtype = element.subtype;
 	}
+
+    // Add allow_multiple support for file fields
+    if (element.type === DialogElementTypes.FILE && element.allow_multiple) {
+        appField.allow_multiple = true;
+    }
 
 	// Add length constraints for text fields
 	if (element.type === DialogElementTypes.TEXT || element.type === DialogElementTypes.TEXTAREA) {
@@ -415,8 +510,8 @@ export function convertElement(element: DialogElement, options: ConversionOption
 		}
 	}
 
-	// Add options for select and radio fields
-	if (element.type === DialogElementTypes.SELECT || element.type === DialogElementTypes.RADIO) {
+    // Add options for select, radio, and checkbox_group fields
+    if (element.type === DialogElementTypes.SELECT || element.type === DialogElementTypes.RADIO || element.type === DialogElementTypes.CHECKBOX_GROUP) {
 		appField.options = getOptions(element);
 
 		// Add multiselect support for select fields
@@ -438,16 +533,58 @@ export function convertElement(element: DialogElement, options: ConversionOption
 		}
 	}
 
-	// Add date/datetime specific properties (new features that should pass through)
+    if (element.type === DialogElementTypes.CHECKBOX_MATRIX) {
+        appField.matrix_config = getMatrixConfig(element);
+        if (element.refresh !== undefined) {
+            appField.refresh = element.refresh;
+        }
+    }
+
+    // Add refresh support for bool fields
+    if (element.type === DialogElementTypes.BOOL) {
+        if (element.refresh !== undefined) {
+            appField.refresh = element.refresh;
+        }
+    }
+
+    // Add action button specific properties
+    if (element.type === DialogElementTypes.ACTION_BUTTON) {
+        if (element.action_button) {
+            appField.action_button_url = element.action_button.url;
+            appField.action_button_context = element.action_button.context;
+        }
+    }
+
+    // Add date/datetime specific properties
 	if (element.type === DialogElementTypes.DATE || element.type === DialogElementTypes.DATETIME) {
-		if (element.min_date !== undefined) {
-			appField.min_date = String(element.min_date);
+        const minDate = element.datetime_config?.min_date;
+        const maxDate = element.datetime_config?.max_date;
+        const timeInterval = element.datetime_config?.time_interval;
+
+        const mergedConfig: DateTimeConfig = {};
+        if (element.datetime_config?.location_timezone) {
+            mergedConfig.location_timezone = element.datetime_config.location_timezone;
 		}
-		if (element.max_date !== undefined) {
-			appField.max_date = String(element.max_date);
+
+        if (element.datetime_config?.manual_time_entry) {
+            mergedConfig.manual_time_entry = true;
 		}
-		if (element.time_interval !== undefined && element.type === DialogElementTypes.DATETIME) {
-			appField.time_interval = Number(element.time_interval);
+        if (minDate !== undefined) {
+            mergedConfig.min_date = String(minDate);
+        }
+        if (maxDate !== undefined) {
+            mergedConfig.max_date = String(maxDate);
+        }
+        if (timeInterval !== undefined && element.type === DialogElementTypes.DATETIME) {
+            mergedConfig.time_interval = Number(timeInterval);
+        }
+
+        if (Object.keys(mergedConfig).length > 0) {
+            appField.datetime_config = mergedConfig;
+        }
+
+        if (element.refresh !== undefined) {
+            appField.refresh = element.refresh;
 		}
 	}
 
@@ -534,7 +671,7 @@ export function convertDialogToAppForm(
 	const form: AppForm = {
 		title: String(title || ''),
 		icon: iconUrl,
-		header: introductionText ? sanitizeString(introductionText) : undefined,
+        header: introductionText ? String(introductionText) : undefined,
 		submit_label: submitLabel ? String(submitLabel) : undefined,
 		submit: {
 			path: '/submit',
@@ -545,7 +682,7 @@ export function convertDialogToAppForm(
 	};
 
 	// Set source if sourceUrl is provided or if any fields have refresh enabled
-	const hasRefreshFields = convertedFields.some((field) => field.refresh === true);
+    const hasRefreshFields = flattenAppFields(convertedFields).some((field) => field.refresh === true);
 	if ((sourceUrl && sourceUrl.trim()) || hasRefreshFields) {
 		form.source = {
 			path: sourceUrl || '/refresh',
@@ -560,42 +697,34 @@ export function convertDialogToAppForm(
 /**
  * Extract primitive values from form field objects for storage/submission
  * Converts select option objects {label: "Text", value: "val"} to primitive "val"
- * Filters out null, undefined, empty, and "<nil>" values
+ * Filters out null, undefined, empty, and "<nil>" values unless clearEmptyFields is true,
+ * in which case empty/null fields are emitted as '' or [] so they can overwrite prior values.
  */
-export function extractPrimitiveValues(values: Record<string, any>): Record<string, any> {
-	const normalized: Record<string, any> = {};
+export function extractPrimitiveValues(values: Record<string, any>, clearEmptyFields = false): Record<string, any> {
+    const isMeaningful = (v: any): v is string | boolean => v != null && v !== '' && v !== '<nil>';
 
-	Object.entries(values).forEach(([key, value]) => {
-		// Skip null, undefined, empty string, and "<nil>" values
-		if (value === null || value === undefined || value === '' || value === '<nil>') {
-			return;
-		}
-
+    return Object.entries(values).reduce<Record<string, any>>((acc, [key, value]) => {
 		if (Array.isArray(value)) {
-			// Handle multiselect arrays - extract values from each option object
-			const extractedValues = value.
-				filter((item) => item && typeof item === 'object' && 'value' in item).
-				map((item) => item.value).
-				filter((val) => val !== null && val !== undefined && val !== '' && val !== '<nil>');
+            const extracted = value.
+                map((item) => (isAppSelectOption(item) ? item.value : item)).
+                filter(isMeaningful);
 
-			if (extractedValues.length > 0) {
-				normalized[key] = extractedValues;
+            if (extracted.length > 0 || clearEmptyFields) {
+                acc[key] = extracted;
 			}
-		} else if (value && typeof value === 'object' && 'value' in value) {
-			// Extract value from single select option object {label: "...", value: "..."}
-			const extractedValue = value.value;
-
-			// Only store if the extracted value is meaningful
-			if (extractedValue !== null && extractedValue !== undefined && extractedValue !== '' && extractedValue !== '<nil>') {
-				normalized[key] = extractedValue;
+        } else if (isAppSelectOption(value)) {
+            if (isMeaningful(value.value)) {
+                acc[key] = value.value;
+            } else if (clearEmptyFields) {
+                acc[key] = '';
 			}
-		} else {
-			// Keep primitive values as-is (but skip empty/nil values)
-			normalized[key] = value;
+        } else if (isMeaningful(value)) {
+            acc[key] = value;
+        } else if (clearEmptyFields) {
+            acc[key] = '';
 		}
-	});
-
-	return normalized;
+        return acc;
+    }, {});
 }
 
 /**
@@ -624,6 +753,41 @@ export function convertServerDialogResponseToAppForm(
 }
 
 /**
+ * Flatten a tree of items, expanding collapsible containers into their children.
+ * Shared by flattenDialogElements (DialogElement) and flattenFields (AppField)
+ * so the two stay in sync.
+ */
+export function flattenCollapsible<T>(
+    items: T[],
+    isCollapsible: (item: T) => boolean,
+    getChildren: (item: T) => T[] | undefined,
+): T[] {
+    return items.flatMap((item) => (isCollapsible(item) ? flattenCollapsible(getChildren(item) || [], isCollapsible, getChildren) : [item]));
+}
+
+/**
+ * Flatten elements, expanding collapsible sections into their children.
+ */
+export function flattenDialogElements(elements: DialogElement[]): DialogElement[] {
+    return flattenCollapsible(
+        elements,
+        (element) => element.type === DialogElementTypes.COLLAPSIBLE,
+        (element) => element.collapsible_config?.elements,
+    );
+}
+
+/**
+ * Flatten AppFields, expanding collapsible sections into their leaf fields.
+ */
+export function flattenAppFields(fields: AppField[]): AppField[] {
+    return flattenCollapsible(
+        fields,
+        (field) => field.type === AppFieldTypes.COLLAPSIBLE,
+        (field) => field.collapsible_config?.fields,
+    );
+}
+
+/**
  * Convert Apps Form values back to Interactive Dialog submission format
  */
 export function convertAppFormValuesToDialogSubmission(
@@ -638,7 +802,15 @@ export function convertAppFormValuesToDialogSubmission(
 		return { submission, errors };
 	}
 
-	elements.forEach((element) => {
+    // Flatten collapsibles so child values are collected and the containers are excluded.
+    flattenDialogElements(elements).forEach((element) => {
+        // Action buttons are non-input elements — they never contribute a
+        // submission value, so skip them before the required/null validation
+        // (otherwise an unset action_button could raise a false required error).
+        if (element.type === DialogElementTypes.ACTION_BUTTON) {
+            return;
+        }
+
 		const value = values[element.name];
 
 		if (value === null || value === undefined) {
@@ -648,6 +820,8 @@ export function convertAppFormValuesToDialogSubmission(
 					message: `"${element.name}" field is not valid: Required field has null/undefined value`,
 					code: ValidationErrorCode.REQUIRED,
 				});
+            } else if (element.type === DialogElementTypes.CHECKBOX_GROUP || element.type === DialogElementTypes.CHECKBOX_MATRIX) {
+                submission[element.name] = [];
 			}
 			return;
 		}
@@ -686,7 +860,13 @@ export function convertAppFormValuesToDialogSubmission(
 				break;
 
 			case DialogElementTypes.RADIO:
+            // Radio values are normally plain strings, but accept {label, value}
+            // objects for backwards compatibility with older code paths.
+            if (isAppSelectOption(value)) {
+                submission[element.name] = value.value;
+            } else {
 				submission[element.name] = String(value);
+            }
 				break;
 
 			case DialogElementTypes.SELECT:
@@ -741,12 +921,37 @@ export function convertAppFormValuesToDialogSubmission(
 					submission[element.name] = value;
 				}
 				break;
-
 			case DialogElementTypes.DATE:
 			case DialogElementTypes.DATETIME:
 				// Date and datetime values should be passed through as strings (ISO format)
 				submission[element.name] = String(value);
 				break;
+
+        case DialogElementTypes.CHECKBOX_GROUP:
+        case DialogElementTypes.CHECKBOX_MATRIX: {
+            const arrayValue = Array.isArray(value) ? value.map(String) : [String(value)];
+
+            // An empty array is a distinct "nothing selected" state that the
+            // null/undefined guard above does not catch, so enforce required here.
+            if (arrayValue.length === 0 && !element.optional && options.enhanced) {
+                errors.push({
+                    field: element.name,
+                    message: `"${element.name}" field is not valid: Required field has no selected values`,
+                    code: ValidationErrorCode.REQUIRED,
+                });
+            }
+            submission[element.name] = arrayValue;
+            break;
+        }
+
+        case DialogElementTypes.FILE:
+            // File elements store file IDs as strings
+            submission[element.name] = String(value || '');
+            break;
+
+        case DialogElementTypes.ACTION_BUTTON:
+            break;
+
 			default:
 				submission[element.name] = String(value);
 		}

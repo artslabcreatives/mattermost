@@ -1,13 +1,18 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import { shallow } from 'enzyme';
 import React from 'react';
-import * as redux from 'react-redux';
 
+import {renderWithContext} from 'tests/react_testing_utils';
 import { TestHelper } from 'utils/test_helper';
 
 import SidebarCategorySortingMenu from './sidebar_category_sorting_menu';
+
+describe('components/sidebar/sidebar_category/sidebar_category_sorting_menu', () => {
+    const baseProps = {
+        category: TestHelper.getCategoryMock(),
+        handleOpenDirectMessagesModal: jest.fn(),
+    };
 
 const initialState = {
 	entities: {
@@ -24,20 +29,12 @@ const initialState = {
 	},
 };
 
-jest.spyOn(redux, 'useSelector').mockImplementation((cb) => cb(initialState));
-jest.spyOn(redux, 'useDispatch').mockReturnValue((t: unknown) => t);
-
-describe('components/sidebar/sidebar_category/sidebar_category_sorting_menu', () => {
-	const baseProps = {
-		category: TestHelper.getCategoryMock(),
-		handleOpenDirectMessagesModal: jest.fn(),
-	};
-
 	test('should match snapshot', () => {
-		const wrapper = shallow(
+        const {container} = renderWithContext(
 			<SidebarCategorySortingMenu {...baseProps} />,
+            initialState,
 		);
 
-		expect(wrapper).toMatchSnapshot();
+        expect(container).toMatchSnapshot();
 	});
 });

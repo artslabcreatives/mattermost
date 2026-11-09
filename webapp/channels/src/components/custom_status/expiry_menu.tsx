@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, type JSX} from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 
 import { CustomStatusDuration } from '@mattermost/types/users';
@@ -16,13 +16,13 @@ import ExpiryTime from './expiry_time';
 type ExpiryMenuItem = {
 	text: string;
 	value: string;
-}
+};
 
 type Props = {
 	duration: CustomStatusDuration;
 	expiryTime?: string;
 	handleDurationChange: (expiryValue: CustomStatusDuration) => void;
-}
+};
 
 const {
 	DONT_CLEAR,

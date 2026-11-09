@@ -12,6 +12,7 @@ import { sortChannelsByTypeAndDisplayName } from 'mattermost-redux/utils/channel
 
 import store from 'stores/redux_store';
 
+import ChannelTypeIcon from 'components/channel_type_icon';
 import usePrefixedIds from 'components/common/hooks/usePrefixedIds';
 
 import { Constants } from 'utils/constants';
@@ -35,50 +36,27 @@ export const ChannelMentionSuggestion = React.forwardRef<HTMLLIElement, Suggesti
 		name: null,
 	});
 
-	let channelIcon;
+    let ariaLabel: string;
 	if (channelIsArchived) {
-		channelIcon = (
+        ariaLabel = formatMessage({id: 'suggestion.archived_channel', defaultMessage: 'Archived channel'});
+    } else if (channel?.type === Constants.OPEN_CHANNEL) {
+        ariaLabel = formatMessage({id: 'suggestion.public_channel', defaultMessage: 'Public channel'});
+    } else {
+        ariaLabel = formatMessage({id: 'suggestion.private_channel', defaultMessage: 'Private channel'});
+    }
+
+    const channelIcon = (
 			<span
 				id={ids.channelType}
 				className='suggestion-list__icon suggestion-list__icon--large'
-				aria-label={formatMessage({
-					id: 'suggestion.archived_channel',
-					defaultMessage: 'Archived channel',
-				})}
+            aria-label={ariaLabel}
 			>
-				<i
-					className='icon icon-archive-outline'
-					role='presentation'
+            <ChannelTypeIcon
+                channel={channel}
+                className='icon--no-spacing'
 				/>
 			</span>
 		);
-	} else {
-		let iconClass;
-		let iconLabel;
-		if (channel?.type === Constants.OPEN_CHANNEL) {
-			iconClass = 'icon-globe';
-			iconLabel = formatMessage({
-				id: 'suggestion.public_channel',
-				defaultMessage: 'Public channel',
-			});
-		} else {
-			iconClass = 'icon-lock-outline';
-			iconLabel = formatMessage({
-				id: 'suggestion.private_channel',
-				defaultMessage: 'Private channel',
-			});
-		}
-
-		channelIcon = (
-			<span
-				id={ids.channelType}
-				className='suggestion-list__icon suggestion-list__icon--large'
-				aria-label={iconLabel}
-			>
-				<i className={`icon icon--no-spacing ${iconClass}`} />
-			</span>
-		);
-	}
 
 	const description = '~' + channel?.name;
 
@@ -93,6 +71,7 @@ export const ChannelMentionSuggestion = React.forwardRef<HTMLLIElement, Suggesti
 			<div className='suggestion-list__ellipsis'>
 				<span
 					id={ids.name}
+                    data-testid='suggestion-list__main'
 					className='suggestion-list__main'
 				>
 					{channelName}
@@ -215,6 +194,9 @@ export default class ChannelMentionProvider extends Provider {
 			],
 			matchedPretext: captured[1],
 		});
+
+        // Clone myChannels since we've returned it above, but we'll be mutating it more further below
+        myChannels = [...myChannels];
 
 		const handleChannels = (channels: Channel[], withError: boolean) => {
 			if (prefix !== this.latestPrefix || this.shouldCancelDispatch(prefix)) {

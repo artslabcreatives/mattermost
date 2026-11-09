@@ -185,7 +185,7 @@ func (a *App) filterInaccessiblePosts(postList *model.PostList, options filterPo
 		inaccessibleCount := lenPosts - accessibleCount
 		// Linearly cover shorter route to traverse posts map
 		if inaccessibleCount < accessibleCount {
-			for i := 0; i < bounds.start; i++ {
+			for i := range bounds.start {
 				delete(posts, order[i])
 			}
 			for i := bounds.end + 1; i < lenPosts; i++ {
@@ -263,6 +263,12 @@ func (a *App) getFilteredAccessiblePosts(posts []*model.Post, options filterPost
 
 	filteredPosts, firstInaccessiblePostTime := linearFilterPostsSlice(posts, lastAccessiblePostTime)
 	return filteredPosts, firstInaccessiblePostTime, nil
+}
+
+// isBurnOnReadEnabled reports whether the burn-on-read feature is active, i.e.
+// both the feature flag and the service setting are turned on.
+func (a *App) isBurnOnReadEnabled() bool {
+	return a.Config().FeatureFlags.BurnOnRead && model.SafeDereference(a.Config().ServiceSettings.EnableBurnOnRead)
 }
 
 // filterBurnOnReadPosts filters out burn-on-read posts from a PostList.
@@ -372,6 +378,10 @@ func (a *App) revealBurnOnReadPostsForUser(rctx request.CTX, postList *model.Pos
 	}
 
 	for _, post := range postList.BurnOnReadPosts {
+		if post.DeleteAt > 0 {
+			continue
+		}
+
 		// If user is the author, reveal the post with recipients
 		if post.UserId == userID {
 			if err := a.revealPostForAuthor(rctx, postList, post); err != nil {

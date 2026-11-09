@@ -8,8 +8,6 @@ import type { Dispatch } from 'redux';
 import type { Channel } from '@mattermost/types/channels';
 import type { ServerError } from '@mattermost/types/errors';
 
-import { getMorePostsForSearch, getMoreFilesForSearch } from 'mattermost-redux/actions/search';
-import { getCurrentChannel } from 'mattermost-redux/selectors/entities/channels';
 import { getIsCrossTeamSearchEnabled } from 'mattermost-redux/selectors/entities/general';
 
 import { autocompleteChannelsForSearch } from 'actions/channel_actions';
@@ -19,15 +17,12 @@ import {
 	updateSearchTeam,
 	updateSearchTermsForShortcut,
 	showSearchResults,
-	showChannelFiles,
 	closeRightHandSide,
 	updateRhsState,
-	setRhsExpanded,
 	openRHSSearch,
-	filterFilesSearchByExt,
 	updateSearchType,
 } from 'actions/views/rhs';
-import { getRhsState, getSearchTeam, getSearchTerms, getSearchType, getIsSearchingTerm, getIsRhsOpen, getIsRhsExpanded } from 'selectors/rhs';
+import {getRhsState, getSearchTerms, getSearchType, getIsSearchingTerm, getIsRhsOpen, getIsRhsExpanded} from 'selectors/rhs';
 import { getIsMobileView } from 'selectors/views/browser';
 
 import { RHSStates } from 'utils/constants';
@@ -38,30 +33,29 @@ import Search from './search';
 
 function mapStateToProps(state: GlobalState) {
 	const rhsState = getRhsState(state);
-	const currentChannel = getCurrentChannel(state);
 	const isMobileView = getIsMobileView(state);
 	const isRhsOpen = getIsRhsOpen(state);
 	const crossTeamSearchEnabled = getIsCrossTeamSearchEnabled(state);
 
 	return {
-		currentChannel,
 		isRhsExpanded: getIsRhsExpanded(state),
 		isSearchingTerm: getIsSearchingTerm(state),
 		searchTerms: getSearchTerms(state),
-		searchTeam: getSearchTeam(state),
 		searchType: getSearchType(state),
 		searchVisible: rhsState !== null && (![
 			RHSStates.PLUGIN,
 			RHSStates.CHANNEL_INFO,
 			RHSStates.CHANNEL_MEMBERS,
 			RHSStates.EDIT_HISTORY,
+			RHSStates.REMINDER,
 		].includes(rhsState)),
-		hideMobileSearchBarInRHS: isMobileView && isRhsOpen && rhsState === RHSStates.CHANNEL_INFO,
+		hideMobileSearchBarInRHS: isMobileView && isRhsOpen && (rhsState === RHSStates.CHANNEL_INFO || rhsState === RHSStates.REMINDER),
 		isMentionSearch: rhsState === RHSStates.MENTION,
 		isFlaggedPosts: rhsState === RHSStates.FLAG,
 		isPinnedPosts: rhsState === RHSStates.PIN,
 		isPinnedFiles: rhsState === RHSStates.PINNED_FILES,
 		isChannelFiles: rhsState === RHSStates.CHANNEL_FILES,
+        isSearch: rhsState === RHSStates.SEARCH,
 		isMobileView,
 		crossTeamSearchEnabled,
 	};
@@ -79,16 +73,11 @@ function mapDispatchToProps(dispatch: Dispatch) {
 			updateSearchTermsForShortcut,
 			updateSearchType,
 			showSearchResults,
-			showChannelFiles,
-			setRhsExpanded,
 			closeRightHandSide,
 			autocompleteChannelsForSearch: autocompleteChannels,
 			autocompleteUsersInTeam: autocompleteUsersInCurrentTeam,
 			updateRhsState,
-			getMorePostsForSearch,
 			openRHSSearch,
-			getMoreFilesForSearch,
-			filterFilesSearchByExt,
 		}, dispatch),
 	};
 }

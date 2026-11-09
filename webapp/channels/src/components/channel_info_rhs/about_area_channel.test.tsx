@@ -6,7 +6,7 @@ import React from 'react';
 import type { Channel } from '@mattermost/types/channels';
 import type { DeepPartial } from '@mattermost/types/utilities';
 
-import { renderWithContext, screen } from 'tests/react_testing_utils';
+import {renderWithContext, screen, fireEvent} from 'tests/react_testing_utils';
 
 import type { GlobalState } from 'types/store';
 
@@ -112,8 +112,10 @@ describe('channel_info_rhs/about_area_channel', () => {
 	const defaultProps = {
 		channel: {
 			id: 'test-c-id',
+            name: 'my-channel',
 			header: 'my channel header',
 			purpose: 'my channel purpose',
+            display_name: 'My Channel',
 		} as Channel,
 		channelURL: 'https://my-url.mm',
 		canEditChannelProperties: true,
@@ -122,6 +124,7 @@ describe('channel_info_rhs/about_area_channel', () => {
 		isInvitingPeople: false,
 		canManageMembers: true,
 		actions: {
+            editChannelName: jest.fn(),
 			editChannelPurpose: jest.fn(),
 			editChannelHeader: jest.fn(),
 			toggleFavorite: jest.fn(),
@@ -151,4 +154,25 @@ describe('channel_info_rhs/about_area_channel', () => {
 
 		expect(screen.getByText('my channel header')).toBeInTheDocument();
 	});
+
+    test('should trigger editChannelName when clicking channel display name', () => {
+        const props = {
+            ...defaultProps,
+            actions: {
+                ...defaultProps.actions,
+                editChannelName: jest.fn(),
+            },
+        };
+
+        renderWithContext(
+            <AboutAreaChannel
+                {...props}
+            />,
+            initialState,
+        );
+
+        const editButtons = screen.getAllByLabelText('Edit');
+        fireEvent.click(editButtons[0]);
+        expect(props.actions.editChannelName).toHaveBeenCalled();
+    });
 });

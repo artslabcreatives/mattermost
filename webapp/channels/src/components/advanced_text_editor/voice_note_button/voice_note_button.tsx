@@ -8,14 +8,14 @@ import { useIntl } from 'react-intl';
 import { MicrophoneOutlineIcon, RecordCircleOutlineIcon } from '@mattermost/compass-icons/components';
 
 import type { FileUpload as FileUploadClass } from 'components/file_upload/file_upload';
-import WithTooltip from 'components/with_tooltip';
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
 
 import { IconContainer } from '../formatting_bar/formatting_icon';
 
 import './voice_note_button.scss';
 
 type Props = {
-	fileUploadRef: React.RefObject<FileUploadClass>;
+	fileUploadRef: React.RefObject<FileUploadClass | null>;
 	disabled?: boolean;
 };
 

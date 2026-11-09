@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {type JSX} from 'react';
 import { FormattedMessage } from 'react-intl';
 
 import type { Team } from '@mattermost/types/teams';
@@ -17,12 +17,11 @@ import './team_row.scss';
 
 type Props = {
 	team: TeamWithMembership;
-	onRowClick?: () => void;
 	doRemoveUserFromTeam: (teamId: string) => Promise<void>;
 	doMakeUserTeamAdmin: (teamId: string) => Promise<void>;
 	doMakeUserTeamMember: (teamId: string) => Promise<void>;
 	readOnly?: boolean;
-}
+};
 
 export default class TeamRow extends React.PureComponent<Props> {
 	private renderTeamType = (team: Team) => {
@@ -80,7 +79,10 @@ export default class TeamRow extends React.PureComponent<Props> {
 		const { team } = this.props;
 		const teamIconUrl = Utils.imageURLForTeam(team);
 		return (
-			<div className={'TeamRow'}>
+            <div
+                className={'TeamRow'}
+                data-testid='teamRow'
+            >
 				<div className='TeamRow__row'>
 					<div className='TeamRow__team-name'>
 						<div className='col-sm-auto'>

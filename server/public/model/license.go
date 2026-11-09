@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
+	"strings"
 	"time"
 )
 
@@ -16,8 +18,14 @@ const (
 
 	ExpiredLicenseError = "api.license.add_license.expired.app_error"
 	InvalidLicenseError = "api.license.add_license.invalid.app_error"
-	LicenseGracePeriod  = DayInMilliseconds * 10 //10 days
-	LicenseRenewalLink  = "https://mattermost.com/renew/"
+	// WrongEnvironmentProductionLicenseError is returned when a production license is
+	// uploaded to a server running in a test or development service environment.
+	WrongEnvironmentProductionLicenseError = "api.license.add_license.wrong_environment_production.app_error"
+	// WrongEnvironmentTestLicenseError is returned when a test or development license is
+	// uploaded to a server running in a production service environment.
+	WrongEnvironmentTestLicenseError = "api.license.add_license.wrong_environment_test.app_error"
+	LicenseGracePeriod               = DayInMilliseconds * 10 //10 days
+	LicenseRenewalLink               = "https://mattermost.com/renew/"
 
 	LicenseShortSkuE10                = "E10"
 	LicenseShortSkuE20                = "E20"
@@ -80,6 +88,7 @@ type License struct {
 	SkuShortName        string    `json:"sku_short_name"`
 	IsTrial             bool      `json:"is_trial"`
 	IsGovSku            bool      `json:"is_gov_sku"`
+	IsNonProduction     bool      `json:"is_non_production"`
 	IsSeatCountEnforced bool      `json:"is_seat_count_enforced"`
 	// ExtraUsers provides a grace mechanism that allows a configurable number of users
 	// beyond the base license limit before restricting user creation. When nil, defaults to 0.
@@ -87,6 +96,10 @@ type License struct {
 	ExtraUsers *int           `json:"extra_users"`
 	SignupJWT  *string        `json:"signup_jwt"`
 	Limits     *LicenseLimits `json:"limits"`
+	// AddOns names products purchased alongside the license that are not part of
+	// any SKU tier. Unrecognized names are ignored, so a license issued for a newer
+	// add-on still validates here. Read it through HasAddOn.
+	AddOns []string `json:"add_ons"`
 }
 
 func (l *License) IsMattermostEntry() bool {
@@ -185,6 +198,7 @@ type Features struct {
 	SharedChannels            *bool `json:"shared_channels"`
 	RemoteClusterService      *bool `json:"remote_cluster_service"`
 	OutgoingOAuthConnections  *bool `json:"outgoing_oauth_connections"`
+	AutoTranslation           *bool `json:"auto_translation"`
 
 	// after we enabled more features we'll need to control them with this
 	FutureFeatures *bool `json:"future_features"`
@@ -224,127 +238,127 @@ func (f *Features) ToMap() map[string]any {
 
 func (f *Features) SetDefaults() {
 	if f.FutureFeatures == nil {
-		f.FutureFeatures = NewPointer(true)
+		f.FutureFeatures = new(true)
 	}
 
 	if f.Users == nil {
-		f.Users = NewPointer(0)
+		f.Users = new(0)
 	}
 
 	if f.LDAP == nil {
-		f.LDAP = NewPointer(*f.FutureFeatures)
+		f.LDAP = new(*f.FutureFeatures)
 	}
 
 	if f.LDAPGroups == nil {
-		f.LDAPGroups = NewPointer(*f.FutureFeatures)
+		f.LDAPGroups = new(*f.FutureFeatures)
 	}
 
 	if f.MFA == nil {
-		f.MFA = NewPointer(*f.FutureFeatures)
+		f.MFA = new(*f.FutureFeatures)
 	}
 
 	if f.GoogleOAuth == nil {
-		f.GoogleOAuth = NewPointer(*f.FutureFeatures)
+		f.GoogleOAuth = new(*f.FutureFeatures)
 	}
 
 	if f.Office365OAuth == nil {
-		f.Office365OAuth = NewPointer(*f.FutureFeatures)
+		f.Office365OAuth = new(*f.FutureFeatures)
 	}
 
 	if f.OpenId == nil {
-		f.OpenId = NewPointer(*f.FutureFeatures)
+		f.OpenId = new(*f.FutureFeatures)
 	}
 
 	if f.Compliance == nil {
-		f.Compliance = NewPointer(*f.FutureFeatures)
+		f.Compliance = new(*f.FutureFeatures)
 	}
 
 	if f.Cluster == nil {
-		f.Cluster = NewPointer(*f.FutureFeatures)
+		f.Cluster = new(*f.FutureFeatures)
 	}
 
 	if f.Metrics == nil {
-		f.Metrics = NewPointer(*f.FutureFeatures)
+		f.Metrics = new(*f.FutureFeatures)
 	}
 
 	if f.MHPNS == nil {
-		f.MHPNS = NewPointer(*f.FutureFeatures)
+		f.MHPNS = new(*f.FutureFeatures)
 	}
 
 	if f.SAML == nil {
-		f.SAML = NewPointer(*f.FutureFeatures)
+		f.SAML = new(*f.FutureFeatures)
 	}
 
 	if f.Elasticsearch == nil {
-		f.Elasticsearch = NewPointer(*f.FutureFeatures)
+		f.Elasticsearch = new(*f.FutureFeatures)
 	}
 
 	if f.Announcement == nil {
-		f.Announcement = NewPointer(true)
+		f.Announcement = new(true)
 	}
 
 	if f.ThemeManagement == nil {
-		f.ThemeManagement = NewPointer(true)
+		f.ThemeManagement = new(true)
 	}
 
 	if f.EmailNotificationContents == nil {
-		f.EmailNotificationContents = NewPointer(*f.FutureFeatures)
+		f.EmailNotificationContents = new(*f.FutureFeatures)
 	}
 
 	if f.DataRetention == nil {
-		f.DataRetention = NewPointer(*f.FutureFeatures)
+		f.DataRetention = new(*f.FutureFeatures)
 	}
 
 	if f.MessageExport == nil {
-		f.MessageExport = NewPointer(*f.FutureFeatures)
+		f.MessageExport = new(*f.FutureFeatures)
 	}
 
 	if f.CustomPermissionsSchemes == nil {
-		f.CustomPermissionsSchemes = NewPointer(*f.FutureFeatures)
+		f.CustomPermissionsSchemes = new(*f.FutureFeatures)
 	}
 
 	if f.GuestAccounts == nil {
-		f.GuestAccounts = NewPointer(*f.FutureFeatures)
+		f.GuestAccounts = new(*f.FutureFeatures)
 	}
 
 	if f.GuestAccountsPermissions == nil {
-		f.GuestAccountsPermissions = NewPointer(*f.FutureFeatures)
+		f.GuestAccountsPermissions = new(*f.FutureFeatures)
 	}
 
 	if f.CustomTermsOfService == nil {
-		f.CustomTermsOfService = NewPointer(*f.FutureFeatures)
+		f.CustomTermsOfService = new(*f.FutureFeatures)
 	}
 
 	if f.IDLoadedPushNotifications == nil {
-		f.IDLoadedPushNotifications = NewPointer(*f.FutureFeatures)
+		f.IDLoadedPushNotifications = new(*f.FutureFeatures)
 	}
 
 	if f.LockTeammateNameDisplay == nil {
-		f.LockTeammateNameDisplay = NewPointer(*f.FutureFeatures)
+		f.LockTeammateNameDisplay = new(*f.FutureFeatures)
 	}
 
 	if f.EnterprisePlugins == nil {
-		f.EnterprisePlugins = NewPointer(*f.FutureFeatures)
+		f.EnterprisePlugins = new(*f.FutureFeatures)
 	}
 
 	if f.AdvancedLogging == nil {
-		f.AdvancedLogging = NewPointer(*f.FutureFeatures)
+		f.AdvancedLogging = new(*f.FutureFeatures)
 	}
 
 	if f.Cloud == nil {
-		f.Cloud = NewPointer(false)
+		f.Cloud = new(false)
 	}
 
 	if f.SharedChannels == nil {
-		f.SharedChannels = NewPointer(*f.FutureFeatures)
+		f.SharedChannels = new(*f.FutureFeatures)
 	}
 
 	if f.RemoteClusterService == nil {
-		f.RemoteClusterService = NewPointer(*f.FutureFeatures)
+		f.RemoteClusterService = new(*f.FutureFeatures)
 	}
 
 	if f.OutgoingOAuthConnections == nil {
-		f.OutgoingOAuthConnections = NewPointer(*f.FutureFeatures)
+		f.OutgoingOAuthConnections = new(*f.FutureFeatures)
 	}
 }
 
@@ -422,15 +436,33 @@ func (l *License) HasSharedChannels() bool {
 		MinimumProfessionalLicense(l)
 }
 
+// HasMHPNS reports whether the license grants access to the Mattermost hosted push notification service.
+func (l *License) HasMHPNS() bool {
+	return l != nil && l.Features != nil && l.Features.MHPNS != nil && *l.Features.MHPNS
+}
+
+// HasAddOn reports whether the license grants the named add-on. Unlike the
+// SKU-derived helpers above, this deliberately has no minimum-license fallback:
+// an add-on is bought separately from the tier.
+func (l *License) HasAddOn(addOn string) bool {
+	if l == nil {
+		return false
+	}
+
+	return slices.ContainsFunc(l.AddOns, func(a string) bool {
+		return strings.EqualFold(a, addOn)
+	})
+}
+
 // NewTestLicense returns a license that expires in the future and has the given features.
 func NewTestLicense(features ...string) *License {
 	ret := &License{
-		ExpiresAt: GetMillis() + 90*DayInMilliseconds,
+		ExpiresAt: time.Date(2030, time.December, 30, 12, 0, 0, 0, time.UTC).UnixMilli(),
 		Customer: &Customer{
 			Id:      "some ID",
 			Email:   "admin@example.com",
-			Name:    "Main Contact Person",
-			Company: "My awesome Company",
+			Name:    "ItsME",
+			Company: "Hi.com",
 		},
 		Features: &Features{},
 	}
@@ -466,6 +498,13 @@ func NewTestLicenseWithFalseDefaults(features ...string) *License {
 
 	ret.Features.Users = NewPointer(1000)
 
+	return ret
+}
+
+// NewTestLicenseWithAddOns returns a test license granting the given add-ons.
+func NewTestLicenseWithAddOns(addOns ...string) *License {
+	ret := NewTestLicense()
+	ret.AddOns = addOns
 	return ret
 }
 

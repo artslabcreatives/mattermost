@@ -47,7 +47,7 @@ type State = {
     showDemoteModal: boolean;
     user: UserProfile|null;
     role: string|null;
-}
+};
 
 class TeamMembersDropdown extends React.PureComponent<Props, State> {
     constructor(props: Props) {

@@ -4,18 +4,18 @@
 import React from 'react';
 import { FormattedMessage, injectIntl, type WrappedComponentProps } from 'react-intl';
 
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
 import type { Channel } from '@mattermost/types/channels';
 import type { Team } from '@mattermost/types/teams';
 
+import ChannelAttributeLabels from 'components/channel_attributes/channel_attribute_labels';
+import {ChannelLabelSurface} from 'components/common/hooks/useChannelLabels';
 import KeyboardShortcutSequence, {
 	KEYBOARD_SHORTCUTS,
 } from 'components/keyboard_shortcuts/keyboard_shortcuts_sequence';
 import PopoutButton from 'components/popout_button';
 import { getThreadPopoutTitle } from 'components/thread_popout/thread_popout';
 import FollowButton from 'components/threading/common/follow_button';
-import WithTooltip from 'components/with_tooltip';
-
-import { Client4 } from 'mattermost-redux/client';
 
 import { getHistory } from 'utils/browser_history';
 import { RHSStates } from 'utils/constants';
@@ -35,10 +35,6 @@ type Props = WrappedComponentProps & {
 	currentTeam?: Team;
 	currentUserId: string;
 	setRhsExpanded: (b: boolean) => void;
-	showMentions: () => void;
-	showSearchResults: () => void;
-	showFlaggedPosts: () => void;
-	showPinnedPosts: () => void;
 	goBack: () => void;
 	closeRightHandSide: (e?: React.MouseEvent) => void;
 	toggleRhsExpanded: (e: React.MouseEvent) => void;
@@ -46,36 +42,7 @@ type Props = WrappedComponentProps & {
 	focusPost: (postId: string, returnTo: string, currentUserId: string, option?: { skipRedirectReplyPermalink: boolean }) => Promise<void>;
 };
 
-type State = {
-	summarizing: boolean;
-};
-
-class RhsHeaderPost extends React.PureComponent<Props, State> {
-	state: State = {
-		summarizing: false,
-	};
-
-	handleSummarizeClick = async () => {
-		if (this.state.summarizing) {
-			return;
-		}
-		this.setState({ summarizing: true });
-		try {
-			const resp = await fetch(`/api/v4/posts/${this.props.rootPostId}/summarize`, {
-				method: 'POST',
-				headers: {
-					'X-CSRF-Token': Client4.csrf,
-				},
-			});
-			if (!resp.ok) {
-				console.error('Failed to summarize thread');
-			}
-		} catch (err) {
-			console.error('Failed to summarize thread', err);
-		} finally {
-			this.setState({ summarizing: false });
-		}
-	};
+class RhsHeaderPost extends React.PureComponent<Props> {
 
 	handleBack = (e: React.MouseEvent) => {
 		e.preventDefault();
@@ -135,13 +102,6 @@ class RhsHeaderPost extends React.PureComponent<Props, State> {
 				defaultMessage='Close'
 			/>
 		);
-		const summarizeTooltip = (
-			<FormattedMessage
-				id='rhs_header.summarizeTooltip'
-				defaultMessage='Summarize Thread'
-			/>
-		);
-		const summarizeIconLabel = formatMessage({ id: 'rhs_header.summarizeTooltip.icon', defaultMessage: 'Summarize Thread Icon' });
 
 		let backToResultsTooltip;
 
@@ -226,15 +186,17 @@ class RhsHeaderPost extends React.PureComponent<Props, State> {
 
 		return (
 			<div className='sidebar--right__header'>
-				<span
+                <div
 					className='sidebar--right__title'
 					id='rhsPanelTitle'
 				>
 					{back}
+                    <span className='sidebar--right__title__heading'>
 					<FormattedMessage
 						id='rhs_header.details'
 						defaultMessage='Thread'
 					/>
+                    </span>
 					{channelName &&
 						<button
 							onClick={this.handleJumpClick}
@@ -243,33 +205,22 @@ class RhsHeaderPost extends React.PureComponent<Props, State> {
 							{channelName}
 						</button>
 					}
-				</span>
+                    <ChannelAttributeLabels
+                        channelId={this.props.channel.id}
+                        surface={[ChannelLabelSurface.INFO, ChannelLabelSurface.HEADER]}
+                        allowEmptyVisible={true}
+                    />
+                </div>
 				<div className='controls'>
 					{this.props.isCollapsedThreadsEnabled ? (
 						<FollowButton
 							className='sidebar--right__follow__thread'
 							isFollowing={isFollowingThread}
+                            iconOnly={true}
 							onClick={this.handleFollowChange}
 						/>
 					) : null}
 					<PopoutButton onClick={this.popout} />
-					<WithTooltip
-						title={summarizeTooltip}
-					>
-						<button
-							type='button'
-							className='sidebar--right__summarize btn btn-icon btn-sm'
-							aria-label={summarizeIconLabel}
-							onClick={this.handleSummarizeClick}
-							disabled={this.state.summarizing}
-						>
-							{this.state.summarizing ? (
-								<i className='icon icon-loading icon-spin' />
-							) : (
-								<i className='icon icon-file-text-outline' />
-							)}
-						</button>
-					</WithTooltip>
 					<WithTooltip
 						title={rhsHeaderTooltipContent}
 					>

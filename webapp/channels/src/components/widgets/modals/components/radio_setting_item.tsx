@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type { ReactNode } from 'react';
+import type {ReactNode, JSX} from 'react';
 import React from 'react';
 
 import type { BaseSettingItemProps } from './base_setting_item';
@@ -15,14 +15,14 @@ export type FieldsetRadio = {
 		key: string;
 		value: string;
 	}>;
-}
+};
 
 type Props = BaseSettingItemProps & {
 	className?: string;
 	inputFieldData: FieldsetRadio;
 	inputFieldValue: string;
 	handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
+};
 
 function RadioSettingItem({
 	title,

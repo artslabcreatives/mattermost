@@ -25,16 +25,14 @@ export const getAccessControlSettings = createSelector(
 		// Otherwise, build from client config (for regular users/channel admins)
 		return {
 			EnableAttributeBasedAccessControl: config?.EnableAttributeBasedAccessControl === 'true',
-			EnableChannelScopeAccessControl: config?.EnableChannelScopeAccessControl === 'true',
 			EnableUserManagedAttributes: config?.EnableUserManagedAttributes === 'true',
+
+            // Absent in older/limited client configs — default to shown to
+            // preserve behavior when the server hasn't sent the flag.
+            EnableChannelPolicyIndicators: config?.EnableChannelPolicyIndicators !== 'false',
 		} as AccessControlSettings;
 	},
 );
-
-export function isChannelScopeAccessControlEnabled(state: GlobalState): boolean {
-	const settings = getAccessControlSettings(state);
-	return settings?.EnableChannelScopeAccessControl || false;
-}
 
 export function getAccessControlPolicy(state: GlobalState, id: string) {
 	return state.entities.admin.accessControlPolicies[id];

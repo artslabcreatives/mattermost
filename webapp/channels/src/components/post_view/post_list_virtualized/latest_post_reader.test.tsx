@@ -4,7 +4,6 @@
 import React from 'react';
 import { createIntl, useIntl } from 'react-intl';
 
-import enMessages from 'i18n/en.json';
 import esMessages from 'i18n/es.json';
 import { renderWithContext, screen } from 'tests/react_testing_utils';
 import { TestHelper } from 'utils/test_helper';
@@ -53,10 +52,11 @@ describe('LatestPostReader', () => {
 
 	const baseProps = {
 		postIds: [post.id],
+        autotranslated: false,
 	};
 
 	test('should render aria-label as a child in the given locale', () => {
-		(useIntl as jest.Mock).mockImplementation(() => createIntl({ locale: 'en', messages: enMessages, defaultLocale: 'en' }));
+        (useIntl as jest.Mock).mockImplementation(() => createIntl({locale: 'en', messages: {}, defaultLocale: 'en'}));
 
 		const { rerender } = renderWithContext(
 			<LatestPostReader {...baseProps} />,

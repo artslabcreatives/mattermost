@@ -33,7 +33,9 @@ export type PostType = 'system_add_remove' |
 'reminder' |
 'system_wrangler' |
 'custom_spillage_report' |
+'system_autotranslation' |
 'burn_on_read' |
+'system_shared_chan_state' |
 '';
 
 export type PostEmbedType = 'image' | 'link' | 'message_attachment' | 'opengraph' | 'permalink';
@@ -55,13 +57,21 @@ export type PostAcknowledgement = {
     post_id: Post['id'];
     user_id: UserProfile['id'];
     acknowledged_at: number;
-}
+};
 
 export type PostPriorityMetadata = {
     priority: PostPriority|'';
     requested_ack?: boolean;
     persistent_notifications?: boolean;
-}
+};
+
+export type PostTranslation = {
+    object?: {
+        message: string;
+    };
+    state: 'ready' | 'skipped' | 'processing' | 'unavailable';
+    source_lang?: string;
+};
 
 export type PostMetadata = {
     embeds: PostEmbed[];
@@ -71,8 +81,10 @@ export type PostMetadata = {
     reactions?: Reaction[];
     priority?: PostPriorityMetadata;
     acknowledgements?: PostAcknowledgement[];
+    translations?: Record<string, PostTranslation>;
     expire_at?: number;
     recipients?: string[];
+    redacted_file_count?: number;
 };
 
 export type Post = {
@@ -123,7 +135,7 @@ export type PostList = {
 
 export type PaginatedPostList = PostList & {
     has_next: boolean;
-}
+};
 
 export type PostSearchResults = PostList & {
     matches: RelationOneToOne<Post, string[]>;
@@ -167,7 +179,7 @@ export declare type OpenGraphMetadataImage = {
     type?: string;
     height?: number;
     width?: number;
-}
+};
 
 export declare type OpenGraphMetadata = {
     type?: string;
@@ -208,13 +220,13 @@ export type PostAnalytics = {
     priority?: PostPriority|'';
     requested_ack?: boolean;
     persistent_notifications?: boolean;
-}
+};
 export type ActivityEntry = {
     postType: Post['type'];
     actorId: string[];
     userIds: string[];
     usernames: string[];
-}
+};
 
 export type PostInfo = {
     channel_id: string;
@@ -225,14 +237,14 @@ export type PostInfo = {
     team_type: TeamType;
     team_display_name: string;
     has_joined_team: boolean;
-}
+};
 
 export type NotificationStatus = 'error' | 'not_sent' | 'unsupported' | 'success';
 export type NotificationResult = {
     status: NotificationStatus;
     reason?: string;
     data?: string;
-}
+};
 
 export type PostReaderInfo = {
     user_id: string;
@@ -258,3 +270,19 @@ export type PostSeenReceipts = {
     read_by: PostReaderInfo[];
     delivered_to: PostDeliveredInfo[];
 };
+
+export type PostReminderDetail = {
+    post_id: string;
+    user_id: string;
+    target_time: number;
+    channel_id: string;
+    channel_name: string;
+    channel_display_name: string;
+    team_name: string;
+    username: string;
+    user_display_name: string;
+    message: string;
+    permalink: string;
+    post_create_at: number;
+};
+

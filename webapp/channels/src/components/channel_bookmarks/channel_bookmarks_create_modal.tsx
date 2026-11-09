@@ -123,7 +123,7 @@ function ChannelBookmarkCreateModal({
 	const [pendingFile, setPendingFile] = useState<FilePreviewInfo | null>();
 	const [fileError, setFileError] = useState('');
 	const [fileId, setFileId] = useState(bookmark?.file_id);
-	const uploadRequestRef = useRef<XMLHttpRequest>();
+    const uploadRequestRef = useRef<XMLHttpRequest>(undefined);
 	const fileInfo: FileInfo | undefined = useSelector((state: GlobalState) => (fileId && getFile(state, fileId)) || undefined);
 
 	const maxFileSize = useSelector((state: GlobalState) => {
@@ -367,6 +367,15 @@ function ChannelBookmarkCreateModal({
 		}
 	}
 
+    let linkCustomMessage;
+    if (linkError) {
+        linkCustomMessage = {type: 'error' as const, value: linkError};
+    } else if (validatedLink && !linkErrorBypass) {
+        linkCustomMessage = null;
+    } else {
+        linkCustomMessage = {type: 'info' as const, value: linkMessage};
+    }
+
 	return (
 		<GenericModal
 			enforceFocus={!showEmojiPicker}
@@ -398,7 +407,7 @@ function ChannelBookmarkCreateModal({
 							data-testid='linkInput'
 							autoFocus={true}
 							addon={linkStatusIndicator}
-							customMessage={linkError ? { type: 'error', value: linkError } : { value: linkMessage }}
+                            customMessage={linkCustomMessage}
 						/>
 					</>
 				) : (
@@ -629,7 +638,7 @@ export const useBookmarkLinkValidation = (link: string, onValidated: (validatedL
 	const [loading, setLoading] = useState<URL>();
 	const [error, setError] = useState<ReactNode>();
 	const [suppressed, setSuppressed] = useState(false);
-	const abort = useRef<AbortController>();
+    const abort = useRef<AbortController>(undefined);
 
 	const start = useCallback((url: URL) => {
 		setLoading(url);
@@ -649,6 +658,8 @@ export const useBookmarkLinkValidation = (link: string, onValidated: (validatedL
 		const handler = setTimeout(async () => {
 			cancel();
 			if (!link) {
+                setError(undefined);
+                setSuppressed(false);
 				return;
 			}
 
@@ -668,7 +679,7 @@ export const useBookmarkLinkValidation = (link: string, onValidated: (validatedL
 					signal: AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT)]),
 				});
 				onValidated(link);
-			} catch (err) {
+            } catch {
 				if (signal === abort.current?.signal) {
 					setError(continuableLinkErr(url, () => {
 						onValidated(link, true);

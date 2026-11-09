@@ -1,7 +1,8 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {type JSX} from 'react';
+import {createPortal} from 'react-dom';
 import type { IntlShape } from 'react-intl';
 import { injectIntl } from 'react-intl';
 
@@ -39,6 +40,7 @@ export type Props = {
 	handleDropdownOpened: (open: boolean) => void;
 	intl: IntlShape;
 	isMenuOpen: boolean;
+    isMobileView: boolean;
 	isSysAdmin: boolean;
 	location?: 'CENTER' | 'RHS_ROOT' | 'RHS_COMMENT' | 'SEARCH' | string;
 	pluginMenuItems?: PostDropdownMenuAction[];
@@ -79,12 +81,12 @@ export type Props = {
 		fetchBindings: (channelId: string, teamId: string) => Promise<ActionResult<AppBinding[]>>;
 
 	}; // TechDebt: Made non-mandatory while converting to typescript
-}
+};
 
 type State = {
 	openUp: boolean;
 	appBindings?: AppBinding[];
-}
+};
 
 export class ActionMenuClass extends React.PureComponent<Props, State> {
 	public static defaultProps: Partial<Props> = {
@@ -93,6 +95,7 @@ export class ActionMenuClass extends React.PureComponent<Props, State> {
 		pluginMenuItems: [],
 	};
 	private buttonElement: HTMLButtonElement | null = null;
+    private menuPortalRef = React.createRef<HTMLDivElement>();
 
 	constructor(props: Props) {
 		super(props);
@@ -341,17 +344,7 @@ export class ActionMenuClass extends React.PureComponent<Props, State> {
 				marketPlace,
 			];
 
-			return (
-				<MenuWrapper
-					open={this.props.isMenuOpen}
-					onToggle={this.handleDropdownOpened}
-				>
-					<ActionsMenuButton
-						ref={this.buttonRef}
-						buttonId={buttonId}
-						popupId={popupId}
-						isMenuOpen={this.props.isMenuOpen}
-					/>
+            const menu = (
 					<Menu
 						listId={popupId}
 						openLeft={true}
@@ -360,6 +353,34 @@ export class ActionMenuClass extends React.PureComponent<Props, State> {
 					>
 						{menuItems}
 					</Menu>
+            );
+
+            // In mobile view the menu renders as a full-screen fixed overlay. Posts live inside the
+            // virtualized post list, whose `will-change: transform` makes it the containing block for
+            // fixed descendants, so the overlay would anchor to the scrolled content instead of the
+            // viewport. Portaling to the body escapes that containing block, and we hand the portal
+            // node to MenuWrapper so its blur handling still treats the menu as inside itself.
+            return (
+                <MenuWrapper
+                    open={this.props.isMenuOpen}
+                    onToggle={this.handleDropdownOpened}
+                    portalNodeRef={this.menuPortalRef}
+                >
+                    <ActionsMenuButton
+                        ref={this.buttonRef}
+                        buttonId={buttonId}
+                        popupId={popupId}
+                        isMenuOpen={this.props.isMenuOpen}
+                    />
+                    {this.props.isMobileView ? createPortal(
+                        <div
+                            className='post-actions-menu-mobile'
+                            ref={this.menuPortalRef}
+                        >
+                            {menu}
+                        </div>,
+                        document.body,
+                    ) : menu}
 				</MenuWrapper>
 			);
 		} else if (this.props.isSysAdmin) {

@@ -1,10 +1,9 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import userEvent from '@testing-library/user-event';
 import React from 'react';
 
-import { fireEvent, render } from 'tests/react_testing_utils';
+import {fireEvent, render, userEvent} from 'tests/react_testing_utils';
 
 import MenuWrapper from './menu_wrapper';
 
@@ -160,6 +159,7 @@ describe('components/MenuWrapper', () => {
 		expect(wrapper).toHaveClass('MenuWrapper--open');
 
 		// Press ESC key
+        // fireEvent on document used because userEvent.keyboard requires element focus
 		fireEvent.keyUp(document, { key: 'Escape', code: 'Escape' });
 
 		// Menu should be closed
@@ -190,6 +190,8 @@ describe('components/MenuWrapper', () => {
 
 		// Simulate TAB key to an element outside the menu
 		const outsideButton = container.querySelectorAll('button')[2];
+
+        // fireEvent on document used because userEvent.keyboard requires element focus
 		fireEvent.keyUp(outsideButton, { key: 'Tab', code: 'Tab' });
 
 		// Menu should be closed
@@ -217,6 +219,8 @@ describe('components/MenuWrapper', () => {
 
 		// Simulate TAB key within the menu
 		const menuButton = container.querySelectorAll('button')[1];
+
+        // fireEvent on document used because userEvent.keyboard requires element focus
 		fireEvent.keyUp(menuButton, { key: 'Tab', code: 'Tab' });
 
 		// Menu should still be open
@@ -244,11 +248,99 @@ describe('components/MenuWrapper', () => {
 		onToggle.mockClear();
 
 		// Press ESC key
+        // fireEvent on document used because userEvent.keyboard requires element focus
 		fireEvent.keyUp(document, { key: 'Escape', code: 'Escape' });
 
 		// onToggle should be called with false
 		expect(onToggle).toHaveBeenCalledWith(false);
 	});
+
+    test('should not close when clicking inside a menu rendered through a portal', async () => {
+        const onToggle = jest.fn();
+        const portalRef = React.createRef<HTMLDivElement>();
+        const {container} = render(
+            <div>
+                <MenuWrapper
+                    onToggle={onToggle}
+                    portalNodeRef={portalRef}
+                >
+                    <button>{'title'}</button>
+                    <div>{'menu'}</div>
+                </MenuWrapper>
+                <div ref={portalRef}>
+                    <button>{'portaled item'}</button>
+                </div>
+            </div>,
+        );
+
+        const wrapper = container.querySelector('.MenuWrapper');
+        const titleButton = container.querySelectorAll('button')[0];
+
+        await userEvent.click(titleButton);
+        expect(wrapper).toHaveClass('MenuWrapper--open');
+        onToggle.mockClear();
+
+        // A portaled menu lives outside the wrapper node, so this click would otherwise be treated
+        // as a blur. It should be recognized as a click inside the menu and keep it open.
+        const portaledItem = container.querySelectorAll('button')[1];
+        fireEvent.click(portaledItem);
+
+        expect(onToggle).not.toHaveBeenCalledWith(false);
+        expect(wrapper).toHaveClass('MenuWrapper--open');
+    });
+
+    test('should close when clicking outside both the wrapper and any portaled menu', async () => {
+        const onToggle = jest.fn();
+        const {container} = render(
+            <div>
+                <MenuWrapper onToggle={onToggle}>
+                    <button>{'title'}</button>
+                    <div>{'menu'}</div>
+                </MenuWrapper>
+                <button>{'outside'}</button>
+            </div>,
+        );
+
+        const wrapper = container.querySelector('.MenuWrapper');
+        const titleButton = container.querySelectorAll('button')[0];
+
+        await userEvent.click(titleButton);
+        expect(wrapper).toHaveClass('MenuWrapper--open');
+        onToggle.mockClear();
+
+        const outsideButton = container.querySelectorAll('button')[1];
+        fireEvent.click(outsideButton);
+
+        expect(onToggle).toHaveBeenCalledWith(false);
+        expect(wrapper).not.toHaveClass('MenuWrapper--open');
+    });
+
+    test('should not close on TAB when focus moves into a menu rendered through a portal', async () => {
+        const portalRef = React.createRef<HTMLDivElement>();
+        const {container} = render(
+            <div>
+                <MenuWrapper portalNodeRef={portalRef}>
+                    <button>{'title'}</button>
+                    <div>{'menu'}</div>
+                </MenuWrapper>
+                <div ref={portalRef}>
+                    <button>{'portaled item'}</button>
+                </div>
+            </div>,
+        );
+
+        const wrapper = container.querySelector('.MenuWrapper');
+        const titleButton = container.querySelectorAll('button')[0];
+
+        await userEvent.click(titleButton);
+        expect(wrapper).toHaveClass('MenuWrapper--open');
+
+        // Tabbing into the portaled menu must not be treated as focus leaving the menu.
+        const portaledItem = container.querySelectorAll('button')[1];
+        fireEvent.keyUp(portaledItem, {key: 'Tab', code: 'Tab'});
+
+        expect(wrapper).toHaveClass('MenuWrapper--open');
+    });
 
 	test('should not call onToggle when menu is already closed', async () => {
 		const onToggle = jest.fn();
@@ -262,6 +354,7 @@ describe('components/MenuWrapper', () => {
 		const wrapper = container.querySelector('.MenuWrapper');
 
 		// Menu is closed by default, press ESC
+        // fireEvent on document used because userEvent.keyboard requires element focus
 		fireEvent.keyUp(document, { key: 'Escape', code: 'Escape' });
 
 		// onToggle should not be called since menu was already closed

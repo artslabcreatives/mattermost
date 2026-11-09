@@ -357,6 +357,17 @@ export function showFlaggedPosts(): ActionFuncAsync {
 	};
 }
 
+export function showReminders(): ActionFuncAsync {
+	return async (dispatch) => {
+		dispatch({
+			type: ActionTypes.UPDATE_RHS_STATE,
+			state: RHSStates.REMINDER,
+		});
+
+		return { data: true };
+	};
+}
+
 export function showPinnedPosts(channelId?: string): ActionFuncAsync<boolean> {
 	return async (dispatch, getState) => {
 		const state = getState();

@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -23,8 +23,8 @@ type AutocompleteDynamicArgProvider interface {
 
 // GetSuggestions returns suggestions for user input.
 func (a *App) GetSuggestions(rctx request.CTX, commandArgs *model.CommandArgs, commands []*model.Command, roleID string) []model.AutocompleteSuggestion {
-	sort.Slice(commands, func(i, j int) bool {
-		return strings.Compare(strings.ToLower(commands[i].Trigger), strings.ToLower(commands[j].Trigger)) < 0
+	slices.SortFunc(commands, func(a, b *model.Command) int {
+		return strings.Compare(strings.ToLower(a.Trigger), strings.ToLower(b.Trigger))
 	})
 
 	autocompleteData := []*model.AutocompleteData{}
@@ -269,7 +269,12 @@ func (a *App) getDynamicListArgument(rctx request.CTX, commandArgs *model.Comman
 	params.Add("team_id", commandArgs.TeamId)
 	params.Add("root_id", commandArgs.RootId)
 	params.Add("user_id", commandArgs.UserId)
-	params.Add("site_url", commandArgs.SiteURL)
+
+	// Use configured SiteURL to prevent SSRF via Host header spoofing (MM-67142)
+	siteURL := *a.Config().ServiceSettings.SiteURL
+	if siteURL != "" {
+		params.Add("site_url", siteURL)
+	}
 
 	resp, err := a.doPluginRequest(rctx, "GET", dynamicArg.FetchURL, params, nil)
 

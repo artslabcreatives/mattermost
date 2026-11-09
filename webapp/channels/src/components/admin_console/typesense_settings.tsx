@@ -20,7 +20,7 @@ type ExtendedAdminConfig = AdminConfig & {
 	};
 };
 
-import { typesensePurgeIndexes, typesenseTest } from 'actions/admin_actions.jsx';
+import { typesensePurgeIndexes, typesenseTest } from 'actions/admin_actions';
 
 import ExternalLink from 'components/external_link';
 

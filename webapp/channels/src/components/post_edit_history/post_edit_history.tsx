@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, { memo, useEffect, useRef, useState } from 'react';
+import React, {memo, useEffect, useRef, useState, type JSX} from 'react';
 import { useIntl } from 'react-intl';
 import { useDispatch } from 'react-redux';
 
@@ -22,6 +22,7 @@ import './post_edit_history.scss';
 const PostEditHistory = ({
 	channelDisplayName,
 	originalPost,
+    isChannelAutotranslated,
 }: PropsFromRedux) => {
 	const [postEditHistory, setPostEditHistory] = useState<Post[]>([]);
 	const [hasError, setHasError] = useState<boolean>(false);
@@ -104,6 +105,7 @@ const PostEditHistory = ({
 			post={originalPost}
 			key={originalPost.id}
 			isCurrent={true}
+            isChannelAutotranslated={isChannelAutotranslated}
 		/>
 	);
 
@@ -111,6 +113,7 @@ const PostEditHistory = ({
 		<EditedPostItem
 			key={postEdited.id}
 			post={postEdited}
+            isChannelAutotranslated={isChannelAutotranslated}
 		/>
 	))];
 

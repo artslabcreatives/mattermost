@@ -2,7 +2,7 @@
 
 .AdvancedTextEditor__skeleton {
     display: flex;
-    height: 122px;
+    height: 98px;
     align-items: center;
     justify-content: center;
     padding-left: 10px;
@@ -176,7 +176,8 @@
     &__footer {
         position: relative;
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
+        justify-content: space-between;
         padding: 0 24px;
         font-size: 12px;
 

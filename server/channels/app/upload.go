@@ -76,6 +76,11 @@ func writeUploadChunkLocal(stagingPath string, r io.Reader, offset int64) (int64
 }
 
 func (a *App) genFileInfoFromReader(name string, file io.ReadSeeker, size int64) (*model.FileInfo, error) {
+	name = model.SanitizeFilename(name)
+	if name == "" {
+		return nil, model.NewAppError("genFileInfoFromReader", "app.upload.gen_file_info.invalid_filename.app_error", nil, "", http.StatusBadRequest)
+	}
+
 	ext := strings.ToLower(filepath.Ext(name))
 
 	info := &model.FileInfo{
@@ -123,6 +128,7 @@ func (a *App) runPluginsHook(rctx request.CTX, info *model.FileInfo, file io.Rea
 			if rejStr != "" {
 				rejErr = model.NewAppError("runPluginsHook", "app.upload.run_plugins_hook.rejected",
 					map[string]any{"Filename": info.Name, "Reason": rejStr}, "", http.StatusBadRequest)
+				a.sendFileUploadRejectedEvent(info, info.CreatorId, rctx.ConnectionId(), rejStr)
 				return false
 			}
 			if newInfo != nil {
@@ -353,13 +359,19 @@ func (a *App) UploadData(rctx request.CTX, us *model.UploadSession, rd io.Reader
 	info, genErr := a.genFileInfoFromReader(us.Filename, file, us.FileSize)
 	file.Close()
 	if genErr != nil {
-		return nil, model.NewAppError("UploadData", "app.upload.upload_data.gen_info.app_error", nil, "", http.StatusInternalServerError).Wrap(genErr)
+		var appErr *model.AppError
+		switch {
+		case errors.As(genErr, &appErr):
+			return nil, appErr
+		default:
+			return nil, model.NewAppError("UploadData", "app.upload.upload_data.gen_info.app_error", nil, "", http.StatusInternalServerError).Wrap(genErr)
+		}
 	}
 
 	info.CreatorId = us.UserId
 	info.ChannelId = us.ChannelId
 	info.Path = us.Path
-	info.RemoteId = model.NewPointer(us.RemoteId)
+	info.RemoteId = new(us.RemoteId)
 	if us.ReqFileId != "" {
 		info.Id = us.ReqFileId
 	}
@@ -410,12 +422,14 @@ func (a *App) UploadData(rctx request.CTX, us *model.UploadSession, rd io.Reader
 
 	if *a.Config().FileSettings.ExtractContent {
 		infoCopy := *info
-		a.Srv().Go(func() {
+		if !a.Srv().GoExtraction(func() {
 			err := a.ExtractContentFromFileInfo(rctx, &infoCopy)
 			if err != nil {
-				rctx.Logger().Error("Failed to extract file content", mlog.Err(err), mlog.String("fileInfoId", infoCopy.Id))
+				rctx.Logger().Error("Failed to extract file content", mlog.Err(err), mlog.String("file_info_id", infoCopy.Id))
 			}
-		})
+		}) {
+			rctx.Logger().Warn("Content extraction queue is full, skipping inline extraction; this file's content will not be searchable until the scheduled content extraction catch-up job runs or an admin runs a content extraction job (e.g. mmctl extract)", mlog.String("file_info_id", infoCopy.Id))
+		}
 	}
 
 	// delete upload session

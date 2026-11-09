@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {type JSX} from 'react';
 import { useSelector } from 'react-redux';
 import styled from 'styled-components';
 
@@ -24,6 +24,7 @@ import type { GlobalState } from 'types/store';
 import AtMentionsButton from './at_mentions_button/at_mentions_button';
 import PlanUpgradeButton from './plan_upgrade_button';
 import SavedPostsButton from './saved_posts_button/saved_posts_button';
+import RemindersButton from './reminders_button';
 import SettingsButton from './settings_button';
 
 const RightControlsContainer = styled.div`
@@ -48,7 +49,7 @@ const StyledCustomizeYourExperienceTour = styled.div`
 
 export type Props = {
 	productId?: ProductIdentifier;
-}
+};
 
 const RightControls = ({ productId = null }: Props): JSX.Element => {
 	// guest validation to see which point the messaging tour tip starts
@@ -66,6 +67,7 @@ const RightControls = ({ productId = null }: Props): JSX.Element => {
 				<>
 					<AtMentionsButton />
 					<SavedPostsButton />
+					<RemindersButton />
 				</>
 			) : (
 				<Pluggable

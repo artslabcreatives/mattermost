@@ -15,7 +15,6 @@ import (
 
 func (api *API) InitFollowUp() {
 	api.BaseRoutes.APIRoot.Handle("/followup/actions", api.APIHandler(doFollowUpAction)).Methods(http.MethodPost)
-	api.BaseRoutes.Post.Handle("/summarize", api.APISessionRequired(summarizePost)).Methods(http.MethodPost)
 	api.BaseRoutes.Channel.Handle("/summarize", api.APISessionRequired(summarizeChannelUnread)).Methods(http.MethodPost)
 }
 
@@ -79,7 +78,7 @@ func doFollowUpAction(c *Context, w http.ResponseWriter, r *http.Request) {
 		props["followup_status"] = "resolved"
 		delete(props, "followup_snooze_until")
 		rootPost.SetProps(props)
-		if _, appErr = c.App.UpdatePost(c.AppContext, rootPost, &model.UpdatePostOptions{SafeUpdate: false}); appErr != nil {
+		if _, _, appErr = c.App.UpdatePost(c.AppContext, rootPost, &model.UpdatePostOptions{SafeUpdate: false}); appErr != nil {
 			c.Err = appErr
 			return
 		}
@@ -94,7 +93,7 @@ func doFollowUpAction(c *Context, w http.ResponseWriter, r *http.Request) {
 		props["followup_snooze_until"] = strconv.FormatInt(snoozeTime, 10)
 		delete(props, "followup_status")
 		rootPost.SetProps(props)
-		if _, appErr = c.App.UpdatePost(c.AppContext, rootPost, &model.UpdatePostOptions{SafeUpdate: false}); appErr != nil {
+		if _, _, appErr = c.App.UpdatePost(c.AppContext, rootPost, &model.UpdatePostOptions{SafeUpdate: false}); appErr != nil {
 			c.Err = appErr
 			return
 		}
@@ -110,7 +109,7 @@ func doFollowUpAction(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	// Save the updated bot nudge post to notify all connected clients
 	var updatedPost *model.Post
-	if updatedPost, appErr = c.App.UpdatePost(c.AppContext, post, &model.UpdatePostOptions{SafeUpdate: false}); appErr != nil {
+	if updatedPost, _, appErr = c.App.UpdatePost(c.AppContext, post, &model.UpdatePostOptions{SafeUpdate: false}); appErr != nil {
 		c.Err = appErr
 		return
 	}
@@ -123,54 +122,6 @@ func doFollowUpAction(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func summarizePost(c *Context, w http.ResponseWriter, r *http.Request) {
-	c.RequirePostId()
-	if c.Err != nil {
-		return
-	}
-
-	post, appErr := c.App.GetSinglePost(c.AppContext, c.Params.PostId, false)
-	if appErr != nil {
-		c.Err = appErr
-		return
-	}
-
-	// Verify channel permission
-	if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), post.ChannelId, model.PermissionReadChannel) {
-		c.SetPermissionError(model.PermissionReadChannel)
-		return
-	}
-
-	summary, appErr := c.App.SummarizeThread(c.AppContext, post.Id, c.AppContext.Session().UserId)
-	if appErr != nil {
-		c.Err = appErr
-		return
-	}
-
-	rootId := post.RootId
-	if rootId == "" {
-		rootId = post.Id
-	}
-
-	// Create and send ephemeral post with the summary
-	ephemeralPost := &model.Post{
-		ChannelId: post.ChannelId,
-		RootId:    rootId,
-		Message:   summary,
-	}
-	_ = c.App.SendEphemeralPost(c.AppContext, c.AppContext.Session().UserId, ephemeralPost)
-
-	// Return summary in the JSON response
-	response := map[string]string{
-		"summary": summary,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		c.Logger.Warn("Error writing summarize post response", mlog.Err(err))
-	}
-}
-
 func summarizeChannelUnread(c *Context, w http.ResponseWriter, r *http.Request) {
 	c.RequireChannelId()
 	if c.Err != nil {
@@ -178,7 +129,7 @@ func summarizeChannelUnread(c *Context, w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Verify channel permission
-	if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionReadChannel) {
+	if ok, _ := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionReadChannel); !ok {
 		c.SetPermissionError(model.PermissionReadChannel)
 		return
 	}
@@ -194,7 +145,7 @@ func summarizeChannelUnread(c *Context, w http.ResponseWriter, r *http.Request) 
 		ChannelId: c.Params.ChannelId,
 		Message:   summary,
 	}
-	_ = c.App.SendEphemeralPost(c.AppContext, c.AppContext.Session().UserId, ephemeralPost)
+	_, _ = c.App.SendEphemeralPost(c.AppContext, c.AppContext.Session().UserId, ephemeralPost)
 
 	// Return summary in the JSON response
 	response := map[string]string{

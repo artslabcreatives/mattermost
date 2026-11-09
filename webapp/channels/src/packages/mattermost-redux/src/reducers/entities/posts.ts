@@ -23,7 +23,7 @@ import type { MMReduxAction } from 'mattermost-redux/action_types';
 import { ChannelTypes, PostTypes, UserTypes, ThreadTypes, CloudTypes, LimitsTypes, TeamTypes } from 'mattermost-redux/action_types';
 import { Posts } from 'mattermost-redux/constants';
 import { PostTypes as PostTypeConstants } from 'mattermost-redux/constants/posts';
-import { comparePosts, isPermalink, shouldUpdatePost } from 'mattermost-redux/utils/post_utils';
+import {comparePosts, isPermalink, isPostEphemeral, shouldUpdatePost} from 'mattermost-redux/utils/post_utils';
 
 export function removeUnneededMetadata(post: Post) {
 	if (!post.metadata) {
@@ -432,6 +432,40 @@ export function handlePosts(state: IDMappedObjects<Post> = {}, action: MMReduxAc
 			};
 		}
 
+    case PostTypes.POST_TRANSLATION_UPDATED: {
+        const data: {
+            object_id: string;
+            language: string;
+            state: 'ready' | 'skipped' | 'processing' | 'unavailable';
+            translation?: string;
+            src_lang?: string;
+        } = action.data;
+        if (!state[data.object_id]) {
+            return state;
+        }
+
+        const existingTranslations = state[data.object_id].metadata?.translations || {};
+        const newTranslations = {
+            ...existingTranslations,
+            [data.language]: {
+                object: data.translation ? JSON.parse(data.translation) : undefined,
+                state: data.state,
+                source_lang: data.src_lang,
+            },
+        };
+
+        return {
+            ...state,
+            [data.object_id]: {
+                ...state[data.object_id],
+                metadata: {
+                    ...state[data.object_id].metadata,
+                    translations: newTranslations,
+                },
+            },
+        };
+    }
+
 		case UserTypes.LOGOUT_SUCCESS:
 			return {};
 		default:
@@ -439,13 +473,36 @@ export function handlePosts(state: IDMappedObjects<Post> = {}, action: MMReduxAc
 	}
 }
 
-function handlePostReceived(nextState: any, post: Post, nestedPermalinkLevel?: number) {
+// Integration action `update` payloads deserialize as a partial Post (often create_at=0).
+// Thread RHS order uses create_at via comparePosts; zero makes the ephemeral sort as oldest (above the root).
+// Ephemeral updates may omit user_id; keep the displayed author from the post already in state.
+function maintainEphemeralPostFields(incoming: Post, stored: Post): Post {
+    const out: Post = {...incoming};
+    if (!out.create_at && stored.create_at) {
+        out.create_at = stored.create_at;
+    }
+    if (!out.root_id && stored.root_id) {
+        out.root_id = stored.root_id;
+    }
+    if (!out.user_id && stored.user_id) {
+        out.user_id = stored.user_id;
+    }
+    return out;
+}
+
+function handlePostReceived(nextState: any, receivedPost: Post, nestedPermalinkLevel?: number) {
 	let currentState = nextState;
 
 	// Check if post already exists in state or if nested permalink
-	if (!shouldUpdatePost(post, currentState[post.id]) || (nestedPermalinkLevel && nestedPermalinkLevel > 1)) {
+    if (!shouldUpdatePost(receivedPost, currentState[receivedPost.id]) || (nestedPermalinkLevel && nestedPermalinkLevel > 1)) {
 		return currentState;
 	}
+
+    const storedPost = currentState[receivedPost.id];
+    let post = receivedPost;
+    if (storedPost && isPostEphemeral(storedPost)) {
+        post = maintainEphemeralPostFields(receivedPost, storedPost);
+    }
 
 	// If post is a permalink and not nested (it links directly to the original message),
 	// and is missing embedded metadata, then update state with new post metadata
@@ -453,10 +510,20 @@ function handlePostReceived(nextState: any, post: Post, nestedPermalinkLevel?: n
 		currentState[post.id] = { ...currentState[post.id], ...post.metadata };
 	}
 
-	// Edited posts that don't have 'is_following' specified should maintain 'is_following' state
-	if (post.update_at > 0 && post.is_following == null && currentState[post.id]) {
+    // Posts that don't have CRT fields specified should maintain existing state.
+    // This happens when posts are returned via GetPostsByIds (e.g. translation
+    // supplement) which doesn't JOIN the Threads/ThreadMemberships tables.
+    if (post.update_at > 0 && currentState[post.id]) {
+        if (post.is_following == null) {
 		post.is_following = currentState[post.id].is_following;
 	}
+        if (post.participants == null && currentState[post.id].participants) {
+            post.participants = currentState[post.id].participants;
+        }
+        if (!post.last_reply_at && currentState[post.id].last_reply_at) {
+            post.last_reply_at = currentState[post.id].last_reply_at;
+        }
+    }
 
 	if (post.delete_at > 0) {
 		// We've received a deleted post, so mark the post as deleted if we already have it
@@ -578,8 +645,14 @@ export function handlePendingPosts(state: string[] = [], action: MMReduxAction) 
 export function postsInChannel(state: Record<string, PostOrderBlock[]> = {}, action: MMReduxAction, prevPosts: IDMappedObjects<Post>, nextPosts: Record<string, Post>) {
 	switch (action.type) {
 		case PostTypes.RESET_POSTS_IN_CHANNEL: {
+        const {channelId} = action;
+        if (!channelId) {
 			return {};
 		}
+        const nextState = {...state};
+        Reflect.deleteProperty(nextState, channelId);
+        return nextState;
+    }
 		case PostTypes.RECEIVED_NEW_POST: {
 			const post = action.data as Post;
 
@@ -702,9 +775,32 @@ export function postsInChannel(state: Record<string, PostOrderBlock[]> = {}, act
 			const order = action.data.order;
 
 			if (order.length === 0 && state[action.channelId]) {
-				// No new posts received when we already have posts
+            if (!recent && !oldest) {
+                // No new information
 				return state;
 			}
+
+            // No new posts, but the server confirmed there's nothing further in that
+            // direction. Persist that on whichever existing block is chronologically at
+            // that end, or callers like prefetch/reload/mark-as-unread keep re-requesting
+            // this same empty range forever.
+            let nextPostsForChannel = state[action.channelId];
+            if (recent) {
+                nextPostsForChannel = markExtremeBlockReached(nextPostsForChannel, nextPosts, 'recent', 'newest');
+            }
+            if (oldest) {
+                nextPostsForChannel = markExtremeBlockReached(nextPostsForChannel, nextPosts, 'oldest', 'oldest');
+            }
+
+            if (nextPostsForChannel === state[action.channelId]) {
+                return state;
+            }
+
+            return {
+                ...state,
+                [action.channelId]: nextPostsForChannel,
+            };
+        }
 
 			const postsForChannel = state[action.channelId] || [];
 			let nextPostsForChannel = [...postsForChannel];
@@ -753,9 +849,27 @@ export function postsInChannel(state: Record<string, PostOrderBlock[]> = {}, act
 			const afterPostId = action.afterPostId;
 
 			if (order.length === 0) {
-				// No posts received
+            if (!action.recent) {
+                // No new information
 				return state;
 			}
+
+            // No new posts were returned, but action.recent is set, meaning the server confirmed
+            // there are no posts newer than afterPostId. This can happen when per-channel
+            // join/leave message filtering removes every post on a page that isn't at the true
+            // end of the list. Without recording the boundary here the client would keep
+            // requesting the same empty page forever, so we persist the 'recent' flag on the
+            // block containing afterPostId to stop further pagination in that direction.
+            const nextPostsForChannel = markChannelBoundaryReached(state[action.channelId] || [], afterPostId, 'recent');
+            if (!nextPostsForChannel) {
+                return state;
+            }
+
+            return {
+                ...state,
+                [action.channelId]: nextPostsForChannel,
+            };
+        }
 
 			const postsForChannel = state[action.channelId] || [];
 
@@ -779,9 +893,27 @@ export function postsInChannel(state: Record<string, PostOrderBlock[]> = {}, act
 			const { beforePostId, oldest } = action;
 
 			if (order.length === 0) {
-				// No posts received
+            if (!oldest) {
+                // No new information
 				return state;
 			}
+
+            // No new posts were returned, but action.oldest is set, meaning the server confirmed
+            // there are no posts older than beforePostId. This can happen when per-channel
+            // join/leave message filtering removes every post on a page that isn't at the true
+            // start of the list. Without recording the boundary here the client would keep
+            // requesting the same empty page forever, so we persist the 'oldest' flag on the
+            // block containing beforePostId to stop further pagination in that direction.
+            const nextPostsForChannel = markChannelBoundaryReached(state[action.channelId] || [], beforePostId, 'oldest');
+            if (!nextPostsForChannel) {
+                return state;
+            }
+
+            return {
+                ...state,
+                [action.channelId]: nextPostsForChannel,
+            };
+        }
 
 			const postsForChannel = state[action.channelId] || [];
 
@@ -939,9 +1071,7 @@ export function postsInChannel(state: Record<string, PostOrderBlock[]> = {}, act
 
 				// For BoR posts: only remove the post itself (BoR doesn't support threads)
 				// For regular posts: remove the post and its thread replies
-				const nextOrder = isBoRPost ?
-					block.order.filter((postId: string) => postId !== post.id) :
-					block.order.filter((postId: string) => postId !== post.id && prevPosts[postId]?.root_id !== post.id);
+            const nextOrder = isBoRPost ? block.order.filter((postId: string) => postId !== post.id) : block.order.filter((postId: string) => postId !== post.id && prevPosts[postId]?.root_id !== post.id);
 
 				if (nextOrder.length !== block.order.length) {
 					nextPostsForChannel[i] = {
@@ -986,6 +1116,72 @@ export function postsInChannel(state: Record<string, PostOrderBlock[]> = {}, act
 		default:
 			return state;
 	}
+}
+
+// markChannelBoundaryReached finds the block containing anchorPostId and sets flag ('oldest' or
+// 'recent') on it, without touching order. Used when a before/after fetch comes back with zero
+// posts but the server has confirmed there's nothing further in that direction: the anchor's block
+// still needs that boundary flag, or pagination keeps re-requesting the same empty page forever.
+// Returns null if there's nothing to update (anchor not found, or already flagged).
+function markChannelBoundaryReached(postsForChannel: PostOrderBlock[], anchorPostId: string, flag: 'oldest' | 'recent'): PostOrderBlock[] | null {
+    const blockIndex = postsForChannel.findIndex((block) => block.order.includes(anchorPostId));
+    if (blockIndex === -1 || postsForChannel[blockIndex][flag]) {
+        return null;
+    }
+
+    const nextPostsForChannel = [...postsForChannel];
+    nextPostsForChannel[blockIndex] = {
+        ...nextPostsForChannel[blockIndex],
+        [flag]: true,
+    };
+    return nextPostsForChannel;
+}
+
+// markExtremeBlockReached finds whichever block is chronologically newest ('newest', for the
+// 'recent' flag) or oldest ('oldest', for the 'oldest' flag) among a channel's blocks, and sets
+// that flag on it. Used when a page-level fetch (RECEIVED_POSTS_IN_CHANNEL) comes back with zero
+// new posts but the server has confirmed there's nothing further in that direction: unlike
+// before/after fetches, this action has no anchor post to look up directly, so the extremal
+// block is found by comparing create_at across blocks instead. Empty blocks are skipped since
+// they have no post to compare. Returns the original array unchanged if there's nothing to
+// update (no non-empty blocks, or the extremal block already carries the flag).
+function markExtremeBlockReached(
+    blocks: PostOrderBlock[],
+    posts: Record<string, Post>,
+    flag: 'oldest' | 'recent',
+    which: 'newest' | 'oldest',
+): PostOrderBlock[] {
+    let extremeIndex = -1;
+    let extremeCreateAt = 0;
+
+    blocks.forEach((block, i) => {
+        if (block.order.length === 0) {
+            return;
+        }
+
+        const postId = which === 'newest' ? block.order[0] : block.order[block.order.length - 1];
+        const post = posts[postId];
+        if (!post) {
+            return;
+        }
+        const createAt = post.create_at;
+
+        if (extremeIndex === -1 || (which === 'newest' ? createAt > extremeCreateAt : createAt < extremeCreateAt)) {
+            extremeIndex = i;
+            extremeCreateAt = createAt;
+        }
+    });
+
+    if (extremeIndex === -1 || blocks[extremeIndex][flag]) {
+        return blocks;
+    }
+
+    const nextBlocks = [...blocks];
+    nextBlocks[extremeIndex] = {
+        ...nextBlocks[extremeIndex],
+        [flag]: true,
+    };
+    return nextBlocks;
 }
 
 export function removeNonRecentEmptyPostBlocks(blocks: PostOrderBlock[]) {

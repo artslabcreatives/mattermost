@@ -5,7 +5,7 @@ import { combineReducers } from 'redux';
 
 import type { ChannelCategory } from '@mattermost/types/channel_categories';
 
-import { ChannelCategoryTypes, UserTypes } from 'mattermost-redux/action_types';
+import {ChannelCategoryTypes, ChannelTypes, TeamTypes, UserTypes} from 'mattermost-redux/action_types';
 import { removeItem } from 'mattermost-redux/utils/array_utils';
 
 import { ActionTypes } from 'utils/constants';
@@ -22,6 +22,30 @@ export function unreadFilterEnabled(state = false, action: MMAction) {
 		default:
 			return state;
 	}
+}
+
+export function initChannelsLoaded(state = false, action: MMAction) {
+    switch (action.type) {
+    case ChannelTypes.INIT_CHANNELS_LOADED:
+        return true;
+    case TeamTypes.SELECT_TEAM:
+    case UserTypes.LOGOUT_SUCCESS:
+        return false;
+    default:
+        return state;
+    }
+}
+
+export function initChannelMembershipsLoaded(state = false, action: MMAction) {
+    switch (action.type) {
+    case ChannelTypes.INIT_CHANNEL_MEMBERSHIPS_LOADED:
+        return true;
+    case TeamTypes.SELECT_TEAM:
+    case UserTypes.LOGOUT_SUCCESS:
+        return false;
+    default:
+        return state;
+    }
 }
 
 export function draggingState(state: DraggingState = {}, action: MMAction): DraggingState {
@@ -130,6 +154,8 @@ export function lastSelectedChannel(state = '', action: MMAction): string {
 
 export default combineReducers({
 	unreadFilterEnabled,
+    initChannelsLoaded,
+    initChannelMembershipsLoaded,
 	draggingState,
 	newCategoryIds,
 	multiSelectedChannelIds,

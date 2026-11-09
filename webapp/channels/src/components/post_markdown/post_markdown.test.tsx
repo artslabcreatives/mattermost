@@ -98,10 +98,7 @@ describe('components/PostMarkdown', () => {
 	});
 
 	test('should render properly with a post', () => {
-		const props = {
-			...baseProps,
-			message: 'See ~test',
-			post: TestHelper.getPostMock({
+        const post = TestHelper.getPostMock({
 				props: {
 					channel_mentions: {
 						test: {
@@ -110,9 +107,28 @@ describe('components/PostMarkdown', () => {
 						},
 					},
 				},
-			}),
+        });
+
+        const props = {
+            ...baseProps,
+            message: 'See ~test',
+            post,
 		};
-		renderWithContext(<PostMarkdown {...props} />, state);
+
+        const stateWithPost = {
+            ...state,
+            entities: {
+                ...state.entities,
+                posts: {
+                    posts: {
+                        [post.id]: post,
+                    },
+                    postsInThread: {},
+                },
+            },
+        };
+
+        renderWithContext(<PostMarkdown {...props}/>, stateWithPost);
 
 		const link = screen.getByRole('link');
 
@@ -183,9 +199,7 @@ describe('components/PostMarkdown', () => {
 	});
 
 	test('should render header change properly', () => {
-		const props = {
-			...baseProps,
-			post: TestHelper.getPostMock({
+        const post = TestHelper.getPostMock({
 				id: 'post_id',
 				type: Posts.POST_TYPES.HEADER_CHANGE as PostType,
 				props: {
@@ -199,10 +213,27 @@ describe('components/PostMarkdown', () => {
 						},
 					},
 				},
-			}),
+        });
+
+        const props = {
+            ...baseProps,
+            post,
 		};
 
-		renderWithContext(<PostMarkdown {...props} />, state);
+        const stateWithPost = {
+            ...state,
+            entities: {
+                ...state.entities,
+                posts: {
+                    posts: {
+                        [post.id]: post,
+                    },
+                    postsInThread: {},
+                },
+            },
+        };
+
+        renderWithContext(<PostMarkdown {...props}/>, stateWithPost);
 		expect(screen.getByText('@user')).toBeInTheDocument();
 		expect(screen.getByText('updated the channel header')).toBeInTheDocument();
 		expect(screen.getByText('From:')).toBeInTheDocument();

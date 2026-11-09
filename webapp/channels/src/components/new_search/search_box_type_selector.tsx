@@ -46,7 +46,7 @@ const SearchTypeItem = styled.button<SearchTypeItemProps>`
 type Props = {
 	searchType: string;
 	setSearchType: (searchType: string) => void;
-}
+};
 
 const SearchTypeSelector = ({ searchType, setSearchType }: Props) => {
 	const setMessagesSearchType = useCallback(() => setSearchType('messages'), [setSearchType]);
@@ -109,7 +109,7 @@ const SearchTypeSelector = ({ searchType, setSearchType }: Props) => {
 						onClick={() => setSearchType(pluginId)}
 						role='radio'
 					>
-						<ErrorBoundary>
+                        <ErrorBoundary pluginId={pluginId}>
 							<Component />
 						</ErrorBoundary>
 					</SearchTypeItem>

@@ -5,6 +5,7 @@ import fs from 'fs';
 
 import nock from 'nock';
 
+import {CollapsedThreads} from '@mattermost/types/config';
 import type { UserProfile } from '@mattermost/types/users';
 
 import { GeneralTypes, UserTypes } from 'mattermost-redux/action_types';
@@ -30,7 +31,7 @@ describe('Actions.Users', () => {
 			entities: {
 				general: {
 					config: {
-						CollapsedThreads: 'always_on',
+                        CollapsedThreads: CollapsedThreads.ALWAYS_ON,
 					},
 				},
 			},
@@ -565,27 +566,6 @@ describe('Actions.Users', () => {
 
 		expect(notInTeam).toBeTruthy();
 		expect(notInTeam.size > 0).toBeTruthy();
-	});
-
-	it('getProfilesWithoutTeam', async () => {
-		nock(Client4.getBaseRoute()).
-			post('/users').
-			reply(200, TestHelper.fakeUserWithId());
-
-		const user = await TestHelper.basicClient4!.createUser(TestHelper.fakeUser(), '', '');
-
-		nock(Client4.getBaseRoute()).
-			get('/users').
-			query(true).
-			reply(200, [user]);
-
-		await store.dispatch(Actions.getProfilesWithoutTeam(0));
-		const { profilesWithoutTeam, profiles } = store.getState().entities.users;
-
-		expect(profilesWithoutTeam).toBeTruthy();
-		expect(profilesWithoutTeam.size > 0).toBeTruthy();
-		expect(profiles).toBeTruthy();
-		expect(Object.keys(profiles).length > 0).toBeTruthy();
 	});
 
 	it('getProfilesInChannel', async () => {

@@ -1,8 +1,8 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, { useMemo } from 'react';
-import { FormattedMessage } from 'react-intl';
+import React, {useCallback, useMemo} from 'react';
+import {FormattedMessage} from 'react-intl';
 
 import { sortFileInfos, getFileDownloadUrl } from 'mattermost-redux/utils/file_utils';
 
@@ -14,12 +14,14 @@ import SingleImageView from 'components/single_image_view';
 import { FileTypes, ModalIdentifiers } from 'utils/constants';
 import { getFileType } from 'utils/utils';
 
+import MediaGallery from './media_gallery';
+
 import type { OwnProps, PropsFromRedux } from './index';
 
 type Props = OwnProps & PropsFromRedux;
 
 export default function FileAttachmentList(props: Props) {
-	const handleImageClick = (indexClicked: number) => {
+    const handleImageClick = useCallback((indexClicked: number) => {
 		props.actions.openModal({
 			modalId: ModalIdentifiers.FILE_PREVIEW_MODAL,
 			dialogType: FilePreviewModal,
@@ -29,7 +31,11 @@ export default function FileAttachmentList(props: Props) {
 				startIndex: indexClicked,
 			},
 		});
-	};
+    }, [props.actions, props.post.id, props.fileInfos]);
+
+    const handleToggleCollapse = useCallback((postId: string) => {
+        props.actions.toggleEmbedVisibility(postId);
+    }, [props.actions]);
 
 	const {
 		compactDisplay,
@@ -65,8 +71,12 @@ export default function FileAttachmentList(props: Props) {
 		return null;
 	}
 
+	const hasDeletedFile = sortedFileInfos.some((f) => f.delete_at > 0);
+	const isEditHistory = Boolean(props.isEditHistory);
+	const canShowInlineMedia = !props.firstFileRejected && !hasDeletedFile && !isEditHistory;
+
 	// ── Single image/video: full-width inline preview ──────────────────────────
-	if (fileInfos && fileInfos.length === 1 && !fileInfos[0].archived) {
+	if (fileInfos && fileInfos.length === 1 && !fileInfos[0].archived && !props.firstFileRejected) {
 		const fileType = getFileType(fileInfos[0].extension);
 
 		if (fileType === FileTypes.IMAGE || (fileType === FileTypes.SVG && enableSVGs) || fileType === FileTypes.VIDEO) {
@@ -114,13 +124,37 @@ export default function FileAttachmentList(props: Props) {
 		</div>
 	) : null;
 
-	if (allImages && !compactDisplay) {
+	if (canShowInlineMedia && allImages && !compactDisplay) {
 		return (
 			<>
 				{downloadAllButton}
 				<MultiImageView
 					fileInfos={sortedFileInfos}
 					onImageClick={handleImageClick}
+				/>
+			</>
+		);
+	}
+
+	// ── Mixed images and videos: media gallery ────────────────────────────
+	const allMedia =
+		nonArchivedInfos.length > 1 &&
+		nonArchivedInfos.every((fi) => {
+			const ft = getFileType(fi.extension);
+			return ft === FileTypes.IMAGE || ft === FileTypes.VIDEO;
+		});
+
+	if (canShowInlineMedia && !isInPermalink && allMedia) {
+		return (
+			<>
+				{downloadAllButton}
+				<MediaGallery
+					fileInfos={sortedFileInfos}
+					postId={props.post.id}
+					compactDisplay={compactDisplay}
+					isEmbedVisible={props.isEmbedVisible}
+					onItemClick={handleImageClick}
+					onToggleCollapse={handleToggleCollapse}
 				/>
 			</>
 		);

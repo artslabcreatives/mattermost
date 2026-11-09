@@ -6,19 +6,51 @@ package api4
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 )
 
-func (api *API) InitChannelBookmarks() {
-	if api.srv.Config().FeatureFlags.ChannelBookmarks {
-		api.BaseRoutes.ChannelBookmarks.Handle("", api.APISessionRequired(createChannelBookmark)).Methods(http.MethodPost)
-		api.BaseRoutes.ChannelBookmark.Handle("", api.APISessionRequired(updateChannelBookmark)).Methods(http.MethodPatch)
-		api.BaseRoutes.ChannelBookmark.Handle("/sort_order", api.APISessionRequired(updateChannelBookmarkSortOrder)).Methods(http.MethodPost)
-		api.BaseRoutes.ChannelBookmark.Handle("", api.APISessionRequired(deleteChannelBookmark)).Methods(http.MethodDelete)
-		api.BaseRoutes.ChannelBookmarks.Handle("", api.APISessionRequired(listChannelBookmarksForChannel)).Methods(http.MethodGet)
+func rejectExternallyManagedBookmarkWrite(op string) *model.AppError {
+	return model.NewAppError(op, "api.channel.bookmark.board.readonly.app_error", nil,
+		"bookmark type is managed outside the channel bookmarks API", http.StatusBadRequest)
+}
+
+// stripBookmarkFileInfoIfDenied redacts FileInfo (and the mini_preview it carries) from every
+// bookmark in bookmarks when the requesting session is denied the download_file_attachment
+// action for channelID. All bookmarks are assumed to belong to the same channel, so a single
+// permission evaluation covers the whole set. nil entries are passed through unchanged.
+func stripBookmarkFileInfoIfDenied(c *Context, channelID string, bookmarks []*model.ChannelBookmarkWithFileInfo) []*model.ChannelBookmarkWithFileInfo {
+	hasFileInfo := slices.ContainsFunc(bookmarks, func(bookmark *model.ChannelBookmarkWithFileInfo) bool {
+		return bookmark != nil && bookmark.FileInfo != nil
+	})
+	if !hasFileInfo {
+		return bookmarks
 	}
+
+	if c.App.HasPermissionToFileAction(c.AppContext, c.AppContext.Session().UserId, c.AppContext.Session().Roles, channelID, model.AccessControlPolicyActionDownloadFileAttachment) {
+		return bookmarks
+	}
+
+	stripped := make([]*model.ChannelBookmarkWithFileInfo, len(bookmarks))
+	for i, bookmark := range bookmarks {
+		if bookmark == nil {
+			continue
+		}
+		bookmarkCopy := bookmark.Clone()
+		bookmarkCopy.FileInfo = nil
+		stripped[i] = bookmarkCopy
+	}
+	return stripped
+}
+
+func (api *API) InitChannelBookmarks() {
+	api.BaseRoutes.ChannelBookmarks.Handle("", api.APISessionRequired(createChannelBookmark)).Methods(http.MethodPost)
+	api.BaseRoutes.ChannelBookmark.Handle("", api.APISessionRequired(updateChannelBookmark)).Methods(http.MethodPatch)
+	api.BaseRoutes.ChannelBookmark.Handle("/sort_order", api.APISessionRequired(updateChannelBookmarkSortOrder)).Methods(http.MethodPost)
+	api.BaseRoutes.ChannelBookmark.Handle("", api.APISessionRequired(deleteChannelBookmark)).Methods(http.MethodDelete)
+	api.BaseRoutes.ChannelBookmarks.Handle("", api.APISessionRequired(listChannelBookmarksForChannel)).Methods(http.MethodGet)
 }
 
 func createChannelBookmark(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -34,17 +66,6 @@ func createChannelBookmark(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	channel, appErr := c.App.GetChannel(c.AppContext, c.Params.ChannelId)
-	if appErr != nil {
-		c.Err = appErr
-		return
-	}
-
-	if channel.DeleteAt != 0 {
-		c.Err = model.NewAppError("createChannelBookmark", "api.channel.bookmark.create_channel_bookmark.deleted_channel.forbidden.app_error", nil, "", http.StatusForbidden)
-		return
-	}
-
 	var channelBookmark *model.ChannelBookmark
 	err := json.NewDecoder(r.Body).Decode(&channelBookmark)
 	if err != nil || channelBookmark == nil {
@@ -57,15 +78,31 @@ func createChannelBookmark(c *Context, w http.ResponseWriter, r *http.Request) {
 	defer c.LogAuditRec(auditRec)
 	model.AddEventParameterAuditableToAuditRec(auditRec, "channelBookmark", channelBookmark)
 
+	if model.IsExternallyManagedChannelBookmarkType(channelBookmark.Type) {
+		c.Err = rejectExternallyManagedBookmarkWrite("createChannelBookmark")
+		return
+	}
+
+	channel, appErr := c.App.GetChannel(c.AppContext, c.Params.ChannelId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	if channel.DeleteAt != 0 {
+		c.Err = model.NewAppError("createChannelBookmark", "api.channel.bookmark.create_channel_bookmark.deleted_channel.forbidden.app_error", nil, "", http.StatusForbidden)
+		return
+	}
+
 	switch channel.Type {
 	case model.ChannelTypeOpen:
-		if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionAddBookmarkPublicChannel) {
+		if ok, _ := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionAddBookmarkPublicChannel); !ok {
 			c.SetPermissionError(model.PermissionAddBookmarkPublicChannel)
 			return
 		}
 
 	case model.ChannelTypePrivate:
-		if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionAddBookmarkPrivateChannel) {
+		if ok, _ := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionAddBookmarkPrivateChannel); !ok {
 			c.SetPermissionError(model.PermissionAddBookmarkPrivateChannel)
 			return
 		}
@@ -77,7 +114,7 @@ func createChannelBookmark(c *Context, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		user, gAppErr := c.App.GetUser(c.AppContext.Session().UserId)
+		user, gAppErr := c.App.GetUser(c.AppContext, c.AppContext.Session().UserId)
 		if gAppErr != nil {
 			c.Err = gAppErr
 			return
@@ -104,8 +141,10 @@ func createChannelBookmark(c *Context, w http.ResponseWriter, r *http.Request) {
 	auditRec.AddEventObjectType("channelBookmarkWithFileInfo")
 	c.LogAudit("display_name=" + newChannelBookmark.DisplayName)
 
+	responseBookmarks := stripBookmarkFileInfoIfDenied(c, c.Params.ChannelId, []*model.ChannelBookmarkWithFileInfo{newChannelBookmark})
+
 	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(newChannelBookmark); err != nil {
+	if err := json.NewEncoder(w).Encode(responseBookmarks[0]); err != nil {
 		c.Logger.Warn("Error while writing response", mlog.Err(err))
 	}
 }
@@ -129,23 +168,9 @@ func updateChannelBookmark(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	originalChannelBookmark, appErr := c.App.GetBookmark(c.Params.ChannelBookmarkId, false)
-	if appErr != nil {
-		c.Err = appErr
-		return
-	}
-	patchedBookmark := originalChannelBookmark.Clone()
 	auditRec := c.MakeAuditRecord(model.AuditEventUpdateChannelBookmark, model.AuditStatusFail)
 	defer c.LogAuditRec(auditRec)
 	model.AddEventParameterAuditableToAuditRec(auditRec, "channelBookmark", patch)
-
-	// The channel bookmark should belong to the same channel specified in the URL
-	if patchedBookmark.ChannelId != c.Params.ChannelId {
-		c.SetInvalidParam("channel_id")
-		return
-	}
-
-	auditRec.AddEventPriorState(originalChannelBookmark)
 
 	channel, appErr := c.App.GetChannel(c.AppContext, c.Params.ChannelId)
 	if appErr != nil {
@@ -158,18 +183,23 @@ func updateChannelBookmark(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	isMember := false
 	switch channel.Type {
 	case model.ChannelTypeOpen:
-		if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionEditBookmarkPublicChannel) {
+		ok, member := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionEditBookmarkPublicChannel)
+		if !ok {
 			c.SetPermissionError(model.PermissionEditBookmarkPublicChannel)
 			return
 		}
+		isMember = member
 
 	case model.ChannelTypePrivate:
-		if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionEditBookmarkPrivateChannel) {
+		ok, member := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionEditBookmarkPrivateChannel)
+		if !ok {
 			c.SetPermissionError(model.PermissionEditBookmarkPrivateChannel)
 			return
 		}
+		isMember = member
 
 	case model.ChannelTypeGroup, model.ChannelTypeDirect:
 		// Any member of DM/GMs but guests can manage channel bookmarks
@@ -178,7 +208,8 @@ func updateChannelBookmark(c *Context, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		user, gAppErr := c.App.GetUser(c.AppContext.Session().UserId)
+		isMember = true
+		user, gAppErr := c.App.GetUser(c.AppContext, c.AppContext.Session().UserId)
 		if gAppErr != nil {
 			c.Err = gAppErr
 			return
@@ -194,6 +225,26 @@ func updateChannelBookmark(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	originalChannelBookmark, appErr := c.App.GetBookmark(c.Params.ChannelBookmarkId, false)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	// The channel bookmark should belong to the same channel specified in the URL
+	if originalChannelBookmark.ChannelId != c.Params.ChannelId {
+		c.SetInvalidParam("channel_id")
+		return
+	}
+
+	if model.IsExternallyManagedChannelBookmarkType(originalChannelBookmark.Type) {
+		c.Err = rejectExternallyManagedBookmarkWrite("updateChannelBookmark")
+		return
+	}
+
+	patchedBookmark := originalChannelBookmark.Clone()
+	auditRec.AddEventPriorState(originalChannelBookmark)
+
 	patchedBookmark.Patch(patch)
 	updateChannelBookmarkResponse, appErr := c.App.UpdateChannelBookmark(c.AppContext, patchedBookmark, connectionID)
 	if appErr != nil {
@@ -201,10 +252,20 @@ func updateChannelBookmark(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !isMember {
+		model.AddEventParameterToAuditRec(auditRec, "non_channel_member_access", true)
+	}
+
 	auditRec.Success()
 	auditRec.AddEventResultState(updateChannelBookmarkResponse)
 	auditRec.AddEventObjectType("updateChannelBookmarkResponse")
 	c.LogAudit("")
+
+	strippedResponse := stripBookmarkFileInfoIfDenied(c, c.Params.ChannelId, []*model.ChannelBookmarkWithFileInfo{
+		updateChannelBookmarkResponse.Updated,
+		updateChannelBookmarkResponse.Deleted,
+	})
+	updateChannelBookmarkResponse.Updated, updateChannelBookmarkResponse.Deleted = strippedResponse[0], strippedResponse[1]
 
 	if err := json.NewEncoder(w).Encode(updateChannelBookmarkResponse); err != nil {
 		c.Logger.Warn("Error while writing response", mlog.Err(err))
@@ -250,19 +311,22 @@ func updateChannelBookmarkSortOrder(c *Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
+	isMember := false
 	switch channel.Type {
 	case model.ChannelTypeOpen:
-		if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionOrderBookmarkPublicChannel) {
+		ok, member := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionOrderBookmarkPublicChannel)
+		if !ok {
 			c.SetPermissionError(model.PermissionOrderBookmarkPublicChannel)
 			return
 		}
-
+		isMember = member
 	case model.ChannelTypePrivate:
-		if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionOrderBookmarkPrivateChannel) {
+		ok, member := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionOrderBookmarkPrivateChannel)
+		if !ok {
 			c.SetPermissionError(model.PermissionOrderBookmarkPrivateChannel)
 			return
 		}
-
+		isMember = member
 	case model.ChannelTypeGroup, model.ChannelTypeDirect:
 		// Any member of DM/GMs but guests can manage channel bookmarks
 		if _, errGet := c.App.GetChannelMember(c.AppContext, channel.Id, c.AppContext.Session().UserId); errGet != nil {
@@ -270,7 +334,8 @@ func updateChannelBookmarkSortOrder(c *Context, w http.ResponseWriter, r *http.R
 			return
 		}
 
-		user, gAppErr := c.App.GetUser(c.AppContext.Session().UserId)
+		isMember = true
+		user, gAppErr := c.App.GetUser(c.AppContext, c.AppContext.Session().UserId)
 		if gAppErr != nil {
 			c.Err = gAppErr
 			return
@@ -292,6 +357,10 @@ func updateChannelBookmarkSortOrder(c *Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
+	if !isMember {
+		model.AddEventParameterToAuditRec(auditRec, "non_channel_member_access", true)
+	}
+
 	for _, b := range bookmarks {
 		if b.Id == c.Params.ChannelBookmarkId {
 			auditRec.AddEventResultState(b)
@@ -301,6 +370,8 @@ func updateChannelBookmarkSortOrder(c *Context, w http.ResponseWriter, r *http.R
 	}
 	auditRec.Success()
 	c.LogAudit("")
+
+	bookmarks = stripBookmarkFileInfoIfDenied(c, c.Params.ChannelId, bookmarks)
 
 	if err := json.NewEncoder(w).Encode(bookmarks); err != nil {
 		c.Logger.Warn("Error while writing response", mlog.Err(err))
@@ -335,19 +406,22 @@ func deleteChannelBookmark(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	isMember := false
 	switch channel.Type {
 	case model.ChannelTypeOpen:
-		if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionDeleteBookmarkPublicChannel) {
+		ok, member := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionDeleteBookmarkPublicChannel)
+		if !ok {
 			c.SetPermissionError(model.PermissionDeleteBookmarkPublicChannel)
 			return
 		}
-
+		isMember = member
 	case model.ChannelTypePrivate:
-		if !c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionDeleteBookmarkPrivateChannel) {
+		ok, member := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionDeleteBookmarkPrivateChannel)
+		if !ok {
 			c.SetPermissionError(model.PermissionDeleteBookmarkPrivateChannel)
 			return
 		}
-
+		isMember = member
 	case model.ChannelTypeGroup, model.ChannelTypeDirect:
 		// Any member of DM/GMs but guests can manage channel bookmarks
 		if _, errGet := c.App.GetChannelMember(c.AppContext, channel.Id, c.AppContext.Session().UserId); errGet != nil {
@@ -355,7 +429,8 @@ func deleteChannelBookmark(c *Context, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		user, gAppErr := c.App.GetUser(c.AppContext.Session().UserId)
+		isMember = true
+		user, gAppErr := c.App.GetUser(c.AppContext, c.AppContext.Session().UserId)
 		if gAppErr != nil {
 			c.Err = gAppErr
 			return
@@ -382,6 +457,10 @@ func deleteChannelBookmark(c *Context, w http.ResponseWriter, r *http.Request) {
 		c.SetInvalidParam("channel_id")
 		return
 	}
+	if model.IsExternallyManagedChannelBookmarkType(oldBookmark.Type) {
+		c.Err = rejectExternallyManagedBookmarkWrite("deleteChannelBookmark")
+		return
+	}
 	auditRec.AddEventPriorState(oldBookmark)
 
 	bookmark, appErr := c.App.DeleteChannelBookmark(c.Params.ChannelBookmarkId, connectionID)
@@ -390,11 +469,17 @@ func deleteChannelBookmark(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !isMember {
+		model.AddEventParameterToAuditRec(auditRec, "non_channel_member_access", true)
+	}
+
 	auditRec.Success()
 	auditRec.AddEventResultState(bookmark)
 	c.LogAudit("bookmark=" + bookmark.DisplayName)
 
-	if err := json.NewEncoder(w).Encode(bookmark); err != nil {
+	strippedBookmarks := stripBookmarkFileInfoIfDenied(c, c.Params.ChannelId, []*model.ChannelBookmarkWithFileInfo{bookmark})
+
+	if err := json.NewEncoder(w).Encode(strippedBookmarks[0]); err != nil {
 		c.Logger.Warn("Error while writing response", mlog.Err(err))
 	}
 }
@@ -416,7 +501,8 @@ func listChannelBookmarksForChannel(c *Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if !c.App.SessionHasPermissionToReadChannel(c.AppContext, *c.AppContext.Session(), channel) {
+	hasPermission, isMember := c.App.SessionHasPermissionToReadChannel(c.AppContext, *c.AppContext.Session(), channel)
+	if !hasPermission {
 		c.SetPermissionError(model.PermissionReadChannelContent)
 		return
 	}
@@ -426,6 +512,15 @@ func listChannelBookmarksForChannel(c *Context, w http.ResponseWriter, r *http.R
 		c.Err = appErr
 		return
 	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventListChannelBookmarksForChannel, model.AuditStatusSuccess)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterToAuditRec(auditRec, "channel_id", c.Params.ChannelId)
+	if !isMember {
+		model.AddEventParameterToAuditRec(auditRec, "non_channel_member_access", true)
+	}
+
+	bookmarks = stripBookmarkFileInfoIfDenied(c, c.Params.ChannelId, bookmarks)
 
 	if err := json.NewEncoder(w).Encode(bookmarks); err != nil {
 		c.Logger.Warn("Error while writing response", mlog.Err(err))

@@ -6,6 +6,7 @@ package typesense
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -25,6 +26,7 @@ type TypesenseInterfaceImpl struct {
 	client   *typesense.Client
 	mutex    sync.RWMutex
 	ready    int32
+	healthy  int32
 	Platform *platform.PlatformService
 }
 
@@ -44,6 +46,18 @@ func (ts *TypesenseInterfaceImpl) IsActive() bool {
 	return *ts.Platform.Config().TypesenseSettings.EnableIndexing && atomic.LoadInt32(&ts.ready) == 1
 }
 
+func (ts *TypesenseInterfaceImpl) IsHealthy() bool {
+	return atomic.LoadInt32(&ts.healthy) == 1
+}
+
+func (ts *TypesenseInterfaceImpl) SetHealthy(healthy bool) {
+	if healthy {
+		atomic.StoreInt32(&ts.healthy, 1)
+	} else {
+		atomic.StoreInt32(&ts.healthy, 0)
+	}
+}
+
 func (ts *TypesenseInterfaceImpl) IsIndexingEnabled() bool {
 	return *ts.Platform.Config().TypesenseSettings.EnableIndexing
 }
@@ -60,7 +74,7 @@ func (ts *TypesenseInterfaceImpl) IsIndexingSync() bool {
 	return *ts.Platform.Config().TypesenseSettings.LiveIndexingBatchSize <= 1
 }
 
-func (ts *TypesenseInterfaceImpl) Start() *model.AppError {
+func (ts *TypesenseInterfaceImpl) Start(ctx context.Context) *model.AppError {
 	if !*ts.Platform.Config().TypesenseSettings.EnableIndexing {
 		return nil
 	}
@@ -85,7 +99,6 @@ func (ts *TypesenseInterfaceImpl) Start() *model.AppError {
 	ts.client = client
 
 	// Test connection by retrieving health
-	ctx := context.Background()
 	_, err := client.Health(ctx, 2*time.Second)
 	if err != nil {
 		return model.NewAppError("Typesense.Start", "ent.typesense.start.health_check_failed", nil, err.Error(), 500)
@@ -97,6 +110,7 @@ func (ts *TypesenseInterfaceImpl) Start() *model.AppError {
 	}
 
 	atomic.StoreInt32(&ts.ready, 1)
+	atomic.StoreInt32(&ts.healthy, 1)
 
 	mlog.Info("Typesense engine started successfully")
 	return nil
@@ -111,9 +125,28 @@ func (ts *TypesenseInterfaceImpl) Stop() *model.AppError {
 	}
 
 	atomic.StoreInt32(&ts.ready, 0)
+	atomic.StoreInt32(&ts.healthy, 0)
 	ts.client = nil
 
 	mlog.Info("Typesense engine stopped")
+	return nil
+}
+
+func (ts *TypesenseInterfaceImpl) HealthCheck(_ request.CTX) *model.AppError {
+	ts.mutex.RLock()
+	client := ts.client
+	ts.mutex.RUnlock()
+	if client == nil {
+		return model.NewAppError("Typesense.HealthCheck", "ent.typesense.start.health_check_failed", nil, "typesense client not started", http.StatusInternalServerError)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if _, err := client.Health(ctx, 5*time.Second); err != nil {
+		return model.NewAppError("Typesense.HealthCheck", "ent.typesense.start.health_check_failed", nil, "", http.StatusBadGateway).Wrap(err)
+	}
+
 	return nil
 }
 
@@ -132,7 +165,7 @@ func (ts *TypesenseInterfaceImpl) GetPlugins() []string {
 func (ts *TypesenseInterfaceImpl) createCollections(ctx context.Context) *model.AppError {
 	// Helper for creating bool pointers
 	truePtr := func() *bool { b := true; return &b }()
-	
+
 	// Create posts collection
 	postsSchema := &api.CollectionSchema{
 		Name: common.IndexBasePosts,
@@ -221,7 +254,7 @@ func (ts *TypesenseInterfaceImpl) createCollections(ctx context.Context) *model.
 }
 
 // IndexPost indexes a post in Typesense
-func (ts *TypesenseInterfaceImpl) IndexPost(post *model.Post, teamID string) *model.AppError {
+func (ts *TypesenseInterfaceImpl) IndexPost(post *model.Post, teamID string, channelType string) *model.AppError {
 	if atomic.LoadInt32(&ts.ready) == 0 {
 		return model.NewAppError("Typesense.IndexPost", "ent.typesense.not_started", nil, "", 500)
 	}
@@ -343,7 +376,7 @@ func (ts *TypesenseInterfaceImpl) SyncBulkIndexPosts(posts []*model.PostForIndex
 	}
 
 	ctx := context.Background()
-	
+
 	for _, post := range posts {
 		if post.Type == model.PostTypeBurnOnRead {
 			continue
@@ -371,7 +404,7 @@ func (ts *TypesenseInterfaceImpl) SyncBulkIndexPosts(posts []*model.PostForIndex
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -382,7 +415,7 @@ func (ts *TypesenseInterfaceImpl) SyncBulkIndexUsers(users []*model.UserForIndex
 	}
 
 	ctx := context.Background()
-	
+
 	for _, user := range users {
 		document := map[string]interface{}{
 			"id":         user.Id,
@@ -401,7 +434,7 @@ func (ts *TypesenseInterfaceImpl) SyncBulkIndexUsers(users []*model.UserForIndex
 			mlog.Warn("Error indexing user in bulk", mlog.String("user_id", user.Id), mlog.Err(err))
 		}
 	}
-	
+
 	return nil
 }
 
@@ -412,7 +445,7 @@ func (ts *TypesenseInterfaceImpl) SyncBulkIndexFiles(files []*model.FileForIndex
 	}
 
 	ctx := context.Background()
-	
+
 	for _, file := range files {
 		if file.ShouldIndex() {
 			document := map[string]interface{}{
@@ -436,7 +469,7 @@ func (ts *TypesenseInterfaceImpl) SyncBulkIndexFiles(files []*model.FileForIndex
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -791,7 +824,7 @@ func (ts *TypesenseInterfaceImpl) DeleteFilesBatch(rctx request.CTX, endTime, li
 	filterBy := fmt.Sprintf("delete_at:>0 && delete_at:<=%d", endTime)
 
 	if _, err := ts.client.Collection(common.IndexBaseFiles).Documents().Delete(ctx, &api.DeleteDocumentsParams{
-		FilterBy: &filterBy,
+		FilterBy:  &filterBy,
 		BatchSize: intPtr(int(limit)),
 	}); err != nil {
 		return model.NewAppError("Typesense.DeleteFilesBatch", "ent.typesense.delete_files_batch.error", nil, err.Error(), 500)
@@ -977,4 +1010,16 @@ func joinStrings(strs []string, sep string) string {
 		result += s
 	}
 	return result
+}
+
+// UpdatePostsChannelTypeByChannelId is a no-op: Typesense filters posts by
+// channel membership at query time and does not index the channel type.
+func (ts *TypesenseInterfaceImpl) UpdatePostsChannelTypeByChannelId(rctx request.CTX, channelID string, channelType string) *model.AppError {
+	return nil
+}
+
+// BackfillPostsChannelType is a no-op for the same reason as
+// UpdatePostsChannelTypeByChannelId.
+func (ts *TypesenseInterfaceImpl) BackfillPostsChannelType(rctx request.CTX, channelIDs []string, channelType string) *model.AppError {
+	return nil
 }

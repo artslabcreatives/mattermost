@@ -17,7 +17,7 @@ type Props = {
 	onRetry?: (clientId: string) => void;
 	clientId: string;
 	fileInfo: FilePreviewInfo;
-}
+};
 
 export default class FileProgressPreview extends React.PureComponent<Props> {
 	handleRemove = () => {
@@ -128,7 +128,6 @@ export default class FileProgressPreview extends React.PureComponent<Props> {
 
 		return (
 			<div
-				ref={clientId}
 				key={clientId}
 				className={`file-preview post-image__column${fileInfo?.failed ? ' post-image__column--failed' : ''}`}
 				data-client-id={clientId}

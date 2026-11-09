@@ -1,10 +1,10 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, { useCallback, useState } from 'react';
+import type {Placement} from '@floating-ui/react';
+import React, {useCallback, useState, type JSX} from 'react';
 import { FormattedMessage } from 'react-intl';
 import { useDispatch, useSelector } from 'react-redux';
-import type { Placement } from 'tippy.js';
 
 import { TourTip, useMeasurePunchouts } from '@mattermost/components';
 
@@ -16,7 +16,7 @@ import { showNewChannelWithBoardPulsatingDot } from 'selectors/plugins';
 type Props = {
 	pulsatingDotPlacement?: Omit<Placement, 'auto' | 'auto-end'>;
 	pulsatingDotTranslate?: { x: number; y: number };
-}
+};
 
 const NewChannelWithBoardTourTip = ({
 	pulsatingDotPlacement = 'left',

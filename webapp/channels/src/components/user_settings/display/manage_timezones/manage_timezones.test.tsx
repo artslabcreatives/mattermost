@@ -1,53 +1,78 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import { shallow } from 'enzyme';
 import React from 'react';
 
-import type { UserProfile } from '@mattermost/types/users';
+import type {UserProfile} from '@mattermost/types/users';
+
+import {renderWithContext, screen, userEvent} from 'tests/react_testing_utils';
 
 import ManageTimezones from './manage_timezones';
 
+jest.mock('utils/timezone', () => ({
+    getBrowserTimezone: jest.fn(() => 'America/New_York'),
+}));
+
 describe('components/user_settings/display/manage_timezones/manage_timezones', () => {
-	const user = {
-		id: 'user_id',
-	};
+    const user = {
+        id: 'user_id',
+    };
 
-	const requiredProps = {
-		user: user as UserProfile,
-		locale: '',
-		useAutomaticTimezone: true,
-		automaticTimezone: '',
-		manualTimezone: '',
-		timezoneLabel: '',
-		timezones: [],
-		updateSection: jest.fn(),
-		actions: {
-			updateMe: jest.fn(() => Promise.resolve({})),
-			patchUser: jest.fn(() => Promise.resolve({})),
-		},
-	};
+    const requiredProps = {
+        user: user as UserProfile,
+        locale: '',
+        useAutomaticTimezone: true,
+        automaticTimezone: '',
+        manualTimezone: '',
+        timezoneLabel: '',
+        timezones: [],
+        updateSection: jest.fn(),
+        actions: {
+            updateMe: jest.fn(() => Promise.resolve({})),
+            patchUser: jest.fn(() => Promise.resolve({})),
+        },
+    };
 
-	test('submitUser() should have called [updateMe, updateSection]', async () => {
-		const updateMe = jest.fn(() => Promise.resolve({ data: true }));
-		const props = { ...requiredProps, actions: { ...requiredProps.actions, updateMe } };
-		const wrapper = shallow(<ManageTimezones {...props} />);
+    test('submitUser() should have called [updateMe, updateSection]', async () => {
+        const updateMe = jest.fn(() => Promise.resolve({data: true}));
+        const updateSection = jest.fn();
+        const props = {
+            ...requiredProps,
+            updateSection,
+            useAutomaticTimezone: false,
+            automaticTimezone: 'Europe/London',
+            manualTimezone: 'Europe/London',
+            timezones: [{
+                value: 'GMT Standard Time',
+                abbr: 'GMT',
+                offset: 0,
+                isdst: false,
+                text: '(UTC) London',
+                utc: ['Europe/London'],
+            }],
+            actions: {...requiredProps.actions, updateMe},
+        };
+        renderWithContext(<ManageTimezones {...props}/>);
 
-		await (wrapper.instance() as ManageTimezones).submitUser();
+        // Toggle the automatic timezone checkbox to create a state diff
+        await userEvent.click(screen.getByRole('checkbox', {name: /automatic/i}));
 
-		const expected = {
-			...props.user,
-			timezone: {
-				useAutomaticTimezone: props.useAutomaticTimezone.toString(),
-				manualTimezone: props.manualTimezone,
-				automaticTimezone: props.automaticTimezone,
-			}
-		};
+        // Click Save to trigger changeTimezone → submitUser
+        await userEvent.click(screen.getByTestId('saveSetting'));
 
-		expect(props.actions.updateMe).toHaveBeenCalled();
-		expect(props.actions.updateMe).toHaveBeenCalledWith(expected);
+        const expected = {
+            ...props.user,
+            timezone: {
+                useAutomaticTimezone: 'true',
+                manualTimezone: 'Europe/London',
+                automaticTimezone: 'America/New_York',
+            },
+        };
 
-		expect(props.updateSection).toHaveBeenCalled();
-		expect(props.updateSection).toHaveBeenCalledWith('');
-	});
+        expect(updateMe).toHaveBeenCalled();
+        expect(updateMe).toHaveBeenCalledWith(expected);
+
+        expect(updateSection).toHaveBeenCalled();
+        expect(updateSection).toHaveBeenCalledWith('');
+    });
 });

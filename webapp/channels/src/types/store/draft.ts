@@ -10,7 +10,7 @@ import { PostTypes } from 'utils/constants';
 export type DraftInfo = {
 	id: string;
 	type: 'channel' | 'thread';
-}
+};
 
 export type PostDraft = {
 	message: string;
@@ -52,6 +52,10 @@ export function isPostDraftEmpty(draft: PostDraft): boolean {
 	const hasBurnOnRead = draft.type === PostTypes.BURN_ON_READ;
 
 	return !hasMessage && !hasAttachment && !hasUploadingFiles && !hasPriority && !hasBurnOnRead;
+}
+
+export function draftHasAttachments(draft: Pick<PostDraft, 'fileInfos' | 'uploadsInProgress'>): boolean {
+    return draft.fileInfos?.length > 0 || draft.uploadsInProgress?.length > 0;
 }
 
 export function scheduledPostToPostDraft(scheduledPost: ScheduledPost): PostDraft {

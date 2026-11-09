@@ -1,10 +1,11 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, { useCallback, useState, useMemo } from 'react';
+import React, {useCallback, useState, useMemo, type JSX} from 'react';
 import type { MessageDescriptor, WrappedComponentProps } from 'react-intl';
 import { FormattedMessage } from 'react-intl';
 
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
 import type { TestLdapFiltersResponse } from '@mattermost/types/admin';
 import type { CloudState } from '@mattermost/types/cloud';
 import type { AdminConfig, ClientLicense, EnvironmentConfig } from '@mattermost/types/config';
@@ -18,9 +19,9 @@ import { useSectionNavigation } from 'components/common/hooks/useSectionNavigati
 import FormError from 'components/form_error';
 import SaveButton from 'components/save_button';
 import AdminHeader from 'components/widgets/admin_console/admin_header';
-import WithTooltip from 'components/with_tooltip';
 
 import Constants from 'utils/constants';
+import {isMessageDescriptor} from 'utils/i18n';
 
 import LDAPBooleanSetting from './ldap_boolean_setting';
 import LDAPButtonSetting from './ldap_button_setting';
@@ -45,25 +46,25 @@ const SECTION_OBSERVER_OPTIONS: IntersectionObserverInit = {
 
 export type LDAPDefinitionSettingButton = AdminDefinitionSettingButton & {
 	action: (success: () => void, error: (error: { message: string }) => void, settings?: Record<string, any>) => void;
-}
+};
 
 export type LDAPDefinitionSetting = AdminDefinitionSetting & {
 	help_text_more_info?: string | JSX.Element | MessageDescriptor;
-}
+};
 
 export type LDAPAdminDefinitionConfigSchemaSettings = AdminDefinitionSubSectionSchema & {
 	sections?: LDAPAdminDefinitionConfigSchemaSection[];
-}
+};
 
 export type LDAPAdminDefinitionConfigSchemaSection = Omit<AdminDefinitionConfigSchemaSection, 'settings'> & {
 	sectionTitle?: string;
 	settings: LDAPDefinitionSetting[];
-}
+};
 
 export type GeneralSettingProps = {
 	setting: LDAPDefinitionSetting;
 	schema: AdminDefinitionSubSectionSchema | null;
-}
+};
 
 type Props = {
 	config: Partial<AdminConfig>;
@@ -78,7 +79,7 @@ type Props = {
 	cloud: CloudState;
 	isCurrentUserSystemAdmin: boolean;
 	enterpriseReady: boolean;
-} & WrappedComponentProps
+} & WrappedComponentProps;
 
 type State = {
 	[x: string]: unknown;
@@ -89,7 +90,7 @@ type State = {
 	showConfirmId: string;
 	clientWarning: string | boolean;
 	prevSchemaId?: string;
-}
+};
 
 const LDAPWizard = (props: Props) => {
 	const schema = ldapWizardAdminDefinition;
@@ -185,6 +186,9 @@ const LDAPWizard = (props: Props) => {
 				disabled={isDisabled(setting)}
 				setByEnv={isSetByEnv(setting.key!, props.environmentConfig)}
 				setting={setting}
+                config={props.config}
+                state={state}
+                license={props.license}
 			/>
 		);
 	};
@@ -221,7 +225,6 @@ const LDAPWizard = (props: Props) => {
 		return (
 			<LDAPButtonSetting
 				key={schema.id + '_button_' + setting.key}
-				onChange={handleChange}
 				saveNeeded={false}
 				schema={schema}
 				disabled={isDisabled(setting)}
@@ -593,7 +596,9 @@ const LDAPWizard = (props: Props) => {
 						defaultMessage='Sections'
 					/>
 				</div>
-				{memoizedSections.map((section) => (
+                {memoizedSections.map((section) => {
+                    const title = section.sectionTitle || section.title;
+                    return (
 					<button
 						key={section.key + '-sidebar-item'}
 						className={`ldap-wizard-sidebar-item ${section.key === activeSectionKey ? 'ldap-wizard-sidebar-item--active' : ''}`}
@@ -604,9 +609,10 @@ const LDAPWizard = (props: Props) => {
 							}
 						}}
 					>
-						{section.sectionTitle || section.title}
+                            {isMessageDescriptor(title) ? <FormattedMessage {...title}/> : title}
 					</button>
-				))}
+                    );
+                })}
 			</div>
 		);
 	};

@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import ReactDOM from 'react-dom';
+import ReactDOMClient from 'react-dom/client';
 
 import {logError, LogErrorBarMode} from 'mattermost-redux/actions/errors';
 
@@ -11,6 +11,7 @@ import store from 'stores/redux_store';
 import App from 'components/app';
 
 import {AnnouncementBarTypes} from 'utils/constants';
+import {HUB_EMBED_BODY_CLASS, isEmbeddedInHub} from 'utils/embed';
 import {setCSRFFromCookie} from 'utils/utils';
 
 // Import our styles
@@ -30,7 +31,9 @@ declare global {
 // This runs before we start to render anything.
 function preRenderSetup(onPreRenderSetupReady: () => void) {
     window.onerror = (msg, url, line, column, error) => {
-        if (msg === 'ResizeObserver loop limit exceeded') {
+        // Benign Chromium ResizeObserver noise (Monaco automaticLayout, etc.).
+        // Covers both "loop limit exceeded" and "loop completed with undelivered notifications."
+        if (typeof msg === 'string' && msg.startsWith('ResizeObserver loop')) {
             return;
         }
 
@@ -49,14 +52,18 @@ function preRenderSetup(onPreRenderSetupReady: () => void) {
 
     setCSRFFromCookie();
 
+    // Lets styles hide parts of the UI when shown inside the Hub drawer
+    if (isEmbeddedInHub()) {
+        document.body.classList.add(HUB_EMBED_BODY_CLASS);
+    }
+
     onPreRenderSetupReady();
 }
 
 function renderReactRootComponent() {
-    // We're using React 18, but we're using the deprecated way of starting React because ReactDOM.createRoot enables
-    // new features such as automatic batching which breaks some components. This will need to be changed in the future
-    // because this method of starting the app will be removed in React 19.
-    ReactDOM.render(<App/>, document.getElementById('root')!);
+    const container = document.getElementById('root')!;
+
+    ReactDOMClient.createRoot(container).render(<App/>);
 }
 
 /**

@@ -263,17 +263,17 @@ func (_m *PostStore) GetEditHistoryForPost(postID string) ([]*model.Post, error)
 	return r0, r1
 }
 
-// GetEtag provides a mock function with given fields: channelID, allowFromCache, collapsedThreads
-func (_m *PostStore) GetEtag(channelID string, allowFromCache bool, collapsedThreads bool) string {
-	ret := _m.Called(channelID, allowFromCache, collapsedThreads)
+// GetEtag provides a mock function with given fields: channelID, allowFromCache, collapsedThreads, includeTranslations
+func (_m *PostStore) GetEtag(channelID string, allowFromCache bool, collapsedThreads bool, includeTranslations bool) string {
+	ret := _m.Called(channelID, allowFromCache, collapsedThreads, includeTranslations)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetEtag")
 	}
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(string, bool, bool) string); ok {
-		r0 = rf(channelID, allowFromCache, collapsedThreads)
+	if rf, ok := ret.Get(0).(func(string, bool, bool, bool) string); ok {
+		r0 = rf(channelID, allowFromCache, collapsedThreads, includeTranslations)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
@@ -475,9 +475,9 @@ func (_m *PostStore) GetOldestEntityCreationTime() (int64, error) {
 	return r0, r1
 }
 
-// GetParentsForExportAfter provides a mock function with given fields: limit, afterID, includeArchivedChannels
-func (_m *PostStore) GetParentsForExportAfter(limit int, afterID string, includeArchivedChannels bool) ([]*model.PostForExport, error) {
-	ret := _m.Called(limit, afterID, includeArchivedChannels)
+// GetParentsForExportAfter provides a mock function with given fields: limit, afterID, includeArchivedChannels, teamName, channelNameFilter
+func (_m *PostStore) GetParentsForExportAfter(limit int, afterID string, includeArchivedChannels bool, teamName string, channelNameFilter string) ([]*model.PostForExport, error) {
+	ret := _m.Called(limit, afterID, includeArchivedChannels, teamName, channelNameFilter)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetParentsForExportAfter")
@@ -485,19 +485,19 @@ func (_m *PostStore) GetParentsForExportAfter(limit int, afterID string, include
 
 	var r0 []*model.PostForExport
 	var r1 error
-	if rf, ok := ret.Get(0).(func(int, string, bool) ([]*model.PostForExport, error)); ok {
-		return rf(limit, afterID, includeArchivedChannels)
+	if rf, ok := ret.Get(0).(func(int, string, bool, string, string) ([]*model.PostForExport, error)); ok {
+		return rf(limit, afterID, includeArchivedChannels, teamName, channelNameFilter)
 	}
-	if rf, ok := ret.Get(0).(func(int, string, bool) []*model.PostForExport); ok {
-		r0 = rf(limit, afterID, includeArchivedChannels)
+	if rf, ok := ret.Get(0).(func(int, string, bool, string, string) []*model.PostForExport); ok {
+		r0 = rf(limit, afterID, includeArchivedChannels, teamName, channelNameFilter)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.PostForExport)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(int, string, bool) error); ok {
-		r1 = rf(limit, afterID, includeArchivedChannels)
+	if rf, ok := ret.Get(1).(func(int, string, bool, string, string) error); ok {
+		r1 = rf(limit, afterID, includeArchivedChannels, teamName, channelNameFilter)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -535,27 +535,29 @@ func (_m *PostStore) GetPostAfterTime(channelID string, timestamp int64, collaps
 	return r0, r1
 }
 
-// GetPostIdAfterTime provides a mock function with given fields: channelID, timestamp, collapsedThreads
-func (_m *PostStore) GetPostIdAfterTime(channelID string, timestamp int64, collapsedThreads bool) (string, error) {
-	ret := _m.Called(channelID, timestamp, collapsedThreads)
+// GetPostAuthorIDsForChannel provides a mock function with given fields: teamName, channelName, includeArchivedChannels
+func (_m *PostStore) GetPostAuthorIDsForChannel(teamName string, channelName string, includeArchivedChannels bool) ([]string, error) {
+	ret := _m.Called(teamName, channelName, includeArchivedChannels)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetPostIdAfterTime")
+		panic("no return value specified for GetPostAuthorIDsForChannel")
 	}
 
-	var r0 string
+	var r0 []string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, int64, bool) (string, error)); ok {
-		return rf(channelID, timestamp, collapsedThreads)
+	if rf, ok := ret.Get(0).(func(string, string, bool) ([]string, error)); ok {
+		return rf(teamName, channelName, includeArchivedChannels)
 	}
-	if rf, ok := ret.Get(0).(func(string, int64, bool) string); ok {
-		r0 = rf(channelID, timestamp, collapsedThreads)
+	if rf, ok := ret.Get(0).(func(string, string, bool) []string); ok {
+		r0 = rf(teamName, channelName, includeArchivedChannels)
 	} else {
-		r0 = ret.Get(0).(string)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, int64, bool) error); ok {
-		r1 = rf(channelID, timestamp, collapsedThreads)
+	if rf, ok := ret.Get(1).(func(string, string, bool) error); ok {
+		r1 = rf(teamName, channelName, includeArchivedChannels)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -563,9 +565,67 @@ func (_m *PostStore) GetPostIdAfterTime(channelID string, timestamp int64, colla
 	return r0, r1
 }
 
-// GetPostIdBeforeTime provides a mock function with given fields: channelID, timestamp, collapsedThreads
-func (_m *PostStore) GetPostIdBeforeTime(channelID string, timestamp int64, collapsedThreads bool) (string, error) {
-	ret := _m.Called(channelID, timestamp, collapsedThreads)
+// GetPostAuthorIDsForTeam provides a mock function with given fields: teamName, includeArchivedChannels
+func (_m *PostStore) GetPostAuthorIDsForTeam(teamName string, includeArchivedChannels bool) ([]string, error) {
+	ret := _m.Called(teamName, includeArchivedChannels)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPostAuthorIDsForTeam")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, bool) ([]string, error)); ok {
+		return rf(teamName, includeArchivedChannels)
+	}
+	if rf, ok := ret.Get(0).(func(string, bool) []string); ok {
+		r0 = rf(teamName, includeArchivedChannels)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, bool) error); ok {
+		r1 = rf(teamName, includeArchivedChannels)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetPostIdAfterTime provides a mock function with given fields: channelID, timestamp, collapsedThreads, excludeMembershipSystemPosts
+func (_m *PostStore) GetPostIdAfterTime(channelID string, timestamp int64, collapsedThreads bool, excludeMembershipSystemPosts bool) (string, error) {
+	ret := _m.Called(channelID, timestamp, collapsedThreads, excludeMembershipSystemPosts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPostIdAfterTime")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, int64, bool, bool) (string, error)); ok {
+		return rf(channelID, timestamp, collapsedThreads, excludeMembershipSystemPosts)
+	}
+	if rf, ok := ret.Get(0).(func(string, int64, bool, bool) string); ok {
+		r0 = rf(channelID, timestamp, collapsedThreads, excludeMembershipSystemPosts)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, int64, bool, bool) error); ok {
+		r1 = rf(channelID, timestamp, collapsedThreads, excludeMembershipSystemPosts)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetPostIdBeforeTime provides a mock function with given fields: channelID, timestamp, collapsedThreads, excludeMembershipSystemPosts
+func (_m *PostStore) GetPostIdBeforeTime(channelID string, timestamp int64, collapsedThreads bool, excludeMembershipSystemPosts bool) (string, error) {
+	ret := _m.Called(channelID, timestamp, collapsedThreads, excludeMembershipSystemPosts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetPostIdBeforeTime")
@@ -573,17 +633,17 @@ func (_m *PostStore) GetPostIdBeforeTime(channelID string, timestamp int64, coll
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, int64, bool) (string, error)); ok {
-		return rf(channelID, timestamp, collapsedThreads)
+	if rf, ok := ret.Get(0).(func(string, int64, bool, bool) (string, error)); ok {
+		return rf(channelID, timestamp, collapsedThreads, excludeMembershipSystemPosts)
 	}
-	if rf, ok := ret.Get(0).(func(string, int64, bool) string); ok {
-		r0 = rf(channelID, timestamp, collapsedThreads)
+	if rf, ok := ret.Get(0).(func(string, int64, bool, bool) string); ok {
+		r0 = rf(channelID, timestamp, collapsedThreads, excludeMembershipSystemPosts)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(string, int64, bool) error); ok {
-		r1 = rf(channelID, timestamp, collapsedThreads)
+	if rf, ok := ret.Get(1).(func(string, int64, bool, bool) error); ok {
+		r1 = rf(channelID, timestamp, collapsedThreads, excludeMembershipSystemPosts)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -644,6 +704,36 @@ func (_m *PostStore) GetPostReminders(now int64) ([]*model.PostReminder, error) 
 
 	if rf, ok := ret.Get(1).(func(int64) error); ok {
 		r1 = rf(now)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetPostRemindersForPost provides a mock function with given fields: postId
+func (_m *PostStore) GetPostRemindersForPost(postId string) ([]*model.PostReminder, error) {
+	ret := _m.Called(postId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPostRemindersForPost")
+	}
+
+	var r0 []*model.PostReminder
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]*model.PostReminder, error)); ok {
+		return rf(postId)
+	}
+	if rf, ok := ret.Get(0).(func(string) []*model.PostReminder); ok {
+		r0 = rf(postId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.PostReminder)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(postId)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1018,6 +1108,34 @@ func (_m *PostStore) GetSingle(rctx request.CTX, id string, inclDeleted bool) (*
 	return r0, r1
 }
 
+// GetVisiblePostIdAroundTime provides a mock function with given fields: channelID, timestamp, before, collapsedThreads, userID, excludeMembershipSystemPosts
+func (_m *PostStore) GetVisiblePostIdAroundTime(channelID string, timestamp int64, before bool, collapsedThreads bool, userID string, excludeMembershipSystemPosts bool) (string, error) {
+	ret := _m.Called(channelID, timestamp, before, collapsedThreads, userID, excludeMembershipSystemPosts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetVisiblePostIdAroundTime")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, int64, bool, bool, string, bool) (string, error)); ok {
+		return rf(channelID, timestamp, before, collapsedThreads, userID, excludeMembershipSystemPosts)
+	}
+	if rf, ok := ret.Get(0).(func(string, int64, bool, bool, string, bool) string); ok {
+		r0 = rf(channelID, timestamp, before, collapsedThreads, userID, excludeMembershipSystemPosts)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, int64, bool, bool, string, bool) error); ok {
+		r1 = rf(channelID, timestamp, before, collapsedThreads, userID, excludeMembershipSystemPosts)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // HasAutoResponsePostByUserSince provides a mock function with given fields: options, userID
 func (_m *PostStore) HasAutoResponsePostByUserSince(options model.GetPostsSinceOptions, userID string) (bool, error) {
 	ret := _m.Called(options, userID)
@@ -1129,6 +1247,24 @@ func (_m *PostStore) PermanentDelete(rctx request.CTX, postID string) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(request.CTX, string) error); ok {
 		r0 = rf(rctx, postID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// PermanentDeleteAssociatedData provides a mock function with given fields: postIds
+func (_m *PostStore) PermanentDeleteAssociatedData(postIds []string) error {
+	ret := _m.Called(postIds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PermanentDeleteAssociatedData")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(postIds)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1416,6 +1552,54 @@ func (_m *PostStore) SetPostReminder(reminder *model.PostReminder) error {
 	return r0
 }
 
+// DeletePostReminder provides a mock function with given fields: postID, userID
+func (_m *PostStore) DeletePostReminder(postID string, userID string) error {
+	ret := _m.Called(postID, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeletePostReminder")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(postID, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// GetPostRemindersForUser provides a mock function with given fields: userID
+func (_m *PostStore) GetPostRemindersForUser(userID string) ([]*model.PostReminderDetail, error) {
+	ret := _m.Called(userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPostRemindersForUser")
+	}
+
+	var r0 []*model.PostReminderDetail
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]*model.PostReminderDetail, error)); ok {
+		return rf(userID)
+	}
+	if rf, ok := ret.Get(0).(func(string) []*model.PostReminderDetail); ok {
+		r0 = rf(userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.PostReminderDetail)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Update provides a mock function with given fields: rctx, newPost, oldPost
 func (_m *PostStore) Update(rctx request.CTX, newPost *model.Post, oldPost *model.Post) (*model.Post, error) {
 	ret := _m.Called(rctx, newPost, oldPost)
@@ -1475,7 +1659,6 @@ func (_m *PostStore) GetPostChannelsForFile(fileID string) ([]string, error) {
 
 	return r0, r1
 }
-
 
 // NewPostStore creates a new instance of PostStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.

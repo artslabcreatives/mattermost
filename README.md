@@ -34,6 +34,67 @@ make setup-go-work
 make build-linux-amd64 BUILD_NUMBER=custom BUILD_TAGS="sourceavailable"
 ```
 
+### OAuth `manage_oauth` Backport Operations
+
+The Mattermost 11.4.3 `system_admin` permission repair is backported without a full server upgrade. On the first server start with the patched binary, the application migration `restore_manage_oauth_permission` adds only `manage_oauth` to the exact `system_admin` role and records completion in `Systems`. Later starts are no-ops. There is no separate schema migration or manual repair command.
+
+This customized installation also retains its two historical HR analytics permission IDs as deprecated permissions. That compatibility shim lets the migration validate and preserve existing role assignments; it does not grant either permission to new or default roles.
+
+Before deployment, load the target environment, confirm it is the intended database, and take a verified PostgreSQL backup. Do not proceed if `pg_dump` or the integrity check fails:
+
+```bash
+set -a
+source ./.env
+set +a
+DB_PASSWORD_DECODED=$(printf '%s' "$POSTGRES_PASSWORD" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()), end='')")
+BACKUP_FILE="backups/mattermost_${POSTGRES_DB}_pre_manage_oauth_$(date +%Y%m%dT%H%M%S).dump"
+printf 'Database: %s (user: %s)\n' "$POSTGRES_DB" "$POSTGRES_USER"
+PGPASSWORD="$DB_PASSWORD_DECODED" pg_dump -Fc -h localhost -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$BACKUP_FILE"
+pg_restore --list "$BACKUP_FILE" >/dev/null
+```
+
+After approval, build and deploy the patched server. Server startup is the migration command:
+
+```bash
+cd server
+make setup-go-work
+make build-linux-amd64 BUILD_NUMBER=custom BUILD_TAGS="sourceavailable" BUILD_ENTERPRISE_DIR=./enterprise
+cd ..
+sudo docker compose -f docker-compose.staging.yml up -d --build mattermost
+```
+
+Verify the backfill without changing data:
+
+```sql
+SELECT name,
+       strpos(' ' || btrim(permissions) || ' ', ' manage_oauth ') > 0 AS has_manage_oauth
+FROM roles
+WHERE name = 'system_admin';
+
+SELECT name, value
+FROM systems
+WHERE name = 'restore_manage_oauth_permission';
+```
+
+Then sign in as a system admin, open **Integrations > OAuth 2.0 Applications**, create a temporary application, verify it appears, and delete it. The menu has a separate visibility condition: `ServiceSettings.EnableOAuthServiceProvider` must be `true`; the permission migration does not enable that setting.
+
+To roll back the code, redeploy the previous server binary/image. If the database permission must also be reverted and it was absent before deployment, use this targeted transaction; it preserves every other role and permission:
+
+```sql
+BEGIN;
+UPDATE roles
+SET permissions = array_to_string(
+    array_remove(regexp_split_to_array(btrim(permissions), E'\\s+'), 'manage_oauth'),
+    ' '
+)
+WHERE name = 'system_admin'
+  AND strpos(' ' || btrim(permissions) || ' ', ' manage_oauth ') > 0;
+DELETE FROM systems WHERE name = 'restore_manage_oauth_permission';
+COMMIT;
+```
+
+For a full database rollback, stop Mattermost and restore the verified custom-format backup into a clean database using `pg_restore`. Prefer the targeted transaction for this backport because the migration changes only the role permission and its completion marker.
+
 ---
 
 ## 🛠️ Custom Developed Functionalities

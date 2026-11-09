@@ -45,6 +45,7 @@ interface Props {
 	canManageMembers: boolean;
 	channelURL: string;
 	actions: {
+        editChannelName: () => void;
 		editChannelPurpose: () => void;
 		editChannelHeader: () => void;
 		toggleFavorite: () => void;

@@ -49,7 +49,7 @@ export type TableOptions = {
 	filterRole?: AdminConsoleUserManagementTableProperties['filterRole'];
 	filterStatus?: AdminConsoleUserManagementTableProperties['filterStatus'];
 	dateRange?: ReportDuration;
-}
+};
 
 type UserReportWithError = UserReport & { error?: ServerError };
 
@@ -254,12 +254,14 @@ function SystemUsers(props: Props) {
 							<div className='profilePictureContainer'>
 								<img
 									className='profilePicture'
+                                    data-testid='profilePicture'
 									src={imageURLForUser(info.row.original.id)}
 									aria-hidden='true'
 								/>
 							</div>
 							<div
 								className='displayName'
+                                data-testid='displayName'
 								title={getDisplayName(info.row.original)}
 							>
 								{getDisplayName(info.row.original) || ''}
@@ -275,6 +277,7 @@ function SystemUsers(props: Props) {
 							</div>
 							<div
 								className='userName'
+                                data-testid='userName'
 								title={info.row.original.username}
 							>
 								{info.row.original.username}
@@ -319,7 +322,7 @@ function SystemUsers(props: Props) {
 			},
 			{
 				id: ColumnNames.lastLoginAt,
-				accessorKey: 'last_login_at',
+                accessorKey: 'last_login',
 				header: formatMessage({
 					id: 'admin.system_users.list.lastLoginAt',
 					defaultMessage: 'Last login',
@@ -384,6 +387,21 @@ function SystemUsers(props: Props) {
 				enableSorting: false,
 			},
 			{
+                id: ColumnNames.channelCount,
+                accessorKey: 'channel_count',
+                header: formatMessage({
+                    id: 'admin.system_users.list.channelCount',
+                    defaultMessage: 'Channel count',
+                }),
+                cell: (info: CellContext<UserReport, number | undefined>) => info.getValue() ?? null,
+                meta: {
+                    isNumeric: true,
+                },
+                enableHiding: true,
+                enablePinning: false,
+                enableSorting: false,
+            },
+            {
 				id: ColumnNames.actions,
 				accessorKey: 'actions',
 				header: formatMessage({

@@ -3,6 +3,9 @@
 
 import React from 'react';
 
+import type {PostType} from '@mattermost/types/posts';
+import {PostPriority} from '@mattermost/types/posts';
+
 import Permissions from 'mattermost-redux/constants/permissions';
 
 import { onSubmit } from 'actions/views/create_comment';
@@ -12,8 +15,8 @@ import type { FileUpload } from 'components/file_upload/file_upload';
 import type Textbox from 'components/textbox/textbox';
 
 import mergeObjects from 'packages/mattermost-redux/test/merge_objects';
-import { renderWithContext, userEvent, screen, waitFor } from 'tests/react_testing_utils';
-import Constants, { Locations, StoragePrefixes } from 'utils/constants';
+import {renderWithContext, userEvent, screen, waitFor, act, createEvent, fireEvent} from 'tests/react_testing_utils';
+import Constants, {Locations, PostTypes, StoragePrefixes} from 'utils/constants';
 import { TestHelper } from 'utils/test_helper';
 
 import type { PostDraft } from 'types/store/draft';
@@ -234,8 +237,13 @@ const baseProps = {
 };
 
 describe('components/avanced_text_editor/advanced_text_editor', () => {
+    afterEach(() => {
+        jest.useRealTimers();
+    });
+
 	describe('keyDown behavior', () => {
 		it('ESC should blur the input', async () => {
+            jest.useFakeTimers();
 			renderWithContext(
 				<AdvancedTextEditor
 					{...baseProps}
@@ -252,7 +260,7 @@ describe('components/avanced_text_editor/advanced_text_editor', () => {
 			);
 			const textbox = screen.getByTestId('post_textbox');
 
-			await userEvent.type(textbox, 'something{escape}');
+            await userEvent.type(textbox, 'something{escape}', {advanceTimers: jest.advanceTimersByTime});
 
 			expect(textbox).not.toHaveFocus();
 			expect(mockedUpdateDraft).not.toHaveBeenCalled();
@@ -286,8 +294,6 @@ describe('components/avanced_text_editor/advanced_text_editor', () => {
 			jest.advanceTimersByTime(Constants.SAVE_DRAFT_TIMEOUT + 50);
 			expect(mockedRemoveDraft).toHaveBeenCalled();
 			expect(mockedUpdateDraft).not.toHaveBeenCalled();
-
-			jest.useRealTimers();
 		});
 	});
 
@@ -326,6 +332,275 @@ describe('components/avanced_text_editor/advanced_text_editor', () => {
 		expect(screen.getByPlaceholderText('Write to Other Channel')).toHaveValue('a different draft');
 	});
 
+    it('should mount and send when rootId is omitted, as plugins may do via window.Components', async () => {
+        // Plugins reach AdvancedTextEditor through the untyped window.Components bridge, so
+        // TypeScript cannot enforce the required rootId prop. An undefined rootId used to
+        // mismatch the draft's '' on every render pass, throwing React error #301 on mount
+        // and, once mounted, leaving the post-submit draft reset silently dropped.
+        const message = 'a message sent from a composer without a rootId';
+
+        renderWithContext(
+            <AdvancedTextEditor
+                {...baseProps}
+                rootId={undefined as unknown as string}
+            />,
+            mergeObjects(initialState, {
+                entities: {
+                    roles: {
+                        roles: {
+                            user_roles: {permissions: [Permissions.CREATE_POST]},
+                        },
+                    },
+                },
+            }),
+        );
+
+        const textbox = screen.getByTestId('post_textbox');
+
+        // SuggestionBox listens to onInput, not onChange.
+        fireEvent.input(textbox, {target: {value: message}});
+        expect(textbox).toHaveValue(message);
+
+        await act(async () => {
+            fireEvent.click(screen.getByTestId('SendMessageButton'));
+        });
+
+        expect(mockedOnSubmit).toHaveBeenCalledWith(
+            channelId,
+            '',
+            expect.objectContaining({message, channelId, rootId: ''}),
+            expect.anything(),
+            undefined,
+        );
+        expect(textbox).toHaveValue('');
+    });
+
+    it('should submit a destination-owned draft while the textbox still holds the previous channel value', async () => {
+        const sourceDraft = 'stale draft from the source channel';
+        const destinationMessage = 'new message composed for the destination channel';
+        // Non-image attachments: the composer blocks sending while image previews are still loading.
+        const sourceFileInfo = TestHelper.getFileInfoMock({id: 'source-file-id', name: 'source-file.txt', extension: 'txt', has_preview_image: false});
+        const destinationFileInfo = TestHelper.getFileInfoMock({id: 'destination-file-id', name: 'destination-file.txt', extension: 'txt', has_preview_image: false});
+        const sourceMetadata = {priority: {priority: PostPriority.URGENT}, files: [sourceFileInfo]};
+        const destinationMetadata = {priority: {priority: PostPriority.IMPORTANT}, files: [destinationFileInfo]};
+        const sourceProps = {sourceOnly: 'source-prop'};
+        const destinationProps = {destinationOnly: 'destination-prop'};
+        const typeOnSwitchRef = {current: false};
+
+        function Harness({editorChannelId}: {editorChannelId: string}) {
+            const [sendDestinationMessage, setSendDestinationMessage] = React.useState(false);
+
+            // Cmd+K can focus the composer after channelId updates but before the
+            // composer's effect replaces the local draft. Layout effects run before
+            // that effect, so typing here lands in the window the user reported.
+            React.useLayoutEffect(() => {
+                if (!typeOnSwitchRef.current) {
+                    return;
+                }
+                typeOnSwitchRef.current = false;
+
+                const textbox = screen.getByPlaceholderText('Write to Other Channel');
+                expect(textbox).toHaveValue(sourceDraft);
+
+                // SuggestionBox listens to onInput, not onChange. Dispatched directly instead of
+                // with fireEvent because fireEvent opens a nested act(...) scope, which React
+                // rejects while it's already flushing this commit.
+                textbox.dispatchEvent(createEvent.input(textbox, {target: {value: destinationMessage}}));
+                setSendDestinationMessage(true);
+            }, [editorChannelId]);
+
+            // The typed message is applied on the next render, still before the
+            // draft-swap effect, so sending from this layout effect submits while
+            // draft.channelId is still the source channel.
+            React.useLayoutEffect(() => {
+                if (!sendDestinationMessage) {
+                    return;
+                }
+
+                screen.getByTestId('SendMessageButton').click();
+            }, [sendDestinationMessage]);
+
+            return (
+                <AdvancedTextEditor
+                    {...baseProps}
+                    channelId={editorChannelId}
+                />
+            );
+        }
+
+        const {rerender} = renderWithContext(
+            <Harness editorChannelId={channelId}/>,
+            mergeObjects(initialState, {
+                storage: {
+                    storage: {
+                        [StoragePrefixes.DRAFT + channelId]: {
+                            value: TestHelper.getPostDraftMock({
+                                message: sourceDraft,
+                                channelId,
+                                metadata: sourceMetadata,
+                                type: PostTypes.BURN_ON_READ as PostType,
+                                props: sourceProps,
+                            }),
+                        },
+                        [StoragePrefixes.DRAFT + otherChannelId]: {
+                            value: TestHelper.getPostDraftMock({
+                                message: '',
+                                channelId: otherChannelId,
+                                metadata: destinationMetadata,
+                                type: PostTypes.ME as PostType,
+                                props: destinationProps,
+                            }),
+                        },
+                    },
+                },
+            }),
+        );
+
+        expect(screen.getByPlaceholderText('Write to Test Channel')).toHaveValue(sourceDraft);
+
+        typeOnSwitchRef.current = true;
+        rerender(<Harness editorChannelId={otherChannelId}/>);
+
+        await act(async () => {
+            await Promise.resolve();
+        });
+
+        expect(mockedOnSubmit).toHaveBeenCalledWith(
+            otherChannelId,
+            '',
+            expect.objectContaining({
+                message: destinationMessage,
+                channelId: otherChannelId,
+                rootId: '',
+                fileInfos: [destinationFileInfo],
+                metadata: destinationMetadata,
+                type: PostTypes.ME,
+                props: destinationProps,
+            }),
+            expect.anything(),
+            undefined,
+        );
+        expect(mockedOnSubmit).toHaveBeenCalledWith(
+            otherChannelId,
+            '',
+            expect.not.objectContaining({
+                fileInfos: [sourceFileInfo],
+                metadata: sourceMetadata,
+                type: PostTypes.BURN_ON_READ,
+                props: sourceProps,
+            }),
+            expect.anything(),
+            undefined,
+        );
+    });
+
+    it('should persist text typed during a channel switch only under the destination draft', async () => {
+        jest.useFakeTimers();
+
+        const sourceDraft = 'stale draft from the source channel';
+        const destinationMessage = 'new message composed for the destination channel';
+        // Non-image attachments: the composer blocks sending while image previews are still loading.
+        const sourceFileInfo = TestHelper.getFileInfoMock({id: 'source-file-id', name: 'source-file.txt', extension: 'txt', has_preview_image: false});
+        const destinationFileInfo = TestHelper.getFileInfoMock({id: 'destination-file-id', name: 'destination-file.txt', extension: 'txt', has_preview_image: false});
+        const sourceMetadata = {priority: {priority: PostPriority.URGENT}, files: [sourceFileInfo]};
+        const destinationMetadata = {priority: {priority: PostPriority.IMPORTANT}, files: [destinationFileInfo]};
+        const sourceProps = {sourceOnly: 'source-prop'};
+        const destinationProps = {destinationOnly: 'destination-prop'};
+        const typeOnSwitchRef = {current: false};
+
+        function Harness({editorChannelId}: {editorChannelId: string}) {
+            React.useLayoutEffect(() => {
+                if (!typeOnSwitchRef.current) {
+                    return;
+                }
+                typeOnSwitchRef.current = false;
+
+                const textbox = screen.getByPlaceholderText('Write to Other Channel');
+                expect(textbox).toHaveValue(sourceDraft);
+
+                // Dispatched directly instead of with fireEvent because fireEvent opens a nested
+                // act(...) scope, which React rejects while it's already flushing this commit.
+                textbox.dispatchEvent(createEvent.input(textbox, {target: {value: destinationMessage}}));
+            }, [editorChannelId]);
+
+            return (
+                <AdvancedTextEditor
+                    {...baseProps}
+                    channelId={editorChannelId}
+                />
+            );
+        }
+
+        const {rerender} = renderWithContext(
+            <Harness editorChannelId={channelId}/>,
+            mergeObjects(initialState, {
+                storage: {
+                    storage: {
+                        [StoragePrefixes.DRAFT + channelId]: {
+                            value: TestHelper.getPostDraftMock({
+                                message: sourceDraft,
+                                channelId,
+                                metadata: sourceMetadata,
+                                type: PostTypes.BURN_ON_READ as PostType,
+                                props: sourceProps,
+                            }),
+                        },
+                        [StoragePrefixes.DRAFT + otherChannelId]: {
+                            value: TestHelper.getPostDraftMock({
+                                message: '',
+                                channelId: otherChannelId,
+                                metadata: destinationMetadata,
+                                type: PostTypes.ME as PostType,
+                                props: destinationProps,
+                            }),
+                        },
+                    },
+                },
+            }),
+        );
+
+        mockedUpdateDraft.mockClear();
+        typeOnSwitchRef.current = true;
+        rerender(<Harness editorChannelId={otherChannelId}/>);
+
+        await act(async () => {
+            await Promise.resolve();
+        });
+
+        act(() => {
+            jest.advanceTimersByTime(Constants.SAVE_DRAFT_TIMEOUT + 50);
+        });
+
+        expect(mockedUpdateDraft).toHaveBeenCalledWith(
+            StoragePrefixes.DRAFT + otherChannelId,
+            expect.objectContaining({
+                message: destinationMessage,
+                channelId: otherChannelId,
+                rootId: '',
+                fileInfos: [destinationFileInfo],
+                metadata: destinationMetadata,
+                type: PostTypes.ME,
+                props: destinationProps,
+            }),
+            '',
+        );
+        expect(mockedUpdateDraft).not.toHaveBeenCalledWith(
+            StoragePrefixes.DRAFT + channelId,
+            expect.objectContaining({message: destinationMessage}),
+            expect.anything(),
+        );
+        expect(mockedUpdateDraft).not.toHaveBeenCalledWith(
+            StoragePrefixes.DRAFT + otherChannelId,
+            expect.objectContaining({
+                fileInfos: [sourceFileInfo],
+                metadata: sourceMetadata,
+                type: PostTypes.BURN_ON_READ,
+                props: sourceProps,
+            }),
+            expect.anything(),
+        );
+    });
+
 	it('should save a new draft when changing channels', async () => {
 		const { rerender } = renderWithContext(
 			<AdvancedTextEditor
@@ -351,6 +626,105 @@ describe('components/avanced_text_editor/advanced_text_editor', () => {
 			show: true,
 		});
 	});
+
+    it('should not adopt the previous channel draft when a submit resolves after a channel switch', async () => {
+        let resolveSubmit = () => {};
+        mockedOnSubmit.mockImplementation((() => () => new Promise((resolve) => {
+            resolveSubmit = () => resolve({data: true});
+        })) as unknown as typeof onSubmit);
+
+        const {rerender} = renderWithContext(
+            <AdvancedTextEditor
+                {...baseProps}
+            />,
+            initialState,
+        );
+
+        await userEvent.type(screen.getByPlaceholderText('Write to Test Channel'), 'first message');
+        await userEvent.click(screen.getByTestId('SendMessageButton'));
+
+        // The channel switches while that submit is still in flight, exactly as
+        // /msg does when redirecting to a DM that already exists in the store.
+        rerender(
+            <AdvancedTextEditor
+                {...baseProps}
+                channelId={otherChannelId}
+            />,
+        );
+
+        // Now the in-flight submit resolves and clears the origin channel's draft.
+        await act(async () => {
+            resolveSubmit();
+        });
+
+        await userEvent.type(screen.getByPlaceholderText('Write to Other Channel'), 'second message');
+
+        // Switching away flushes the composer's draft, revealing which channel it
+        // believes it belongs to. Before the fix this was the origin channel, so
+        // the message would have posted there.
+        mockedUpdateDraft.mockClear();
+        rerender(
+            <AdvancedTextEditor
+                {...baseProps}
+                channelId={channelId}
+            />,
+        );
+
+        expect(mockedUpdateDraft).toHaveBeenCalled();
+        expect(mockedUpdateDraft.mock.calls[0][1]).toMatchObject({
+            message: 'second message',
+            channelId: otherChannelId,
+        });
+    });
+
+    it('should not adopt the previous thread draft when a submit resolves after a thread switch', async () => {
+        let resolveSubmit = () => {};
+        mockedOnSubmit.mockImplementation((() => () => new Promise((resolve) => {
+            resolveSubmit = () => resolve({data: true});
+        })) as unknown as typeof onSubmit);
+
+        const firstThreadId = 'thread_1';
+        const secondThreadId = 'thread_2';
+
+        const {rerender} = renderWithContext(
+            <AdvancedTextEditor
+                {...baseProps}
+                rootId={firstThreadId}
+            />,
+            initialState,
+        );
+
+        await userEvent.type(screen.getByPlaceholderText('Reply to this thread...'), 'first reply');
+        await userEvent.click(screen.getByTestId('SendMessageButton'));
+
+        rerender(
+            <AdvancedTextEditor
+                {...baseProps}
+                rootId={secondThreadId}
+            />,
+        );
+
+        await act(async () => {
+            resolveSubmit();
+        });
+
+        await userEvent.type(screen.getByPlaceholderText('Reply to this thread...'), 'second reply');
+
+        mockedUpdateDraft.mockClear();
+        rerender(
+            <AdvancedTextEditor
+                {...baseProps}
+                rootId={firstThreadId}
+            />,
+        );
+
+        expect(mockedUpdateDraft).toHaveBeenCalled();
+        expect(mockedUpdateDraft.mock.calls[0][1]).toMatchObject({
+            message: 'second reply',
+            channelId,
+            rootId: secondThreadId,
+        });
+    });
 
 	it('MM-60541 should not save an unmodified draft when changing channels', async () => {
 		const { rerender } = renderWithContext(
@@ -417,6 +791,51 @@ describe('components/avanced_text_editor/advanced_text_editor', () => {
 			show: true,
 		});
 	});
+
+    it('MM-69928 should not create a synced/visible draft when editing a post and unmounting', async () => {
+        const editStorageKey = StoragePrefixes.EDIT_DRAFT + 'post_id_1';
+        const {unmount} = renderWithContext(
+            <AdvancedTextEditor
+                {...baseProps}
+                postId='post_id_1'
+                isInEditMode={true}
+                storageKey={editStorageKey}
+            />,
+            mergeObjects(initialState, {
+                entities: {
+                    general: {
+                        config: {
+                            AllowSyncedDrafts: 'true',
+                        },
+                    },
+                },
+                storage: {
+                    storage: {
+                        [editStorageKey]: {
+                            value: TestHelper.getPostDraftMock({
+                                message: 'original message',
+                                channelId,
+                            }),
+                        },
+                    },
+                },
+            }),
+        );
+
+        await userEvent.type(screen.getByTestId('edit_textbox'), ' edited');
+
+        expect(mockedUpdateDraft).not.toHaveBeenCalled();
+
+        unmount();
+
+        // The edit content may be persisted locally, but it must never be flagged
+        // as visible (show) or synced to the server (save), which would surface it
+        // as a draft in the drafts UI.
+        mockedUpdateDraft.mock.calls.forEach((call) => {
+            expect(call[1]).not.toMatchObject({show: true});
+            expect(call[3]).toBeFalsy();
+        });
+    });
 
 	it('should deleted a deleted draft when changing channels', async () => {
 		const { rerender } = renderWithContext(
@@ -561,18 +980,18 @@ describe('components/avanced_text_editor/advanced_text_editor', () => {
 			await userEvent.click(screen.getByRole('button', { name: 'blush emoji' }));
 
 			expect(textbox).toHaveFocus();
-			expect(textbox).toHaveValue(':blush: ');
-			expect(textbox.selectionStart).toEqual(8);
-			expect(textbox.selectionEnd).toEqual(8);
+            expect(textbox).toHaveValue('\uD83D\uDE0A ');
+            expect(textbox.selectionStart).toEqual(3);
+            expect(textbox.selectionEnd).toEqual(3);
 
 			// Do it again
 			await userEvent.click(screen.getByRole('button', { name: 'select an emoji' }));
 			await userEvent.click(screen.getByRole('button', { name: 'relaxed emoji' }));
 
 			expect(textbox).toHaveFocus();
-			expect(textbox).toHaveValue(':blush: :relaxed: ');
-			expect(textbox.selectionStart).toEqual(18);
-			expect(textbox.selectionEnd).toEqual(18);
+            expect(textbox).toHaveValue('\uD83D\uDE0A \u263A\uFE0F ');
+            expect(textbox.selectionStart).toEqual(6);
+            expect(textbox.selectionEnd).toEqual(6);
 		});
 
 		it('should add a space after the existing text if needed', async () => {
@@ -592,9 +1011,9 @@ describe('components/avanced_text_editor/advanced_text_editor', () => {
 			await userEvent.click(screen.getByRole('button', { name: 'blush emoji' }));
 
 			expect(textbox).toHaveFocus();
-			expect(textbox).toHaveValue('This is some text :blush: ');
-			expect(textbox.selectionStart).toEqual(26);
-			expect(textbox.selectionEnd).toEqual(26);
+            expect(textbox).toHaveValue('This is some text \uD83D\uDE0A ');
+            expect(textbox.selectionStart).toEqual(21);
+            expect(textbox.selectionEnd).toEqual(21);
 		});
 
 		it('should be able to add an emoji in the middle of the text', async () => {
@@ -618,10 +1037,8 @@ describe('components/avanced_text_editor/advanced_text_editor', () => {
 			await userEvent.click(screen.getByRole('button', { name: 'blush emoji' }));
 
 			expect(textbox).toHaveFocus();
-			expect(textbox).toHaveValue('aaa :blush: bbb');
-
-			// The caret should now be after the emoji
-			expect(textbox.selectionStart).toEqual(12);
+            expect(textbox).toHaveValue('aaa \uD83D\uDE0A bbb');
+            expect(textbox.selectionStart).toEqual(7);
 			expect(textbox.selectionEnd).toEqual(textbox.selectionEnd);
 		});
 
@@ -646,10 +1063,8 @@ describe('components/avanced_text_editor/advanced_text_editor', () => {
 			await userEvent.click(screen.getByRole('button', { name: 'blush emoji' }));
 
 			expect(textbox).toHaveFocus();
-			expect(textbox).toHaveValue('aaa :blush: bbb');
-
-			// The caret should now be after the emoji
-			expect(textbox.selectionStart).toEqual(12);
+            expect(textbox).toHaveValue('aaa \uD83D\uDE0A bbb');
+            expect(textbox.selectionStart).toEqual(7);
 			expect(textbox.selectionEnd).toEqual(textbox.selectionEnd);
 		});
 	});
@@ -737,4 +1152,64 @@ describe('components/avanced_text_editor/advanced_text_editor', () => {
 			expect(screen.getByPlaceholderText('Write to Test Channel')).toHaveValue('hello');
 		});
 	});
+
+    describe('composer placeholder', () => {
+        const suffixState = {
+            plugins: {
+                components: {
+                    ComposerPlaceholder: [
+                        {
+                            id: 'suffix-1',
+                            pluginId: 'test-plugin',
+                            transform: (placeholder: string) => `${placeholder} (encrypted)`,
+                        },
+                    ],
+                },
+            },
+        };
+
+        it('appends registered suffix to the composer placeholder', () => {
+            renderWithContext(
+                <AdvancedTextEditor
+                    {...baseProps}
+                />,
+                mergeObjects(initialState, suffixState),
+            );
+
+            expect(screen.getByPlaceholderText('Write to Test Channel (encrypted)')).toBeInTheDocument();
+        });
+
+        it('appends suffix to the thread-reply placeholder', () => {
+            renderWithContext(
+                <AdvancedTextEditor
+                    {...baseProps}
+                    rootId='root-post-id'
+                />,
+                mergeObjects(initialState, suffixState),
+            );
+
+            expect(screen.getByPlaceholderText('Reply to this thread... (encrypted)')).toBeInTheDocument();
+        });
+
+        it('appends suffix to the read-only channel placeholder', () => {
+            renderWithContext(
+                <AdvancedTextEditor
+                    {...baseProps}
+                />,
+                mergeObjects(mergeObjects(initialState, suffixState), {
+                    entities: {
+                        roles: {
+                            roles: {
+                                user_roles: {permissions: []},
+                            },
+                        },
+                    },
+                }),
+            );
+
+            expect(screen.getByPlaceholderText(
+                'This channel is read-only. Only members with permission can post here. (encrypted)',
+            )).toBeInTheDocument();
+        });
+    });
 });

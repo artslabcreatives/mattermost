@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {type JSX} from 'react';
 import { Modal } from 'react-bootstrap';
 import type { IntlShape } from 'react-intl';
 import { injectIntl, FormattedMessage, defineMessage } from 'react-intl';
@@ -42,7 +42,7 @@ export type Props = {
 		getProfiles: (page: number, perPage?: number, options?: Record<string, any>) => Promise<ActionResult<UserProfile[]>>;
 		searchProfiles: (term: string, options?: Record<string, any>) => Promise<ActionResult<UserProfile[]>>;
 	};
-}
+};
 
 type State = {
 	searchResults: UserProfile[];
@@ -52,7 +52,7 @@ type State = {
 	addError: null;
 	loading: boolean;
 	term: string;
-}
+};
 
 function searchUsersToAdd(users: Record<string, UserProfile>, term: string): Record<string, UserProfile> {
 	const profilesList: UserProfile[] = Object.keys(users).map((key) => users[key]);
@@ -120,7 +120,6 @@ export class AddUsersToRoleModal extends React.PureComponent<Props, State> {
 		return (
 			<div
 				key={option.id}
-				ref={isSelected ? 'selected' : option.id}
 				className={'more-modal__row clickable ' + rowSelected}
 				onClick={() => onAdd(option)}
 				onMouseMove={() => onMouseMove(option)}

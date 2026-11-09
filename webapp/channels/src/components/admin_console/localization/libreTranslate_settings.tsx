@@ -16,7 +16,7 @@ import { type SystemConsoleCustomSettingsComponentProps } from '../schema_admin_
 type LibreTranslateSettings = {
 	URL: string;
 	APIKey: string;
-}
+};
 
 export default function LibreTranslateSettings(props: SystemConsoleCustomSettingsComponentProps) {
 	const values = props.value as AutoTranslationSettings;

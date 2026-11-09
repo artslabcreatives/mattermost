@@ -16,7 +16,7 @@ type Props = {
 	toggleClassName?: string;
 	ariaLabel?: string;
 	tabIndex?: number;
-}
+};
 
 const Toggle: React.FC<Props> = (props: Props) => {
 	const {

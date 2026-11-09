@@ -10,7 +10,7 @@ import { VideoOutlineIcon } from '@mattermost/compass-icons/components';
 import { openModal } from 'actions/views/modals';
 
 import type { FileUpload as FileUploadClass } from 'components/file_upload/file_upload';
-import WithTooltip from 'components/with_tooltip';
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
 
 import { ModalIdentifiers } from 'utils/constants';
 
@@ -21,7 +21,7 @@ import VideoNoteModal from './video_note_modal';
 import './video_note_modal.scss';
 
 type Props = {
-	fileUploadRef: React.RefObject<FileUploadClass>;
+	fileUploadRef: React.RefObject<FileUploadClass | null>;
 	disabled?: boolean;
 };
 

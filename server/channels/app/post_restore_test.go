@@ -27,15 +27,16 @@ func TestRestorePostVersion(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "new message 3", fetchedPost.Message)
 
-		editHistory, appErr := th.App.GetEditHistoryForPost(post.Id)
+		editHistory, appErr := th.App.GetEditHistoryForPost(th.Context, post.Id)
 		require.Nil(t, appErr)
 		require.Equal(t, 2, len(editHistory))
 		require.Equal(t, "new message 2", editHistory[0].Message)
 
 		// now we'll restore a post version
-		restoredPost, appErr := th.App.RestorePostVersion(th.Context, th.BasicUser.Id, post.Id, editHistory[0].Id)
+		restoredPost, isMemberForPreview, appErr := th.App.RestorePostVersion(th.Context, th.BasicUser.Id, post.Id, editHistory[0].Id)
 		require.Nil(t, appErr)
 		require.Equal(t, "new message 2", restoredPost.Message)
+		require.True(t, isMemberForPreview)
 
 		// verify from database
 		fetchedPost, err = th.App.Srv().Store().Post().GetSingle(th.Context, post.Id, true)
@@ -43,7 +44,7 @@ func TestRestorePostVersion(t *testing.T) {
 		require.Equal(t, "new message 2", fetchedPost.Message)
 
 		// verify that we now have 3 items in post's edit history
-		editHistory, appErr = th.App.GetEditHistoryForPost(post.Id)
+		editHistory, appErr = th.App.GetEditHistoryForPost(th.Context, post.Id)
 		require.Nil(t, appErr)
 		require.Equal(t, 3, len(editHistory))
 		require.Equal(t, "new message 3", editHistory[0].Message)
@@ -74,7 +75,7 @@ func TestRestorePostVersion(t *testing.T) {
 		require.Equal(t, "new message 3", fetchedPost.Message)
 		require.Empty(t, fetchedPost.FileIds)
 
-		editHistory, appErr := th.App.GetEditHistoryForPost(post.Id)
+		editHistory, appErr := th.App.GetEditHistoryForPost(th.Context, post.Id)
 		require.Nil(t, appErr)
 		require.Equal(t, 2, len(editHistory))
 		require.Equal(t, "new message 2", editHistory[0].Message)
@@ -84,10 +85,11 @@ func TestRestorePostVersion(t *testing.T) {
 		require.Equal(t, 1, len(editHistory[1].FileIds))
 
 		// now we'll restore a post version
-		restoredPost, appErr := th.App.RestorePostVersion(th.Context, th.BasicUser.Id, post.Id, editHistory[1].Id)
+		restoredPost, isMemberForPreview, appErr := th.App.RestorePostVersion(th.Context, th.BasicUser.Id, post.Id, editHistory[1].Id)
 		require.Nil(t, appErr)
 		require.Equal(t, "original message", restoredPost.Message)
 		require.Equal(t, 1, len(restoredPost.FileIds))
+		require.True(t, isMemberForPreview)
 
 		// verify from database
 		fetchedPost, err = th.App.Srv().Store().Post().GetSingle(th.Context, post.Id, true)
@@ -96,7 +98,7 @@ func TestRestorePostVersion(t *testing.T) {
 		require.Equal(t, 1, len(fetchedPost.FileIds))
 
 		// verify edit history\
-		editHistory, appErr = th.App.GetEditHistoryForPost(post.Id)
+		editHistory, appErr = th.App.GetEditHistoryForPost(th.Context, post.Id)
 		require.Nil(t, appErr)
 		require.Equal(t, 3, len(editHistory))
 
@@ -124,7 +126,7 @@ func TestRestorePostVersion(t *testing.T) {
 
 		// now we'll restore a post version
 		otherPost := th.CreatePost(t, th.BasicChannel)
-		restoredPost, appErr := th.App.RestorePostVersion(th.Context, th.BasicUser.Id, post.Id, otherPost.Id)
+		restoredPost, _, appErr := th.App.RestorePostVersion(th.Context, th.BasicUser.Id, post.Id, otherPost.Id)
 		require.NotNil(t, appErr)
 		require.Equal(t, http.StatusBadRequest, appErr.StatusCode)
 		require.Equal(t, "app.post.restore_post_version.not_an_history_item.app_error", appErr.Id)
@@ -137,7 +139,7 @@ func TestRestorePostVersion(t *testing.T) {
 	})
 
 	t.Run("should return an error if the post does not exist", func(t *testing.T) {
-		restoredPost, appErr := th.App.RestorePostVersion(th.Context, th.BasicUser.Id, model.NewId(), model.NewId())
+		restoredPost, _, appErr := th.App.RestorePostVersion(th.Context, th.BasicUser.Id, model.NewId(), model.NewId())
 		require.NotNil(t, appErr)
 		require.Equal(t, http.StatusNotFound, appErr.StatusCode)
 		require.Equal(t, "app.post.restore_post_version.get_single.app_error", appErr.Id)
@@ -149,7 +151,7 @@ func TestRestorePostVersion(t *testing.T) {
 
 		// now we'll restore a post version
 		invalidRestorePostIUd := model.NewId()
-		restoredPost, appErr := th.App.RestorePostVersion(th.Context, th.BasicUser.Id, post.Id, invalidRestorePostIUd)
+		restoredPost, _, appErr := th.App.RestorePostVersion(th.Context, th.BasicUser.Id, post.Id, invalidRestorePostIUd)
 		require.NotNil(t, appErr)
 		require.Equal(t, http.StatusNotFound, appErr.StatusCode)
 		require.Equal(t, "app.post.restore_post_version.get_single.app_error", appErr.Id)
@@ -165,13 +167,13 @@ func TestRestorePostVersion(t *testing.T) {
 		})
 		th.PostPatch(t, otherPost, "other post new message 2")
 
-		otherPostEditHistory, appErr := th.App.GetEditHistoryForPost(otherPost.Id)
+		otherPostEditHistory, appErr := th.App.GetEditHistoryForPost(th.Context, otherPost.Id)
 		require.Nil(t, appErr)
 		require.Equal(t, 1, len(otherPostEditHistory))
 		require.Equal(t, "other post original message", otherPostEditHistory[0].Message)
 
 		// we'll specify post's ID and other post's version ID, his should fail
-		restoredPost, appErr := th.App.RestorePostVersion(th.Context, th.BasicUser.Id, post.Id, otherPostEditHistory[0].Id)
+		restoredPost, _, appErr := th.App.RestorePostVersion(th.Context, th.BasicUser.Id, post.Id, otherPostEditHistory[0].Id)
 		require.NotNil(t, appErr)
 		require.Equal(t, "app.post.restore_post_version.not_an_history_item.app_error", appErr.Id)
 		require.Equal(t, http.StatusBadRequest, appErr.StatusCode)

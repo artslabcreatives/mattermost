@@ -1,10 +1,10 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {type JSX} from 'react';
 import styled from 'styled-components';
 
-import { isDesktopApp } from 'utils/user_agent';
+import {isDesktopApp} from '@mattermost/shared/utils/user_agent';
 
 import HistoryButtons from './history_buttons';
 import ProductMenu from './product_menu';

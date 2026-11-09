@@ -108,7 +108,7 @@ func (*groupmsgProvider) DoCommand(a *app.App, rctx request.CTX, args *model.Com
 	var groupChannel *model.Channel
 	var channelErr *model.AppError
 
-	if a.HasPermissionTo(args.UserId, model.PermissionCreateGroupChannel) {
+	if a.HasPermissionTo(rctx, args.UserId, model.PermissionCreateGroupChannel) {
 		groupChannel, channelErr = a.CreateGroupChannel(rctx, targetUsersSlice, args.UserId)
 		if channelErr != nil {
 			rctx.Logger().Error(channelErr.Error())
@@ -126,7 +126,7 @@ func (*groupmsgProvider) DoCommand(a *app.App, rctx request.CTX, args *model.Com
 		post.Message = parsedMessage
 		post.ChannelId = groupChannel.Id
 		post.UserId = args.UserId
-		if _, err := a.CreatePostMissingChannel(rctx, post, true, true); err != nil {
+		if _, _, err := a.CreatePostMissingChannel(rctx, post, true, true); err != nil {
 			return &model.CommandResponse{Text: args.T("api.command_groupmsg.fail.app_error"), ResponseType: model.CommandResponseTypeEphemeral}
 		}
 	}

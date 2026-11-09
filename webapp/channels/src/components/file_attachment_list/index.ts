@@ -13,9 +13,11 @@ import { PostTypes } from 'mattermost-redux/constants/posts';
 import {
 	makeGetFilesForEditHistory,
 	makeGetFilesForPost,
+    isFileRejected,
 } from 'mattermost-redux/selectors/entities/files';
 import { getConfig } from 'mattermost-redux/selectors/entities/general';
 
+import {toggleEmbedVisibility} from 'actions/post_actions';
 import { openModal } from 'actions/views/modals';
 import { getCurrentLocale } from 'selectors/i18n';
 import { isEmbedVisible } from 'selectors/posts';
@@ -34,7 +36,7 @@ export type OwnProps = {
 	disableActions?: boolean;
 	usePostAsSource?: boolean;
 	overrideGenerateFileDownloadUrl?: (fileId: string) => string;
-}
+};
 
 function makeMapStateToProps() {
 	const selectFilesForPost = makeGetFilesForPost();
@@ -66,12 +68,16 @@ function makeMapStateToProps() {
 			fileCount = ownProps.post.filenames.length;
 		}
 
+        // Check if the first file is rejected (for single file view logic)
+        const firstFileRejected = fileInfos.length > 0 ? isFileRejected(state, fileInfos[0].id) : false;
+
 		return {
 			enableSVGs: getConfig(state).EnableSVGs === 'true',
 			fileInfos,
 			fileCount,
 			isEmbedVisible: isEmbedVisible(state, ownProps.post.id),
 			locale: getCurrentLocale(state),
+            firstFileRejected,
 		};
 	};
 }
@@ -80,6 +86,7 @@ function mapDispatchToProps(dispatch: Dispatch) {
 	return {
 		actions: bindActionCreators({
 			openModal,
+            toggleEmbedVisibility,
 		}, dispatch),
 	};
 }

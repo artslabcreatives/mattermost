@@ -3,14 +3,14 @@
 
 import React from 'react';
 
-import type { UserPropertyField } from '@mattermost/types/properties';
+import type {UserPropertyField} from '@mattermost/types/properties_user';
 import type { UserProfile } from '@mattermost/types/users';
 
 type Props = {
 	attribute?: UserPropertyField;
 	userProfile: UserProfile;
 	phone?: string;
-}
+};
 
 const ProfilePopoverPhone = ({ attribute, userProfile, phone: phoneProp }: Props) => {
 	const phone = phoneProp || (attribute ? (userProfile.custom_profile_attributes?.[attribute.id] as string) : (userProfile.props?.phone_number || userProfile.props?.mobile_number || userProfile.props?.phone || userProfile.props?.mobile));

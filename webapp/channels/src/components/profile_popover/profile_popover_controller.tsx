@@ -128,6 +128,9 @@ export function ProfilePopoverController<TriggerComponentType = HTMLSpanElement>
 
 	const TriggerComponent = props.triggerComponentAs ?? 'span';
 
+    // Buttons default to type="submit" and would post a draft if rendered in the composer form.
+    const triggerType = props.triggerComponentAs === 'button' ? 'button' : undefined;
+
 	return (
 		<>
 			<TriggerComponent
@@ -136,6 +139,7 @@ export function ProfilePopoverController<TriggerComponentType = HTMLSpanElement>
 				className={props.triggerComponentClass}
 				style={props.triggerComponentStyle}
 				{...getReferenceProps()}
+                type={triggerType}
 			>
 				{props.children}
 			</TriggerComponent>
@@ -147,6 +151,7 @@ export function ProfilePopoverController<TriggerComponentType = HTMLSpanElement>
 							ref={refs.setFloating}
 							style={{ ...floatingStyles, ...transitionStyles, zIndex: 9999 }}
 							className={classNames('user-profile-popover', A11yClassNames.POPUP)}
+                                data-testid='user-profile-popover'
 							aria-label={props.username ? userProfileAriaLabel : profileAriaLabel}
 							{...getFloatingProps()}
 						>

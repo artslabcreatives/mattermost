@@ -3,7 +3,7 @@
 
 import classNames from 'classnames';
 import isEqual from 'lodash/isEqual';
-import React from 'react';
+import React, {type JSX} from 'react';
 import { FormattedMessage, injectIntl } from 'react-intl';
 import type { IntlShape } from 'react-intl';
 
@@ -33,10 +33,10 @@ export interface Props extends PropsFromRedux {
 type State = {
 	sections: string[] | null;
 	filter: string;
-}
+};
 
 class AdminSidebar extends React.PureComponent<Props, State> {
-	searchRef: React.RefObject<HTMLInputElement>;
+    searchRef: React.RefObject<HTMLInputElement | null>;
 	idx: Index | null;
 
 	static defaultProps = {
@@ -268,7 +268,10 @@ class AdminSidebar extends React.PureComponent<Props, State> {
 	render() {
 		const { showTaskList } = this.props;
 		return (
-			<div className='admin-sidebar'>
+            <div
+                className='admin-sidebar'
+                data-testid='admin-sidebar'
+            >
 				<AdminSidebarHeader />
 				<div className='filter-container'>
 					<SearchIcon

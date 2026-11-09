@@ -6,15 +6,14 @@ import React, { useRef, useState, useEffect } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 
 import { ArchiveOutlineIcon } from '@mattermost/compass-icons/components';
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
 import type { FileInfo } from '@mattermost/types/files';
 
 import { getFileThumbnailUrl, getFileUrl } from 'mattermost-redux/utils/file_utils';
 
-import { usePluginVisibilityInSharedChannel } from 'components/common/hooks/usePluginVisibilityInSharedChannel';
 import GetPublicModal from 'components/get_public_link_modal';
 import Menu from 'components/widgets/menu/menu';
 import MenuWrapper from 'components/widgets/menu/menu_wrapper';
-import WithTooltip from 'components/with_tooltip';
 
 import { Constants, FileTypes, ModalIdentifiers } from 'utils/constants';
 import { trimFilename } from 'utils/file_utils';
@@ -71,8 +70,6 @@ export default function FileAttachment(props: Props) {
 
 	const buttonRef = useRef<HTMLButtonElement | null>(null);
 
-	const pluginItemsVisible = usePluginVisibilityInSharedChannel(props.currentChannel?.id);
-
 	const handleImageLoaded = () => {
 		if (mounted.current) {
 			setLoaded(true);
@@ -86,6 +83,14 @@ export default function FileAttachment(props: Props) {
 			// So skip trying to load.
 			return;
 		}
+
+        // If file is rejected, don't try to load thumbnail - just mark as loaded
+        // so it shows the file icon instead
+        if (props.isFileRejected) {
+            setLoaded(true);
+            return;
+        }
+
 		const fileType = getFileType(fileInfo.extension);
 
 		if (!props.disableThumbnail) {
@@ -123,6 +128,13 @@ export default function FileAttachment(props: Props) {
 			setLoaded(getFileType(props.fileInfo.extension) !== FileTypes.IMAGE && !(props.enableSVGs && props.fileInfo.extension === FileTypes.SVG));
 		}
 	}, [props.fileInfo.extension, props.fileInfo.id, props.enableSVGs]);
+
+    // If file becomes rejected, mark as loaded so it shows the file icon
+    useEffect(() => {
+        if (props.isFileRejected) {
+            setLoaded(true);
+        }
+    }, [props.isFileRejected]);
 
 	const onAttachmentClick = (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
 		e.preventDefault();
@@ -199,9 +211,7 @@ export default function FileAttachment(props: Props) {
 			);
 		}
 
-		let pluginItems: JSX.Element[] = [];
-		if (pluginItemsVisible) {
-			pluginItems = pluginMenuItems?.filter((item) => item?.match(fileInfo)).map((item) => {
+        const pluginItems = pluginMenuItems?.filter((item) => item?.match(fileInfo)).map((item) => {
 				return (
 					<Menu.ItemAction
 						id={item.id + '_pluginmenuitem'}
@@ -211,7 +221,6 @@ export default function FileAttachment(props: Props) {
 					/>
 				);
 			});
-		}
 
 		const isMenuVisible = defaultItems?.length || pluginItems?.length;
 		if (!isMenuVisible) {
@@ -388,7 +397,7 @@ export default function FileAttachment(props: Props) {
 				])}
 			>
 				{fileThumbnail}
-				<div className='post-image__details'>
+                <div className={classNames('post-image__details', {compact: compactDisplay})}>
 					{fileDetail}
 					{fileActions}
 					{filenameOverlay}

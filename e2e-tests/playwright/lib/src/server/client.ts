@@ -1,34 +1,31 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {Client4} from '@mattermost/client';
-import {AdminConfig} from '@mattermost/types/config';
-import {UserProfile} from '@mattermost/types/users';
+import type {UserProfile} from '@mattermost/types/users';
+
+import {PlaywrightClient4} from './playwright_client';
 
 import {testConfig} from '@/test_config';
 
-// Extend Client4 with methods used for testing
-declare module '@mattermost/client' {
-    interface Client4 {
-        updateConfigX: (config: Partial<AdminConfig>) => Promise<AdminConfig>;
-    }
-}
-
-// updateConfigX merges the given config with the current config and updates it to the server
-Client4.prototype.updateConfigX = async function (this: Client4, config: Partial<AdminConfig>) {
-    const currentConfig = await this.getConfig();
-    const newConfig = {...currentConfig, ...config};
-    return await this.updateConfig(newConfig);
-};
-
 // Variable to hold cache
 const clients: Record<string, ClientCache> = {};
+
+/**
+ * Drops every cached client, so the next makeClient()/getAdminClient() call logs in again instead
+ * of reusing a session pointed at a Mattermost container that no longer exists — needed after
+ * restartMattermostContainer() swaps in a fresh container (new base URL, new session).
+ */
+export function clearClientCache(): void {
+    for (const key of Object.keys(clients)) {
+        delete clients[key];
+    }
+}
 
 export async function makeClient(
     userRequest?: UserRequest,
     opts: {useCache?: boolean; skipLog?: boolean} = {useCache: true, skipLog: false},
 ): Promise<ClientCache> {
-    const client = new Client4();
+    const client = new PlaywrightClient4();
     client.setUrl(testConfig.baseURL);
 
     try {
@@ -68,6 +65,6 @@ type UserRequest = {
 };
 
 type ClientCache = {
-    client: Client4;
+    client: PlaywrightClient4;
     user: UserProfile | null;
 };

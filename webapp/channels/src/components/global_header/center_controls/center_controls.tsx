@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Aura, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {type JSX} from 'react';
 import styled from 'styled-components';
 
 import type { ProductIdentifier } from '@mattermost/types/products';
@@ -27,7 +27,7 @@ const CenterControlsContainer = styled.div`
 
 export type Props = {
 	productId?: ProductIdentifier;
-}
+};
 
 const CenterControls = ({ productId = null }: Props): JSX.Element => {
 	return (

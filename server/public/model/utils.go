@@ -18,7 +18,6 @@ import (
 	"os"
 	"regexp"
 	"slices"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -237,8 +236,14 @@ type AppError struct {
 	StatusCode      int    `json:"status_code,omitempty"` // The http status code
 	Where           string `json:"-"`                     // The function where it happened in the form of Struct.Func
 	SkipTranslation bool   `json:"-"`                     // Whether translation for the error should be skipped.
-	params          map[string]any
-	wrapped         error
+
+	// Props carries caller-authored context to API clients, like the Props fields on Users and
+	// Posts. Unlike DetailedError it is always returned to clients regardless of developer mode, so
+	// it must only hold flat strings that are safe for any client to see - never internal details.
+	Props StringMap `json:"props,omitempty"`
+
+	params  map[string]any
+	wrapped error
 }
 
 const maxErrorLength = 1024
@@ -404,6 +409,44 @@ func NewRandomString(length int) string {
 	data := make([]byte, 1+(length*5/8))
 	rand.Read(data)
 	return encoding.EncodeToString(data)[:length]
+}
+
+// NewTestPassword generates a password that meets complexity requirements
+// (uppercase, lowercase, number, special character) with a minimum length of 14.
+// The passwords are not cryptographically random. Use only in tests.
+func NewTestPassword() string {
+	const (
+		lowers   = LowercaseLetters
+		uppers   = UppercaseLetters
+		digits   = NUMBERS
+		specials = "!%^&*(),."
+		all      = lowers + uppers + digits + specials
+		minLen   = PasswordFIPSMinimumLength
+	)
+
+	// Read all randomness in one call for performance.
+	// We need minLen bytes for character selection + minLen bytes for shuffle indices.
+	entropy := make([]byte, 2*minLen)
+	if _, err := rand.Read(entropy); err != nil {
+		panic(err)
+	}
+
+	pw := make([]byte, minLen)
+	pw[0] = uppers[int(entropy[0])%len(uppers)]
+	pw[1] = lowers[int(entropy[1])%len(lowers)]
+	pw[2] = digits[int(entropy[2])%len(digits)]
+	pw[3] = specials[int(entropy[3])%len(specials)]
+	for i := 4; i < minLen; i++ {
+		pw[i] = all[int(entropy[i])%len(all)]
+	}
+
+	// Shuffle to avoid predictable prefix using remaining entropy.
+	for i := len(pw) - 1; i > 0; i-- {
+		j := int(entropy[minLen+i]) % (i + 1)
+		pw[i], pw[j] = pw[j], pw[i]
+	}
+
+	return string(pw)
 }
 
 // GetMillis is a convenience method to get milliseconds since epoch.
@@ -783,7 +826,7 @@ func RemoveDuplicateStrings(in []string) []string {
 	if len(in) == 0 {
 		return in
 	}
-	sort.Strings(in)
+	slices.Sort(in)
 	j := 0
 	for i := 1; i < len(in); i++ {
 		if in[j] == in[i] {

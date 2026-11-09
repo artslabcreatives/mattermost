@@ -12,7 +12,7 @@ const getDateFormat: ComponentProps<typeof Timestamp>['useDate'] = { weekday: 'l
 
 type Props = {
 	value: PropertyValue<unknown>;
-}
+};
 
 export default function TimestampPropertyRenderer({ value }: Props) {
 	return (
