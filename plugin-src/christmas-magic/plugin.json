@@ -1,0 +1,147 @@
+{
+  "id": "com.custom.christmas-magic",
+  "name": "Mattermost Christmas Magic",
+  "description": "Snowflakes, Santa's sleigh with sound and clickable gifts, a snowman on the message box, a rotating 3D Christmas tree showing /christmas wishes, and a personal animation switch.",
+  "version": "1.5.0",
+  "min_server_version": "10.0.0",
+  "server": {
+    "executables": {
+      "linux-amd64": "server/dist/plugin-linux-amd64",
+      "linux-arm64": "server/dist/plugin-linux-arm64"
+    }
+  },
+  "webapp": {
+    "bundle_path": "webapp/dist/main.js"
+  },
+  "settings_schema": {
+    "header": "🎁 **Need a license key? [Get your Christmas Magic license here →](https://buymeacoffee.com/rsahan/e/594048)** Each key works on one Mattermost server.\n\nChristmas Magic respects each user's reduced-motion preference and personal header switch.",
+    "settings": [
+      {
+        "key": "LicenseKey",
+        "display_name": "License Key",
+        "type": "text",
+        "default": "",
+        "placeholder": "MMXMAS-XXXX-XXXX-XXXX-XXXX",
+        "help_text": "Don't have a key yet? **[Get a license →](https://buymeacoffee.com/rsahan/e/594048)**\n\nEnter your license key (format: MMXMAS-XXXX-XXXX-XXXX-XXXX). The plugin will not start without a valid key. If it failed to start, save the key, then disable and re-enable the plugin in Plugin Management."
+      },
+      {
+        "key": "Enabled",
+        "display_name": "Enable Christmas animations",
+        "type": "bool",
+        "default": true
+      },
+      {
+        "key": "Snow",
+        "display_name": "Enable snowfall",
+        "type": "bool",
+        "default": true
+      },
+      {
+        "key": "Santa",
+        "display_name": "Enable Santa",
+        "type": "bool",
+        "default": true
+      },
+      {
+        "key": "Gifts",
+        "display_name": "Enable falling gifts",
+        "type": "bool",
+        "default": true,
+        "help_text": "Santa drops 2 to 4 presents per flight; they land on the message box. Requires Santa."
+      },
+      {
+        "key": "Snowman",
+        "display_name": "Enable walking snowman",
+        "type": "bool",
+        "default": true,
+        "help_text": "A snowman walks along the top of the message box. It never blocks typing or clicks."
+      },
+      {
+        "key": "Tree",
+        "display_name": "Show Christmas tree",
+        "type": "bool",
+        "default": true,
+        "help_text": "A rotating 3D Christmas tree sits at the bottom-right corner of the message box and shows Christmas wishes in a speech bubble."
+      },
+      {
+        "key": "Wishes",
+        "display_name": "Enable /christmas wishes",
+        "type": "bool",
+        "default": true,
+        "help_text": "Users type /christmas followed by their wish. It appears in the tree's bubble for everyone, then saved wishes keep taking turns. Requires the tree."
+      },
+      {
+        "key": "WishesList",
+        "display_name": "Christmas wishes",
+        "type": "custom",
+        "help_text": "Every wish sent with /christmas (up to the latest 500). Remove anything inappropriate; it disappears from everyone's tree immediately."
+      },
+      {
+        "key": "Sound",
+        "display_name": "Enable Santa sound",
+        "type": "bool",
+        "default": true,
+        "help_text": "Plays sleigh bells, a \"Jingle Bells\" chorus and Santa saying \"Ho ho ho, Merry Christmas\" (about 11 seconds) when Santa flies by. Each user can mute it with the speaker button in the header."
+      },
+      {
+        "key": "SnowDensity",
+        "display_name": "Snow density",
+        "type": "number",
+        "default": 60,
+        "help_text": "Maximum flakes at desktop size, from 0 to 150. Automatically reduced on smaller screens and less capable devices."
+      },
+      {
+        "key": "SantaMinSeconds",
+        "display_name": "Minimum wait between flights (seconds)",
+        "type": "number",
+        "default": 30,
+        "help_text": "30 to 3600 seconds. The first flight also waits this randomized interval."
+      },
+      {
+        "key": "SantaMaxSeconds",
+        "display_name": "Maximum wait between flights (seconds)",
+        "type": "number",
+        "default": 90,
+        "help_text": "At least the minimum wait, up to 3600 seconds."
+      },
+      {
+        "key": "GiftGreetings",
+        "display_name": "Enable gift messages",
+        "type": "bool",
+        "default": true,
+        "help_text": "Users can click a falling gift to open one of the gift messages below. When off, gifts are decorative and let clicks pass through."
+      },
+      {
+        "key": "GiftMessages",
+        "display_name": "Gift messages",
+        "type": "longtext",
+        "default": "You got a special leave day! 🏖️ | Enjoy your extra day off.\nYou got a half-day leave! 🕐 | You can leave at lunch today.\nYou got a salary increment! 💰 | It will show on your next payslip.\nYou have been promoted! 🚀 | Your new title starts on Monday.\nYou got a year-end bonus! 🎉 | Santa approved it personally.\nYou got work-from-home for a month! 🏠 | Pyjamas are the new dress code.\nFree lunch on the company today! 🍕 | Order whatever you like.\nYou got an extra week of holidays! 🎄 | Your calendar is all yours.",
+        "help_text": "One message per line: the headline, then | and an optional smaller line. A random one is shown when a gift is opened. Clear the box to restore the built-in messages."
+      },
+      {
+        "key": "JustKidding",
+        "display_name": "Show \"just kidding 😄\"",
+        "type": "bool",
+        "default": true,
+        "help_text": "Adds a small \"just kidding 😄\" in the corner of every gift message. Turn off if your messages are real."
+      },
+      {
+        "key": "StartDate",
+        "display_name": "Start date",
+        "type": "text",
+        "default": "",
+        "placeholder": "2026-12-01",
+        "help_text": "Optional YYYY-MM-DD, inclusive in each user's local timezone. Leave blank for no start limit."
+      },
+      {
+        "key": "EndDate",
+        "display_name": "End date",
+        "type": "text",
+        "default": "",
+        "placeholder": "2026-12-31",
+        "help_text": "Optional YYYY-MM-DD, inclusive in each user's local timezone. Leave blank for no end limit. Invalid dates disable effects."
+      }
+    ],
+    "footer": "Enter your license key purchased from [Buy Me a Coffee](https://buymeacoffee.com/rsahan/e/594048). Each key is valid for 1 Mattermost server only."
+  }
+}

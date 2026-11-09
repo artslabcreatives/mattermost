@@ -191,7 +191,7 @@ func (pm *platformMetrics) initMetricsRouter() error {
 	pm.router.Handle("/debug/pprof/mutex", pprof.Handler("mutex"))
 
 	// Plugins metrics route
-	pluginsMetricsRoute := pm.router.PathPrefix("/plugins/{plugin_id:[A-Za-z0-9\\_\\-\\.]+}/metrics").Subrouter()
+	pluginsMetricsRoute := pm.router.PathPrefix("/plugins/" + model.PluginIDRoute + "/metrics").Subrouter()
 	pluginsMetricsRoute.HandleFunc("", pm.servePluginMetricsRequest)
 	pluginsMetricsRoute.HandleFunc("/{anything:.*}", pm.servePluginMetricsRequest)
 

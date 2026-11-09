@@ -245,7 +245,7 @@ func NewChannels(s *Server) (*Channels, error) {
 	}
 
 	// Setup routes.
-	pluginsRoute := ch.srv.Router.PathPrefix("/plugins/{plugin_id:[A-Za-z0-9\\_\\-\\.]+}").Subrouter()
+	pluginsRoute := ch.srv.Router.PathPrefix("/plugins/" + model.PluginIDRoute).Subrouter()
 	pluginsRoute.HandleFunc("", ch.ServePluginRequest)
 	pluginsRoute.HandleFunc("/public/{public_file:.*}", ch.ServePluginPublicRequest)
 	pluginsRoute.HandleFunc("/{anything:.*}", ch.ServePluginRequest)

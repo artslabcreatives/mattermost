@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Christmas Magic test fixture</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font:14px system-ui;background:#fff;color:#353944;--sidebar-header-text-color:#fff;--center-channel-color:#353944;--center-channel-bg:#fff;--button-bg:#548fe2}#global-header{height:44px;background:#29334e;display:flex;align-items:center;justify-content:space-between;padding:0 16px;color:white;position:relative;z-index:99}#RightControlsContainer{display:flex;align-items:center;gap:18px}button{font:inherit}.search{background:#ffffff12;border-radius:5px;padding:5px 20px;color:#d6dce9;width:30%}aside{position:absolute;top:44px;bottom:0;width:230px;padding:26px 22px;background:#f1f3f7;line-height:2.7}main{margin-left:230px;padding:24px 32px}h1{font-size:20px;margin:0 0 12px}.channel{border-bottom:1px solid #ddd;padding-bottom:16px;display:flex;justify-content:space-between;align-items:center}.message{padding:28px 0;border-bottom:1px solid #f0f0f0;display:flex;gap:14px;line-height:1.7}.avatar{background:#d4e8e2;color:#396958;border-radius:8px;width:36px;height:36px;text-align:center;padding:6px;font-weight:600}.time{font-size:11px;color:#89909b;margin-left:10px}textarea{position:fixed;bottom:28px;left:260px;right:30px;width:calc(100% - 290px);height:110px;border:1px solid #d4d9df;border-radius:8px;padding:18px;background:inherit;color:inherit;font:inherit}.note{font-size:11px;color:#89909b}.dark{background:#202632;color:#d9dee7;--center-channel-bg:#202632;--center-channel-color:#d9dee7}.dark aside{background:#272f3f}.dark .message{border-color:#343d4d}.dark .channel{border-color:#434d5d}#fallback{display:flex}@media(max-width:768px){#global-header{display:none}aside{display:none}main{margin:0;padding:18px}textarea{left:18px;width:calc(100% - 36px)}}
+</style></head><body>
+<header id="global-header"><strong>Collab</strong><div class="search">Search messages</div><div id="RightControlsContainer"><span>Saved</span><span>Settings</span><span>Profile</span></div></header>
+<aside><strong>Design studio</strong><br>Town Square<br>Product team<br>Design feedback<br>Announcements<br><br><strong>Direct messages</strong><br>Alex Morgan<br>Jordan Lee</aside>
+<main><div class="channel"><h1>Town Square</h1><div id="fallback"></div></div><div class="message"><div class="avatar">AM</div><div><strong>Alex Morgan</strong><span class="time">9:41 AM</span><br>Welcome to our holiday workspace. A little Christmas magic for the team.</div></div><div class="message"><div class="avatar">JL</div><div><strong>Jordan Lee</strong><span class="time">9:42 AM</span><br>The header switch lets everyone choose their own festive atmosphere.</div></div><p class="note">Plugin browser test fixture — sample content</p><textarea id="post-create" aria-label="Message input" placeholder="Write a message..."></textarea></main>
+<div id="root"></div><pre id="results" hidden>RUNNING</pre>
+<script src="/react.js"></script><script src="/react-dom.js"></script>
+<script>
+if(new URLSearchParams(location.search).get('theme') === 'dark') document.body.className='dark';
+let plugin;window.registerPlugin=(id,p)=>{plugin=p};
+const roots=new Map();let nextId=0;const handlers={};const handler=(e)=>handlers['custom_com.custom.christmas-magic_configuration']?.(e);let reconnect;let menuAction;let adminSetting;
+const registry={
+ registerRootComponent(C){const id=String(++nextId);const element=document.createElement('div');document.querySelector('#root').append(element);const root=ReactDOM.createRoot(element);root.render(React.createElement(C));roots.set(id,{root,element});return id},
+ registerChannelHeaderIcon(C){const id=String(++nextId);const element=document.createElement('div');document.querySelector('#fallback').append(element);const root=ReactDOM.createRoot(element);root.render(React.createElement(C));roots.set(id,{root,element});return id},
+ registerMainMenuAction(text,action,icon){menuAction=action;return 'menu'},
+ unregisterComponent(id){if(id==='menu')menuAction=null;const entry=roots.get(id);if(entry){entry.root.unmount();entry.element.remove();roots.delete(id)}},
+ registerWebSocketEventHandler(event,fn){handlers[event]=fn},unregisterWebSocketEventHandler(event){delete handlers[event]},
+ registerAdminConsoleCustomSetting(key,C){adminSetting={key,C}},
+ registerReconnectHandler(fn){reconnect=fn},unregisterReconnectHandler(){reconnect=null}
+};
+const subscribers=new Set();const store={getState:()=>({entities:{users:{currentUserId:'test-user',profiles:{'test-user':{first_name:'Sam'}}},general:{config:{SiteURL:location.origin}}}}),subscribe(fn){subscribers.add(fn);return()=>subscribers.delete(fn)}};
+const renderAdmin=()=>{const element=document.createElement('div');element.id='admin';document.body.prepend(element);ReactDOM.createRoot(element).render(React.createElement(adminSetting.C))};
+const switchButton=()=>[...document.querySelectorAll('[role=switch]')].find(e=>e.getBoundingClientRect().width>0);
+</script><script src="/main.js"></script>
+</body></html>
